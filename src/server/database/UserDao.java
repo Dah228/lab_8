@@ -58,4 +58,31 @@ public class UserDao {
             return false;
         }
     }
+
+    public boolean updateUserColor(String login, String color) {
+        String sql = "UPDATE users SET color = ? WHERE login = ?";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, color);
+            ps.setString(2, login);
+            return ps.executeUpdate() == 1;
+        } catch (SQLException e) {
+            System.err.println("Ошибка обновления цвета: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public String getUserColor(String login) {
+        String sql = "SELECT color FROM users WHERE login = ?";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, login);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("color") : null;
+            }
+        } catch (SQLException e) {
+            System.err.println("Ошибка получения цвета: " + e.getMessage());
+            return null;
+        }
+    }
 }

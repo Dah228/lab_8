@@ -13,6 +13,7 @@ import javafx.util.Callback;
 
 import java.text.DecimalFormat;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -347,5 +348,10 @@ public class VehicleTableController {
         v2.setFuelType(common.FuelType.KEROSENE); v2.setEnginePower(5000f); v2.setDistanceTravelled(100000f);
 
         updateData(List.of(v1, v2));
+    }
+
+
+    public List<Vehicle> getAllVehicles() {
+        return new ArrayList<>(allVehicles); // возвращаем копию, чтобы не ломать фильтры
     }
 }

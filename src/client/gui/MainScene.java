@@ -21,11 +21,9 @@ public class MainScene {
     private final String currentUserPassword;
     private final NetworkService networkService;
 
-    // Контроллеры
     private VehicleTableController tableController;
     private VehicleCanvasController canvasController;
     private CommandDialogHandler commandHandler;
-
     private Label userLabel;
     private ComboBox<Locale> langComboBox;
 
@@ -37,7 +35,6 @@ public class MainScene {
         this.currentUserLogin = currentUserLogin;
         this.currentUserPassword = currentUserPassword;
 
-        // Создаем обработчик команд
         this.commandHandler = new CommandDialogHandler(networkService, localization,
                 currentUserLogin, currentUserPassword);
     }
@@ -70,6 +67,9 @@ public class MainScene {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        Button btnVisualize = new Button("🎨 Визуализация");
+        btnVisualize.setOnAction(e -> openVisualization());
+
         Label langLabel = new Label(localization.get("main.lang.label"));
         langComboBox = new ComboBox<>();
         langComboBox.getItems().setAll(localization.getAvailableLocales());
@@ -94,8 +94,30 @@ public class MainScene {
             }
         });
 
-        hbox.getChildren().addAll(userLabel, spacer, langLabel, langComboBox);
+        hbox.getChildren().addAll(userLabel, spacer, btnVisualize, langLabel, langComboBox);
         return hbox;
+    }
+
+    private void openVisualization() {
+        if (canvasController == null) {
+            canvasController = new VehicleCanvasController(localization);
+        }
+
+        // Берём текущие данные из таблицы
+        List<Vehicle> currentVehicles = tableController.getAllVehicles();
+
+        Stage vizStage = new Stage();
+        vizStage.setTitle("Визуализация объектов");
+
+        javafx.scene.canvas.Canvas canvas = canvasController.createCanvas(800, 600);
+        canvasController.updateData(currentVehicles);
+
+        StackPane pane = new StackPane(canvas);
+        pane.setStyle("-fx-background-color: white;");
+
+        Scene scene = new Scene(pane, 800, 600);
+        vizStage.setScene(scene);
+        vizStage.show();
     }
 
     private VBox createCenterBox() {
@@ -104,17 +126,15 @@ public class MainScene {
         vbox.setAlignment(Pos.TOP_CENTER);
         vbox.setStyle("-fx-background-color: #f5f5f5;");
 
-        // 1. Создаем контроллер таблицы
+        // Создаём таблицу — КАК БЫЛО РАНЬШЕ
         tableController = new VehicleTableController(localization);
         VBox tablePane = tableController.createTablePane();
 
-        // 2. Связываем контроллер таблицы с обработчиком команд
-        // Это позволит команде show (и другим) обновлять данные в таблице
+        // Связываем с обработчиком команд
         if (commandHandler != null) {
             commandHandler.setTableController(tableController);
         }
 
-        // 3. Добавляем таблицу в центральный блок
         vbox.getChildren().add(tablePane);
         VBox.setVgrow(tablePane, Priority.ALWAYS);
 
@@ -127,7 +147,6 @@ public class MainScene {
         hbox.setAlignment(Pos.CENTER);
         hbox.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #cccccc; -fx-border-width: 1 0 0 0;");
 
-        // Создаем кнопки с локализованными названиями
         Button btnShow = new Button(localization.get("btn.show"));
         Button btnAdd = new Button(localization.get("btn.add"));
         Button btnUpdate = new Button(localization.get("btn.update"));
@@ -144,7 +163,6 @@ public class MainScene {
         Button btnHelp = new Button(localization.get("btn.help"));
         Button btnExit = new Button(localization.get("btn.exit"));
 
-        // Обработчики — ВСЕ команды через commandHandler
         btnShow.setOnAction(e -> commandHandler.executeShow());
         btnAdd.setOnAction(e -> commandHandler.executeAdd());
         btnUpdate.setOnAction(e -> commandHandler.executeUpdate());
@@ -220,6 +238,7 @@ public class MainScene {
             tableController.updateLocalization();
         }
     }
+
     // Метод для обновления данных извне (если нужно)
     public void updateTableData(List<Vehicle> vehicles) {
         if (tableController != null) {

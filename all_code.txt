@@ -8,6 +8,7 @@ import common.Vehicle;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
@@ -99,25 +100,33 @@ public class MainScene {
         return hbox;
     }
 
-    private VBox createCenterBox() {
-        VBox vbox = new VBox(15);
+    private VBox createCenterBox(){
+        VBox vbox = new VBox(0);
         vbox.setPadding(new Insets(10));
-        vbox.setAlignment(Pos.TOP_CENTER);
-        vbox.setStyle("-fx-background-color: #f5f5f5;");
 
-        // 1. Создаем контроллер таблицы
+        // Создаем TabPane
+        TabPane tabPane = new TabPane();
+        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+
+        // Вкладка с таблицей
+        Tab tableTab = new Tab("📊 Таблица");
         tableController = new VehicleTableController(localization);
         VBox tablePane = tableController.createTablePane();
+        tableTab.setContent(tablePane);
+        tableTab.setClosable(false);
 
-        // 2. Связываем контроллер таблицы с обработчиком команд
-        // Это позволит команде show (и другим) обновлять данные в таблице
-        if (commandHandler != null) {
-            commandHandler.setTableController(tableController);
-        }
+        // Вкладка с визуализацией
+        Tab canvasTab = new Tab("🎨 Визуализация");
+        canvasController = new VehicleCanvasController(localization);
+        Canvas canvas = canvasController.createCanvas(1000, 600);
+        StackPane canvasPane = new StackPane(canvas);
+        canvasPane.setStyle("-fx-background-color: white;");
+        canvasTab.setContent(canvasPane);
+        canvasTab.setClosable(false);
 
-        // 3. Добавляем таблицу в центральный блок
-        vbox.getChildren().add(tablePane);
-        VBox.setVgrow(tablePane, Priority.ALWAYS);
+        tabPane.getTabs().addAll(tableTab, canvasTab);
+        vbox.getChildren().add(tabPane);
+        VBox.setVgrow(tabPane, Priority.ALWAYS);
 
         return vbox;
     }
@@ -128,22 +137,22 @@ public class MainScene {
         hbox.setAlignment(Pos.CENTER);
         hbox.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #cccccc; -fx-border-width: 1 0 0 0;");
 
-        // Создаем кнопки
-        Button btnShow = new Button("show");
-        Button btnAdd = new Button("add");
-        Button btnUpdate = new Button("update");
-        Button btnRemove = new Button("remove_by_id");
-        Button btnClear = new Button("clear");
-        Button btnInfo = new Button("info");
-        Button btnSort = new Button("sort");
-        Button btnPrintDesc = new Button("print_descending");
-        Button btnShuffle = new Button("shuffle");
-        Button btnHelp = new Button("help");
-        Button btnFilterEngine = new Button("filter_engine");
-        Button btnBuy = new Button("buy");
-        Button btnBalance = new Button("balance");
-        Button btnDeposit = new Button("deposit");
-        Button btnExit = new Button("exit");
+        // Создаем кнопки с локализованными названиями
+        Button btnShow = new Button(localization.get("btn.show"));
+        Button btnAdd = new Button(localization.get("btn.add"));
+        Button btnUpdate = new Button(localization.get("btn.update"));
+        Button btnRemove = new Button(localization.get("btn.remove"));
+        Button btnClear = new Button(localization.get("btn.clear"));
+        Button btnInfo = new Button(localization.get("btn.info"));
+        Button btnSort = new Button(localization.get("btn.sort"));
+        Button btnPrintDesc = new Button(localization.get("btn.print_desc"));
+        Button btnShuffle = new Button(localization.get("btn.shuffle"));
+        Button btnFilterEngine = new Button(localization.get("btn.filter_engine"));
+        Button btnBuy = new Button(localization.get("btn.buy"));
+        Button btnBalance = new Button(localization.get("btn.balance"));
+        Button btnDeposit = new Button(localization.get("btn.deposit"));
+        Button btnHelp = new Button(localization.get("btn.help"));
+        Button btnExit = new Button(localization.get("btn.exit"));
 
         // Обработчики — ВСЕ команды через commandHandler
         btnShow.setOnAction(e -> commandHandler.executeShow());
@@ -155,12 +164,11 @@ public class MainScene {
         btnSort.setOnAction(e -> commandHandler.executeSort());
         btnPrintDesc.setOnAction(e -> commandHandler.executePrintDescending());
         btnShuffle.setOnAction(e -> commandHandler.executeShuffle());
-        btnHelp.setOnAction(e -> commandHandler.executeHelp());
         btnFilterEngine.setOnAction(e -> commandHandler.executeFilterByEnginePower());
         btnBuy.setOnAction(e -> commandHandler.executeBuy());
         btnBalance.setOnAction(e -> commandHandler.executeShowBalance());
         btnDeposit.setOnAction(e -> commandHandler.executeDeposit());
-
+        btnHelp.setOnAction(e -> commandHandler.executeHelp());
         btnExit.setOnAction(e -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle(localization.get("app.title"));
@@ -187,8 +195,41 @@ public class MainScene {
     private void updateUITexts() {
         userLabel.setText(localization.get("main.user.label") + " " + currentUserLogin);
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
-    }
 
+        // Обновляем тексты кнопок
+        HBox bottomPanel = (HBox) ((BorderPane) stage.getScene().getRoot()).getBottom();
+        if (bottomPanel != null) {
+            int i = 0;
+            for (javafx.scene.Node node : bottomPanel.getChildren()) {
+                if (node instanceof Button) {
+                    Button btn = (Button) node;
+                    switch (i) {
+                        case 0: btn.setText(localization.get("btn.show")); break;
+                        case 1: btn.setText(localization.get("btn.add")); break;
+                        case 2: btn.setText(localization.get("btn.update")); break;
+                        case 3: btn.setText(localization.get("btn.remove")); break;
+                        case 4: btn.setText(localization.get("btn.clear")); break;
+                        case 5: btn.setText(localization.get("btn.info")); break;
+                        case 6: btn.setText(localization.get("btn.sort")); break;
+                        case 7: btn.setText(localization.get("btn.print_desc")); break;
+                        case 8: btn.setText(localization.get("btn.shuffle")); break;
+                        case 9: btn.setText(localization.get("btn.filter_engine")); break;
+                        case 10: btn.setText(localization.get("btn.buy")); break;
+                        case 11: btn.setText(localization.get("btn.balance")); break;
+                        case 12: btn.setText(localization.get("btn.deposit")); break;
+                        case 13: btn.setText(localization.get("btn.help")); break;
+                        case 14: btn.setText(localization.get("btn.exit")); break;
+                    }
+                    i++;
+                }
+            }
+        }
+
+        // Обновляем таблицу
+        if (tableController != null) {
+            tableController.updateLocalization();
+        }
+    }
     // Метод для обновления данных извне (если нужно)
     public void updateTableData(List<Vehicle> vehicles) {
         if (tableController != null) {
@@ -364,6 +405,13 @@ public class LocalizationManager {
     private void initializeResources() {
         // RU
         resources.put(RU, Map.ofEntries(
+
+                Map.entry("table.filter.all_types", "Все типы"),
+                Map.entry("table.filter.all_fuels", "Все виды топлива"),
+
+                Map.entry("filter.all_types", "Все типы"),  // для RU
+                Map.entry("filter.all_fuels", "Все топлива"),
+
                 Map.entry("app.title", "Vehicle Manager"),
                 Map.entry("confirm.exit", "Вы действительно хотите выйти?"),
                 Map.entry("auth.login", "Логин"),
@@ -416,11 +464,52 @@ public class LocalizationManager {
                 Map.entry("error.unknown", "Неизвестная ошибка"),
 
                 Map.entry("vehicle.info", "Информация об объекте"),
+
+                Map.entry("btn.show", "Показать"),
+                Map.entry("btn.add", "Добавить"),
+                Map.entry("btn.update", "Обновить"),
+                Map.entry("btn.remove", "Удалить по ID"),
+                Map.entry("btn.clear", "Очистить"),
+                Map.entry("btn.info", "Инфо"),
+                Map.entry("btn.sort", "Сортировать"),
+                Map.entry("btn.print_desc", "Печать (по убыванию)"),
+                Map.entry("btn.shuffle", "Перемешать"),
+                Map.entry("btn.filter_engine", "Фильтр по мощности"),
+                Map.entry("btn.buy", "Купить"),
+                Map.entry("btn.balance", "Баланс"),
+                Map.entry("btn.deposit", "Пополнить"),
+                Map.entry("btn.help", "Помощь"),
+                Map.entry("btn.exit", "Выход"),
+                Map.entry("col.id", "ID"),
+                Map.entry("col.name", "Имя"),
+                Map.entry("col.coords", "Координаты (X,Y)"),
+                Map.entry("col.creation_date", "Дата создания"),
+                Map.entry("col.engine_power", "Мощность"),
+                Map.entry("col.distance", "Дистанция"),
+                Map.entry("col.type", "Тип"),
+                Map.entry("col.fuel", "Топливо"),
+                Map.entry("col.owner", "Владелец"),
+                Map.entry("col.price", "Цена"),
+                Map.entry("filter.id", "ID"),
+                Map.entry("filter.name", "Имя"),
+                Map.entry("filter.owner", "Владелец"),
+                Map.entry("filter.min_price", "Мин. цена"),
+                Map.entry("filter.max_price", "Макс. цена"),
+                Map.entry("filter.type", "Тип"),
+                Map.entry("filter.fuel", "Топливо"),
+
                 Map.entry("table.refresh", "Обновить")
         ));
 
         // NL
         resources.put(NL, Map.ofEntries(
+
+                Map.entry("table.filter.all_types", "Alle typen"),
+                Map.entry("table.filter.all_fuels", "Alle brandstoffen"),
+
+                Map.entry("filter.all_types", "Alle typen"),
+                Map.entry("filter.all_fuels", "Alle brandstoffen"),
+
                 Map.entry("app.title", "Voertuigbeheer"),
                 Map.entry("auth.login", "Gebruikersnaam"),
                 Map.entry("auth.password", "Wachtwoord"),
@@ -428,8 +517,8 @@ public class LocalizationManager {
                 Map.entry("auth.login.button", "Inloggen"),
 
                 Map.entry("table.refresh", "Vernieuwen"),
-
                 Map.entry("vehicle.info", "Objectinformatie"),
+
 
                 // Status en fouten
                 Map.entry("app.status.initializing", "Verbinding initialiseren..."),
@@ -445,6 +534,39 @@ public class LocalizationManager {
                 Map.entry("error.unknown", "Onbekende fout"),
 
                 Map.entry("confirm.exit", "Weet u zeker dat u wilt afsluiten?"),
+
+                Map.entry("btn.show", "Tonen"),
+                Map.entry("btn.add", "Toevoegen"),
+                Map.entry("btn.update", "Bijwerken"),
+                Map.entry("btn.remove", "Verwijderen op ID"),
+                Map.entry("btn.clear", "Wissen"),
+                Map.entry("btn.info", "Info"),
+                Map.entry("btn.sort", "Sorteren"),
+                Map.entry("btn.print_desc", "Afdalen weergeven"),
+                Map.entry("btn.shuffle", "Mengen"),
+                Map.entry("btn.filter_engine", "Filter op vermogen"),
+                Map.entry("btn.buy", "Kopen"),
+                Map.entry("btn.balance", "Balans"),
+                Map.entry("btn.deposit", "Storten"),
+                Map.entry("btn.help", "Help"),
+                Map.entry("btn.exit", "Afsluiten"),
+                Map.entry("col.id", "ID"),
+                Map.entry("col.name", "Naam"),
+                Map.entry("col.coords", "Coördinaten (X,Y)"),
+                Map.entry("col.creation_date", "Aanmaakdatum"),
+                Map.entry("col.engine_power", "Vermogen"),
+                Map.entry("col.distance", "Afstand"),
+                Map.entry("col.type", "Type"),
+                Map.entry("col.fuel", "Brandstof"),
+                Map.entry("col.owner", "Eigenaar"),
+                Map.entry("col.price", "Prijs"),
+                Map.entry("filter.id", "ID"),
+                Map.entry("filter.name", "Naam"),
+                Map.entry("filter.owner", "Eigenaar"),
+                Map.entry("filter.min_price", "Min. prijs"),
+                Map.entry("filter.max_price", "Max. prijs"),
+                Map.entry("filter.type", "Type"),
+                Map.entry("filter.fuel", "Brandstof"),
 
                 Map.entry("auth.register.button", "Registreren"),
                 Map.entry("auth.error.empty", "Gebruikersnaam en wachtwoord mogen niet leeg zijn"),
@@ -490,9 +612,49 @@ public class LocalizationManager {
                 Map.entry("auth.login.button", "Log ind"),
                 Map.entry("auth.register.button", "Registrer"),
 
+                Map.entry("table.filter.all_types", "Alle typer"),
+                Map.entry("table.filter.all_fuels", "Alle brændstoffer"),
+
+                Map.entry("filter.all_types", "Alle typer"),
+                Map.entry("filter.all_fuels", "Alle brændstoffer"),
+
+                Map.entry("vehicle.info", "Objektinformation"),
+
+                Map.entry("btn.show", "Vis"),
+                Map.entry("btn.add", "Tilføj"),
+                Map.entry("btn.update", "Opdater"),
+                Map.entry("btn.remove", "Fjern efter ID"),
+                Map.entry("btn.clear", "Ryd"),
+                Map.entry("btn.info", "Info"),
+                Map.entry("btn.sort", "Sorter"),
+                Map.entry("btn.print_desc", "Udskriv faldende"),
+                Map.entry("btn.shuffle", "Bland"),
+                Map.entry("btn.filter_engine", "Filtrer efter effekt"),
+                Map.entry("btn.buy", "Køb"),
+                Map.entry("btn.balance", "Balance"),
+                Map.entry("btn.deposit", "Indsæt"),
+                Map.entry("btn.help", "Hjælp"),
+                Map.entry("btn.exit", "Afslut"),
+                Map.entry("col.id", "ID"),
+                Map.entry("col.name", "Navn"),
+                Map.entry("col.coords", "Koordinater (X,Y)"),
+                Map.entry("col.creation_date", "Oprettelsesdato"),
+                Map.entry("col.engine_power", "Effekt"),
+                Map.entry("col.distance", "Distance"),
+                Map.entry("col.type", "Type"),
+                Map.entry("col.fuel", "Brændstof"),
+                Map.entry("col.owner", "Ejer"),
+                Map.entry("col.price", "Pris"),
+                Map.entry("filter.id", "ID"),
+                Map.entry("filter.name", "Navn"),
+                Map.entry("filter.owner", "Ejer"),
+                Map.entry("filter.min_price", "Min. pris"),
+                Map.entry("filter.max_price", "Maks. pris"),
+                Map.entry("filter.type", "Type"),
+                Map.entry("filter.fuel", "Brændstof"),
+
                 // Добавленные ключи локализации
                 Map.entry("table.refresh", "Opdater"),
-                Map.entry("vehicle.info", "Objektinformation"),
 
                 // Status og fejl
                 Map.entry("app.status.initializing", "Initialiserer forbindelse..."),
@@ -548,9 +710,49 @@ public class LocalizationManager {
                 Map.entry("auth.password", "Password"),
                 Map.entry("auth.register", "Register"),
 
+                Map.entry("vehicle.info", "Vehicle Info"),
+
+                Map.entry("table.filter.all_types", "All Types"),
+                Map.entry("table.filter.all_fuels", "All Fuels"),
+
+                Map.entry("btn.show", "Show"),
+                Map.entry("btn.add", "Add"),
+                Map.entry("btn.update", "Update"),
+                Map.entry("btn.remove", "Remove by ID"),
+                Map.entry("btn.clear", "Clear"),
+                Map.entry("btn.info", "Info"),
+                Map.entry("btn.sort", "Sort"),
+                Map.entry("btn.print_desc", "Print Descending"),
+                Map.entry("btn.shuffle", "Shuffle"),
+                Map.entry("btn.filter_engine", "Filter by Engine"),
+                Map.entry("btn.buy", "Buy"),
+                Map.entry("btn.balance", "Balance"),
+                Map.entry("btn.deposit", "Deposit"),
+                Map.entry("btn.help", "Help"),
+                Map.entry("btn.exit", "Exit"),
+                Map.entry("col.id", "ID"),
+                Map.entry("col.name", "Name"),
+                Map.entry("col.coords", "Coords (X,Y)"),
+                Map.entry("col.creation_date", "Creation Date"),
+                Map.entry("col.engine_power", "Engine Power"),
+                Map.entry("col.distance", "Distance"),
+                Map.entry("col.type", "Type"),
+                Map.entry("col.fuel", "Fuel"),
+                Map.entry("col.owner", "Owner"),
+                Map.entry("col.price", "Price"),
+                Map.entry("filter.id", "ID"),
+                Map.entry("filter.name", "Name"),
+                Map.entry("filter.owner", "Owner"),
+                Map.entry("filter.min_price", "Min Price"),
+                Map.entry("filter.max_price", "Max Price"),
+                Map.entry("filter.type", "Type"),
+                Map.entry("filter.fuel", "Fuel"),
+
+                Map.entry("filter.all_types", "All Types"),
+                Map.entry("filter.all_fuels", "All Fuels"),
+
                 Map.entry("confirm.exit", "Are you sure you want to exit?"),
 
-                Map.entry("vehicle.info", "Vehicle Info"),
 
                 Map.entry("auth.login.button", "Sign In"),
                 Map.entry("auth.register.button", "Register"),
@@ -764,54 +966,78 @@ public class VehicleTableController {
 
         // Текстовые фильтры
         filterId = new TextField();
-        filterId.setPromptText("ID");
+        filterId.setPromptText(localization.get("table.column.id"));
         filterId.setPrefWidth(60);
-
         filterName = new TextField();
         filterName.setPromptText(localization.get("table.column.name"));
         filterName.setPrefWidth(100);
-
         filterOwner = new TextField();
         filterOwner.setPromptText(localization.get("table.column.owner"));
         filterOwner.setPrefWidth(100);
 
         // Числовые фильтры
         filterMinPrice = new TextField();
-        filterMinPrice.setPromptText("Min Price");
+        filterMinPrice.setPromptText(localization.get("filter.min_price"));
         filterMinPrice.setPrefWidth(70);
-
         filterMaxPrice = new TextField();
-        filterMaxPrice.setPromptText("Max Price");
+        filterMaxPrice.setPromptText(localization.get("filter.max_price"));
         filterMaxPrice.setPrefWidth(70);
 
         // Выпадающие списки
         filterType = new ComboBox<>();
-        filterType.getItems().add(null); // "Все"
+        filterType.getItems().add(null);
         filterType.getItems().addAll(VehicleType.values());
-        filterType.setPromptText("Type");
+        filterType.setPromptText(localization.get("table.column.type"));
         filterType.setCellFactory(cb -> new ListCell<>() {
             @Override protected void updateItem(VehicleType item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? "All Types" : item.toString());
+                if (empty || item == null) {
+                    setText(localization.get("table.filter.all_types"));
+                } else {
+                    setText(item.toString());
+                }
+            }
+        });
+        filterType.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(VehicleType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(localization.get("table.filter.all_types"));
+                } else {
+                    setText(item.toString());
+                }
             }
         });
         filterType.setValue(null);
 
         filterFuel = new ComboBox<>();
-        filterFuel.getItems().add(null); // "Все"
+        filterFuel.getItems().add(null);
         filterFuel.getItems().addAll(FuelType.values());
-        filterFuel.setPromptText("Fuel");
+        filterFuel.setPromptText(localization.get("table.column.fuel"));
         filterFuel.setCellFactory(cb -> new ListCell<>() {
             @Override protected void updateItem(FuelType item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? "All Fuels" : item.toString());
+                if (empty || item == null) {
+                    setText(localization.get("table.filter.all_fuels"));
+                } else {
+                    setText(item.toString());
+                }
+            }
+        });
+        filterFuel.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(FuelType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(localization.get("table.filter.all_fuels"));
+                } else {
+                    setText(item.toString());
+                }
             }
         });
         filterFuel.setValue(null);
 
         // Привязка событий изменения фильтров
         Callback<Void, Void> updateFilter = v -> { applyFilters(); return null; };
-
         filterId.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterName.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterOwner.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
@@ -821,57 +1047,56 @@ public class VehicleTableController {
         filterFuel.valueProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
 
         hbox.getChildren().addAll(
-                new Label("Filters:"),
+                new Label(localization.get("table.filter")),
                 filterId, filterName, filterOwner,
                 filterMinPrice, filterMaxPrice,
                 filterType, filterFuel
         );
-
         return hbox;
     }
 
     private void setupColumns() {
-        TableColumn<Vehicle, Number> colId = new TableColumn<>(localization.get("table.column.id")); // Тип изменился на Number
+        TableColumn<Vehicle, Number> colId = new TableColumn<>(localization.get("col.id"));
         colId.setCellValueFactory(data -> new javafx.beans.property.SimpleLongProperty(data.getValue().getId()));
         colId.setPrefWidth(50);
 
-        TableColumn<Vehicle, String> colName = new TableColumn<>(localization.get("table.column.name"));
+        TableColumn<Vehicle, String> colName = new TableColumn<>(localization.get("col.name"));
         colName.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getName()));
         colName.setPrefWidth(150);
 
-        TableColumn<Vehicle, String> colCoords = new TableColumn<>("Coords (X,Y)");
+        TableColumn<Vehicle, String> colCoords = new TableColumn<>(localization.get("col.coords"));
         colCoords.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
                 data.getValue().getCoordinates().getX() + ", " + data.getValue().getCoordinates().getY()
         ));
         colCoords.setPrefWidth(100);
 
-        TableColumn<Vehicle, String> colDate = new TableColumn<>(localization.get("table.column.date"));
+        TableColumn<Vehicle, String> colDate = new TableColumn<>(localization.get("col.creation_date"));
         colDate.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
                 data.getValue().getCreationDate().toInstant().atZone(java.time.ZoneId.systemDefault()).format(DATE_FORMATTER)
         ));
         colDate.setPrefWidth(130);
 
-        TableColumn<Vehicle, Float> colPower = new TableColumn<>(localization.get("table.column.power"));
+        TableColumn<Vehicle, Float> colPower = new TableColumn<>(localization.get("col.engine_power"));
         colPower.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getEnginePower()));
         colPower.setPrefWidth(80);
 
-        TableColumn<Vehicle, Float> colDist = new TableColumn<>(localization.get("table.column.distance"));
+        TableColumn<Vehicle, Float> colDist = new TableColumn<>(localization.get("col.distance"));
         colDist.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getDistanceTravelled()));
         colDist.setPrefWidth(80);
 
-        TableColumn<Vehicle, VehicleType> colType = new TableColumn<>(localization.get("table.column.type"));
+        TableColumn<Vehicle, VehicleType> colType = new TableColumn<>(localization.get("col.type"));
         colType.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getType()));
         colType.setPrefWidth(100);
 
-        TableColumn<Vehicle, FuelType> colFuel = new TableColumn<>(localization.get("table.column.fuel"));
+        TableColumn<Vehicle, FuelType> colFuel = new TableColumn<>(localization.get("col.fuel"));
         colFuel.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getFuelType()));
         colFuel.setPrefWidth(100);
 
-        TableColumn<Vehicle, String> colOwner = new TableColumn<>(localization.get("table.column.owner"));
+        TableColumn<Vehicle, String> colOwner = new TableColumn<>(localization.get("col.owner"));
         colOwner.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getOwnerLogin()));
         colOwner.setPrefWidth(100);
 
-        TableColumn<Vehicle, Double> colPrice = new TableColumn<>(localization.get("table.column.price"));
+        TableColumn<Vehicle, Double> colPrice = new TableColumn<>(localization.get("col.price"));
         colPrice.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getPrice()));
         colPrice.setCellFactory(tc -> new TableCell<>() {
             @Override protected void updateItem(Double price, boolean empty) {
@@ -886,6 +1111,31 @@ public class VehicleTableController {
         colPrice.setPrefWidth(90);
 
         tableView.getColumns().addAll(colId, colName, colCoords, colDate, colPower, colDist, colType, colFuel, colOwner, colPrice);
+    }
+
+    public void updateLocalization() {
+        // Обновляем заголовки столбцов
+        tableView.getColumns().clear();
+        setupColumns();
+
+        // Обновляем фильтры
+        HBox filterPanel = (HBox) ((VBox) tableView.getParent()).getChildren().get(0);
+        filterPanel.getChildren().clear();
+        filterPanel.getChildren().addAll(
+                new Label(localization.get("table.filter") + ":"),
+                filterId, filterName, filterOwner,
+                filterMinPrice, filterMaxPrice,
+                filterType, filterFuel
+        );
+
+        // Обновляем prompt text
+        filterId.setPromptText(localization.get("filter.id"));
+        filterName.setPromptText(localization.get("filter.name"));
+        filterOwner.setPromptText(localization.get("filter.owner"));
+        filterMinPrice.setPromptText(localization.get("filter.min_price"));
+        filterMaxPrice.setPromptText(localization.get("filter.max_price"));
+        filterType.setPromptText(localization.get("filter.type"));
+        filterFuel.setPromptText(localization.get("filter.fuel"));
     }
 
     /**
@@ -1700,16 +1950,13 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.text.Font;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Контроллер Canvas для визуализации объектов Vehicle.
- */
 public class VehicleCanvasController {
-
     private final LocalizationManager localization;
     private Canvas canvas;
     private GraphicsContext gc;
@@ -1726,13 +1973,13 @@ public class VehicleCanvasController {
     // Текущие данные
     private List<Vehicle> vehicles = List.of();
 
+    // Размер фигуры
+    private static final double SIZE = 20;
+
     public VehicleCanvasController(LocalizationManager localization) {
         this.localization = localization;
     }
 
-    /**
-     * Создает Canvas и возвращает его.
-     */
     public Canvas createCanvas(double width, double height) {
         canvas = new Canvas(width, height);
         gc = canvas.getGraphicsContext2D();
@@ -1744,9 +1991,6 @@ public class VehicleCanvasController {
         return canvas;
     }
 
-    /**
-     * Обновляет данные и перерисовывает Canvas.
-     */
     public void updateData(List<Vehicle> vehicles) {
         if (vehicles == null) return;
         this.vehicles = vehicles;
@@ -1754,11 +1998,14 @@ public class VehicleCanvasController {
         drawAll();
     }
 
-    /**
-     * Рассчитывает масштаб и смещение на основе всех координат.
-     */
     private void calculateScaling() {
-        if (vehicles.isEmpty()) return;
+        if (vehicles.isEmpty()) {
+            scaleX = 1.0;
+            scaleY = 1.0;
+            offsetX = 0;
+            offsetY = 0;
+            return;
+        }
 
         double minX = Double.MAX_VALUE, maxX = Double.MIN_VALUE;
         double minY = Double.MAX_VALUE, maxY = Double.MIN_VALUE;
@@ -1772,7 +2019,6 @@ public class VehicleCanvasController {
             if (y > maxY) maxY = y;
         }
 
-        // Добавляем отступы
         double padding = 50;
         double rangeX = maxX - minX + 2 * padding;
         double rangeY = maxY - minY + 2 * padding;
@@ -1788,20 +2034,15 @@ public class VehicleCanvasController {
         offsetY = padding - minY * scaleY;
     }
 
-    /**
-     * Преобразует логические координаты в пиксели Canvas.
-     */
     private double toPixelX(double logicalX) {
         return logicalX * scaleX + offsetX;
     }
 
     private double toPixelY(double logicalY) {
-        return canvas.getHeight() - (logicalY * scaleY + offsetY); // Y инвертирован!
+        // Инвертируем Y потому что в canvas Y растёт вниз
+        return canvas.getHeight() - (logicalY * scaleY + offsetY);
     }
 
-    /**
-     * Получает цвет для владельца (хеш → HSB).
-     */
     private Color getOwnerColor(String ownerLogin) {
         if (ownerLogin == null || ownerLogin.isEmpty()) {
             return Color.GRAY;
@@ -1813,19 +2054,16 @@ public class VehicleCanvasController {
         });
     }
 
-    /**
-     * Отрисовывает все объекты.
-     */
     private void drawAll() {
         if (gc == null) return;
 
-        // Очистка
+        // Очистка canvas
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
-        // Рисуем сетку (опционально)
+        // Рисуем сетку
         drawGrid();
 
-        // Рисуем объекты
+        // Рисуем все объекты
         for (Vehicle v : vehicles) {
             drawVehicle(v);
         }
@@ -1834,6 +2072,7 @@ public class VehicleCanvasController {
     private void drawGrid() {
         gc.setStroke(Color.LIGHTGRAY);
         gc.setLineWidth(0.5);
+
         for (double x = 0; x < canvas.getWidth(); x += 50) {
             gc.strokeLine(x, 0, x, canvas.getHeight());
         }
@@ -1842,35 +2081,32 @@ public class VehicleCanvasController {
         }
     }
 
-    /**
-     * Отрисовывает один объект в зависимости от типа.
-     */
     private void drawVehicle(Vehicle v) {
         double px = toPixelX(v.getCoordinates().getX());
         double py = toPixelY(v.getCoordinates().getY());
-        double size = 20; // Размер фигуры
 
         Color color = getOwnerColor(v.getOwnerLogin());
         gc.setFill(color);
         gc.setStroke(color.darker());
         gc.setLineWidth(2);
 
+        // Рисуем в зависимости от типа (используем существующие значения VehicleType)
         switch (v.getType()) {
-            case BOAT -> drawBoat(px, py, size);
-            case HELICOPTER -> drawHelicopter(px, py, size);
-            case HOVERBOARD -> drawHoverboard(px, py, size);
-            case PLANE -> drawPlane(px, py, size);
-            case SHIP -> drawShip(px, py, size);
-            default -> drawCircle(px, py, size); // fallback
+            case BOAT -> drawBoat(px, py, SIZE);
+            case HELICOPTER -> drawHelicopter(px, py, SIZE);
+            case HOVERBOARD -> drawHoverboard(px, py, SIZE);
+            case PLANE -> drawPlane(px, py, SIZE);
+            case SHIP -> drawShip(px, py, SIZE);
+            default -> drawCircle(px, py, SIZE); // fallback
         }
 
-        // Подпись ID
+        // Подпись только ID (как в оригинале)
         gc.setFill(Color.BLACK);
-        gc.setFont(javafx.scene.text.Font.font(10));
-        gc.fillText(String.valueOf(v.getId()), px - 5, py + size + 15);
+        gc.setFont(Font.font(10));
+        gc.fillText(String.valueOf(v.getId()), px - 5, py + SIZE + 15);
     }
 
-    // === Примитивы ===
+    // === Примитивы отрисовки (как в оригинале) ===
 
     private void drawCircle(double cx, double cy, double r) {
         gc.fillOval(cx - r, cy - r, 2 * r, 2 * r);
@@ -1910,9 +2146,6 @@ public class VehicleCanvasController {
         gc.strokePolygon(xPoints, yPoints, 4);
     }
 
-    /**
-     * Обработка клика по Canvas — поиск ближайшего объекта.
-     */
     private void handleMouseClick(MouseEvent event) {
         double clickX = event.getX();
         double clickY = event.getY();
@@ -1925,7 +2158,8 @@ public class VehicleCanvasController {
             double vy = toPixelY(v.getCoordinates().getY());
             double dist = Math.sqrt(Math.pow(clickX - vx, 2) + Math.pow(clickY - vy, 2));
 
-            if (dist < 20 && dist < minDist) { // радиус попадания 20px
+            // Радиус попадания 20px как в оригинале
+            if (dist < 20 && dist < minDist) {
                 minDist = dist;
                 closest = v;
             }
@@ -1936,9 +2170,6 @@ public class VehicleCanvasController {
         }
     }
 
-    /**
-     * Показывает информацию об объекте в Alert.
-     */
     private void showVehicleInfo(Vehicle v) {
         Alert alert = new Alert(AlertType.INFORMATION);
         alert.setTitle(localization.get("vehicle.info"));
@@ -1952,13 +2183,6 @@ public class VehicleCanvasController {
                         "Price: " + v.getPrice()
         );
         alert.showAndWait();
-    }
-
-    /**
-     * Публичный метод для внешнего обновления данных.
-     */
-    public void setData(List<Vehicle> vehicles) {
-        updateData(vehicles);
     }
 }=== FILE: ./src/client/logic/CommandRegistryLoader.java ===
 package client.logic;
@@ -2629,20 +2853,29 @@ public class AuthService {
             return false;
         }
         String hash = hashMD2(password);
+        String color = generateRandomColor(); // Генерируем случайный цвет
+
         try (Connection conn = DBManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                     "INSERT INTO users(login, password_md2) VALUES (?, ?)")) {
+                     "INSERT INTO users(login, password_md2, color) VALUES (?, ?, ?)")) {
             ps.setString(1, login);
             ps.setString(2, hash);
+            ps.setString(3, color);
             return ps.executeUpdate() == 1;
         } catch (SQLIntegrityConstraintViolationException e) {
-            return false; // логин уже занят
+            return false;
         } catch (SQLException e) {
             System.err.println("Ошибка регистрации: " + e.getMessage());
             return false;
         }
     }
 
+    private String generateRandomColor() {
+        String[] colors = {"#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7",
+                "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2",
+                "#F8B739", "#52B788", "#E63946", "#1D3557", "#A8DADC"};
+        return colors[(int)(Math.random() * colors.length)];
+    }
     public boolean authenticate(String login, String password) {
         if (login == null || password == null) return false;
         String hash = hashMD2(password);
@@ -2921,6 +3154,33 @@ public class UserDao {
         } catch (SQLException e) {
             System.err.println("Ошибка обновления цены: " + e.getMessage());
             return false;
+        }
+    }
+
+    public boolean updateUserColor(String login, String color) {
+        String sql = "UPDATE users SET color = ? WHERE login = ?";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, color);
+            ps.setString(2, login);
+            return ps.executeUpdate() == 1;
+        } catch (SQLException e) {
+            System.err.println("Ошибка обновления цвета: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public String getUserColor(String login) {
+        String sql = "SELECT color FROM users WHERE login = ?";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, login);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("color") : null;
+            }
+        } catch (SQLException e) {
+            System.err.println("Ошибка получения цвета: " + e.getMessage());
+            return null;
         }
     }
 }=== FILE: ./src/server/commands/DepositCommand.java ===
