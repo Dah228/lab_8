@@ -1,4 +1,4 @@
-package client;
+package client.logic;
 
 import common.CommandResponse;
 import java.io.BufferedReader;

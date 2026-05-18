@@ -1,4 +1,4 @@
-package client;
+package client.logic;
 
 public record ClientConfig(String host, int port) {
 

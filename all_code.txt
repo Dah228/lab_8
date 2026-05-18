@@ -14541,3 +14541,3267 @@ public interface ResponseSender {
     /** Очистить буфер */
     void clear();
 }
+=== FILE: ./src/client/CommandRegistryLoader.java ===
+package client;
+
+import common.CommandResponse;
+import common.CommandType;
+import java.util.Map;
+
+public class CommandRegistryLoader {
+    private final NetworkService network;
+
+    public CommandRegistryLoader(NetworkService network) {
+        this.network = network;
+    }
+
+    /**
+     * Извлекает и валидирует карту команд из уже полученного ответа.
+     * @param initResponse ответ сервера после рукопожатия
+     * @return заполненный AllCommands или null при ошибке
+     */
+    public AllCommands loadCommands(CommandResponse initResponse) {
+        if (initResponse == null) {
+            System.err.println("Нет ответа от сервера");
+            return null;
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, CommandType> commandsMap = (Map<String, CommandType>) initResponse.getData();
+
+        if (commandsMap == null || commandsMap.isEmpty()) {
+            System.err.println("Сервер не передал карту команд");
+            network.disconnect();
+            return null;
+        }
+
+        AllCommands allCommands = new AllCommands();
+        allCommands.loadFromServer(commandsMap);
+        return allCommands;
+    }
+}=== FILE: ./src/client/Main.java ===
+package client;
+
+import common.CommandResponse;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+
+public class Main {
+    private static final String HANDSHAKE_EXPECTED = "connected";
+
+    public static void main(String[] args) {
+        // 1. Конфигурация
+        ClientConfig config = ClientConfig.defaultConfig();
+
+        // 2. Подключение + рукопожатие
+        NetworkService network = new NetworkService(config.host(), config.port());
+        ConnectionInitializer initializer = new ConnectionInitializer(network, HANDSHAKE_EXPECTED);
+        CommandResponse initResponse = initializer.initialize();
+        if (initResponse == null) return;
+
+        // 3. Загрузка команд
+        CommandRegistryLoader registryLoader = new CommandRegistryLoader(network);
+        AllCommands allCommands = registryLoader.loadCommands(initResponse);
+        if (allCommands == null) return;
+
+        // 4. Авторизация/регистрация
+        String login = null, password = null;
+        BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
+        try {
+            while (true) {
+                System.out.print("Введите логин (или 'register' для регистрации): ");
+                String input = console.readLine();
+                if (input == null) return;
+                input = input.trim();
+
+                if ("register".equalsIgnoreCase(input)) {
+                    System.out.print("Придумайте логин: ");
+                    String newLogin = console.readLine();
+                    System.out.print("Придумайте пароль: ");
+                    String newPassword = console.readLine();
+
+                    // Отправляем команду register
+                    var regRequest = new common.CommandRequest(
+                            "register",
+                            java.util.List.of("register", newLogin, newPassword),
+                            null,
+                            true,
+                            "", "" // для register auth не проверяется
+                    );
+                    network.send(regRequest);
+                    var regResponse = network.receive();
+                    if (regResponse != null && regResponse.isSuccess()) {
+                        System.out.println(regResponse.getMessage());
+                        login = newLogin;
+                        password = newPassword;
+                        break;
+                    } else {
+                        System.out.println("Ошибка: " + (regResponse != null ? regResponse.getMessage() : "нет ответа"));
+                    }
+                } else {
+                    login = input;
+                    System.out.print("Пароль: ");
+                    password = console.readLine();
+                    // Проверяем авторизацию через простую команду (например, info)
+                    var testRequest = new common.CommandRequest(
+                            "info",
+                            java.util.List.of("info"),
+                            null,
+                            true,
+                            login, password
+                    );
+                    network.send(testRequest);
+                    var testResponse = network.receive();
+                    if (testResponse != null && testResponse.isSuccess()) {
+                        System.out.println("Авторизация успешна");
+                        break;
+                    } else {
+                        System.out.println("Неверный логин или пароль");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Ошибка ввода: " + e.getMessage());
+            return;
+        }
+
+        // 5. Бизнес-логика
+        DataValidator validator = new DataValidator(System.in, true);
+        Executor executor = new Executor(network, allCommands, validator);
+        executor.setAuthCredentials(login, password);
+
+        // 6. Запуск
+        System.out.println("Клиент готов. Введите команду (или 'help'):");
+        executor.run(System.in);
+
+        // 7. Завершение
+        network.disconnect();
+        System.out.println("Клиент завершил работу");
+    }
+}=== FILE: ./src/client/NetworkService.java ===
+package client;
+
+import common.CommandRequest;
+import common.CommandResponse;
+import common.Serializer;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
+
+public class NetworkService {
+    private SocketChannel channel;
+    private final String host;
+    private final int port;
+
+    public NetworkService(String host, int port) {
+        this.host = host;
+        this.port = port;
+    }
+
+    public boolean connect() {
+        try {
+            channel = SocketChannel.open();
+            channel.configureBlocking(true); // Блокирующий режим
+            channel.connect(new InetSocketAddress(host, port));
+
+            System.out.println("Подключено к серверу " + host + ":" + port);
+            return true;
+        } catch (IOException e) {
+            System.out.println("Не удалось подключиться к серверу: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean send(CommandRequest request) {
+        try {
+            byte[] data = Serializer.serialize(request);
+
+            // Отправляем размер данных (4 байта) + сами данные
+            ByteBuffer sizeBuffer = ByteBuffer.allocate(4);
+            sizeBuffer.putInt(data.length);
+            sizeBuffer.flip();
+
+            while (sizeBuffer.hasRemaining()) {
+                channel.write(sizeBuffer);
+            }
+
+            ByteBuffer buffer = ByteBuffer.wrap(data);
+            while (buffer.hasRemaining()) {
+                channel.write(buffer);
+            }
+
+            return true;
+        } catch (IOException e) {
+            System.out.println("Ошибка отправки: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public CommandResponse receive() {
+        try {
+            // Читаем размер ответа (4 байта)
+            ByteBuffer sizeBuffer = ByteBuffer.allocate(4);
+
+            while (sizeBuffer.hasRemaining()) {
+                if (channel.read(sizeBuffer) == -1) {
+                    System.out.println("Сервер закрыл соединение");
+                    return null;
+                }
+            }
+
+            sizeBuffer.flip();
+            int dataSize = sizeBuffer.getInt();
+
+            // Читаем данные
+            ByteBuffer dataBuffer = ByteBuffer.allocate(dataSize);
+            while (dataBuffer.hasRemaining()) {
+                if (channel.read(dataBuffer) == -1) {
+                    System.out.println("Сервер закрыл соединение при чтении данных");
+                    return null;
+                }
+            }
+
+            dataBuffer.flip();
+            byte[] data = new byte[dataSize];
+            dataBuffer.get(data);
+
+            return (CommandResponse) Serializer.deserialize(data);
+
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Ошибка получения ответа: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public void disconnect() {
+        try {
+            if (channel != null && channel.isOpen()) {
+                channel.close();
+                System.out.println("Отключено от сервера");
+            }
+        } catch (IOException e) {
+            System.out.println("Ошибка при отключении: " + e.getMessage());
+        }
+    }
+
+    public boolean isConnected() {
+        return channel != null && channel.isOpen() && channel.isConnected();
+    }
+}=== FILE: ./src/client/DataValidator.java ===
+package client;
+
+import common.FuelType;
+import common.Vehicle;
+import common.VehicleType;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.NoSuchElementException;
+
+public class DataValidator {
+    private BufferedReader reader;
+    private Boolean isLaud;
+
+    public DataValidator(InputStream inputStream, Boolean isLaud) {
+        this.reader = new BufferedReader(new InputStreamReader(inputStream));
+        this.isLaud = isLaud;
+    }
+
+    public void setInputStream(InputStream inputStream) {
+        this.reader = new BufferedReader(new InputStreamReader(inputStream));
+    }
+
+    private <T> T readValidatedInput(
+            String prompt,
+            Boolean isLaud,
+            java.util.function.Function<String, T> parser,
+            String errorMsg
+    ) {
+        if (isLaud) {
+            while (true) {
+                System.out.println(prompt);
+                try {
+                    String input = reader.readLine();
+                    if (input == null) throw new NoSuchElementException("Конец потока");
+                    input = input.trim();
+                    return parser.apply(input);
+                } catch (IllegalArgumentException e) {
+                    System.out.println(errorMsg);
+                } catch (IOException e) {
+                    throw new NoSuchElementException("Ошибка ввода");
+                }
+            }
+        } else {
+            try {
+                while (true) {
+                    String input = reader.readLine();
+                    if (input == null) throw new NoSuchElementException("Конец файла");
+                    input = input.trim();
+                    if (input.isEmpty()) continue;
+                    return parser.apply(input);
+                }
+            } catch (IOException e) {
+                throw new NoSuchElementException("Ошибка чтения");
+            }
+        }
+    }
+
+    public Integer readValidInteger(String prompt, Boolean isLaud) {
+        return readValidatedInput(prompt, isLaud, Integer::valueOf, "Ошибка: ожидалось целое число");
+    }
+
+    public Float readValidFloat(String prompt, Float min, Boolean isLaud) {
+        return readValidatedInput(
+                prompt, isLaud,
+                s -> {
+                    float val = Float.parseFloat(s);
+                    if (val <= min) throw new IllegalArgumentException();
+                    return val;
+                },
+                "Ошибка: число должно быть > " + min
+        );
+    }
+
+    public VehicleType readVehicleType(String prompt, Boolean isLaud) {
+        return readValidatedInput(
+                prompt, isLaud,
+                s -> s.isEmpty() ? null : VehicleType.valueOf(s.toUpperCase()),
+                "Неверный тип! Доступны: " + Arrays.toString(VehicleType.values())
+        );
+    }
+
+    public FuelType readFuelType(String prompt, Boolean isLaud) {
+        return readValidatedInput(
+                prompt, isLaud,
+                s -> FuelType.valueOf(s.toUpperCase()),
+                "Неверный тип! Доступны: " + Arrays.toString(FuelType.values())
+        );
+    }
+
+    private boolean isValidForXml(String text) {
+        for (char c : text.toCharArray()) {
+            if (c == '<' || c == '>' || c == '&' || c == '"' || c == '\'') return false;
+        }
+        return true;
+    }
+
+    public String readValidName(String prompt, Boolean isLaud) {
+        return readValidatedInput(
+                prompt, isLaud,
+                s -> {
+                    if (!isValidForXml(s) || s.isEmpty()) {
+                        throw new IllegalArgumentException("XML-unsafe символы");
+                    }
+                    return s;
+                },
+                "Имя содержит недопустимые символы"
+        );
+    }
+
+    public Vehicle parseVehicle(Boolean isLaud) {
+        Vehicle veh = new Vehicle();
+        veh.setName(readValidName("Введите имя: ", isLaud));
+        veh.setCreationDate();
+        veh.setCoordinates(
+                readValidInteger("Введите X (целое число): ", isLaud),
+                readValidFloat("Введите Y (> -668): ", -668F, isLaud)
+        );
+        veh.setEnginePower(readValidFloat("Введите мощность двигателя (> 0): ", 0f, isLaud));
+        veh.setDistanceTravelled(readValidFloat("Введите пройденное расстояние (> 0): ", 0f, isLaud));
+        veh.setType(readVehicleType("Введите тип (PLANE, HELICOPTER, BOAT, SHIP, HOVERBOARD) или пустую строку: ", isLaud));
+        veh.setFuelType(readFuelType("Введите тип топлива (GASOLINE, KEROSENE, ELECTRICITY, DIESEL, NUCLEAR):", isLaud));
+        veh.setPrice(readValidDouble("Введите цену транспортного средства (> 0): ", isLaud));
+        return veh;
+    }
+
+    public Double readValidDouble(String prompt, Boolean isLaud) {
+        return readValidatedInput(prompt, isLaud, Double::valueOf, "Ошибка: ожидалось число");
+    }
+}=== FILE: ./src/client/AllCommands.java ===
+package client;
+
+import common.CommandType;
+import java.util.HashMap;
+import java.util.Map;
+
+public class AllCommands {
+    private final Map<String, CommandType> commandsInfo;
+
+    // Конструктор без параметров
+    public AllCommands() {
+        this.commandsInfo = new HashMap<>();
+    }
+
+    // Метод для загрузки команд с сервера
+    public void loadFromServer(Map<String, CommandType> commandsMap) {
+        if (commandsMap != null) {
+            this.commandsInfo.putAll(commandsMap);
+        }
+    }
+
+    public CommandType getCommandType(String commandName) {
+        return commandsInfo.get(commandName);
+    }
+
+    public boolean hasCommand(String commandName) {
+        return commandsInfo.containsKey(commandName);
+    }
+
+}=== FILE: ./src/client/ConnectionInitializer.java ===
+package client;
+
+import common.CommandResponse;
+
+public class ConnectionInitializer {
+    private final NetworkService network;
+    private final String expectedHandshake;
+
+    public ConnectionInitializer(NetworkService network, String expectedHandshake) {
+        this.network = network;
+        this.expectedHandshake = expectedHandshake;
+    }
+
+    /**
+     * Подключается и проверяет рукопожатие.
+     * @return CommandResponse с данными (картой команд) или null при ошибке
+     */
+    public CommandResponse initialize() {
+        if (!network.connect()) {
+            System.err.println("Не удалось подключиться к серверу");
+            return null;
+        }
+
+        CommandResponse initResponse = network.receive();
+        if (initResponse == null || !expectedHandshake.equals(initResponse.getMessage())) {
+            System.err.println("Ошибка инициализации: неверный ответ сервера");
+            network.disconnect();
+            return null;
+        }
+        return initResponse; // ← возвращаем тот же ответ, в котором лежат команды
+    }
+}=== FILE: ./src/client/ClientConfig.java ===
+package client;
+
+public record ClientConfig(String host, int port) {
+
+    // Значения по умолчанию
+    public static ClientConfig defaultConfig() {
+        return new ClientConfig("localhost", 7301);
+    }
+}=== FILE: ./src/client/Executor.java ===
+package client;
+
+import common.CommandRequest;
+import common.CommandResponse;
+import common.CommandType;
+import common.Vehicle;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.List;
+
+public class Executor {
+    private final NetworkService network;
+    private final AllCommands allCommands;
+    private final DataValidator validator;
+    // В начало класса Executor:
+    private String currentUserLogin;
+    private String currentUserPassword;
+
+
+
+
+    public Executor(NetworkService network, AllCommands allCommands, DataValidator validator) {
+        this.network = network;
+        this.allCommands = allCommands;
+        this.validator = validator;
+    }
+    //установка после авторизации:
+    public void setAuthCredentials(String login, String password) {
+        this.currentUserLogin = login;
+        this.currentUserPassword = password;
+    }
+
+    public void run(InputStream inputStream) {
+        // Переключаем валидатор на текущий поток
+        validator.setInputStream(inputStream);
+
+        // Создаём BufferedReader для чтения команд
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        boolean isInteractive = !(inputStream instanceof FileInputStream);
+
+        if (isInteractive) {
+            System.out.println("Подключено. Введите команду или 'help' для списка.");
+        }
+
+        try {
+            while (network.isConnected()) {
+                if (isInteractive) {
+                    System.out.print("> ");
+                }
+
+                String input = reader.readLine();
+                if (input == null) break; // конец файла
+
+                input = input.trim();
+                if (input.isEmpty()) continue;
+                if (input.equals("exit")) break;
+
+                String[] tokens = input.split("\\s+");
+                String commandName = tokens[0];
+                List<String> args = Arrays.asList(tokens);
+
+                // === EXECUTE_SCRIPT ===
+                if (commandName.equals("execute_script")) {
+                    if (args.size() < 2) {
+                        System.out.println("Ошибка: укажите имя файла скрипта");
+                        continue;
+                    }
+                    String filename = args.get(1);
+                    File scriptFile = new File(filename);
+
+                    if (!scriptFile.exists()) {
+                        System.out.println("Ошибка: файл '" + filename + "' не найден");
+                        continue;
+                    }
+
+                    try (FileInputStream fileStream = new FileInputStream(scriptFile)) {
+                        if (isInteractive) System.out.println("Выполнение скрипта: " + filename);
+                        run(fileStream); // рекурсивный вызов
+                        if (isInteractive) System.out.println("Скрипт завершён");
+                    } catch (Exception e) {
+                        System.out.println("Ошибка выполнения скрипта: " + e.getMessage());
+                    }
+                    continue;
+                }
+
+                if (!allCommands.hasCommand(commandName)) {
+                    if (isInteractive) {
+                        System.out.println("Неизвестная команда: " + commandName);
+                    }
+                    continue;
+                }
+
+                CommandType type = allCommands.getCommandType(commandName);
+                if (type == null) continue;
+
+                Vehicle vehicle = null;
+                // Если команда требует ввода модели (аргументы читаются из потока)
+                if (type == CommandType.WITHMODEL || type == CommandType.WITHARGSMODEL) {
+                    if (isInteractive) {
+                        System.out.println("Введите данные транспортного средства:");
+                    }
+                    try {
+                        // isInteractive здесь выступает как флаг "нужно ли выводить подсказки"
+                        // В DataValidator он называется isLaud
+                        vehicle = validator.parseVehicle(isInteractive);
+                    } catch (Exception e) {
+                        if (isInteractive) {
+                            System.out.println("Ошибка ввода данных: " + e.getMessage());
+                        }
+                        continue;
+                    }
+                }
+
+
+                CommandRequest request = new CommandRequest(
+                        commandName,
+                        args,
+                        vehicle,
+                        isInteractive,
+                        this.currentUserLogin,
+                        this.currentUserPassword
+                );
+
+                if (!network.send(request)) {
+                    System.out.println("Ошибка отправки запроса");
+                    break;
+                }
+
+                CommandResponse response = network.receive();
+                if (response == null) {
+                    System.out.println("Нет ответа от сервера (соединение разорвано)");
+                    break;
+                }
+
+                handleResponse(response);
+            }
+        } catch (Exception e) {
+            if (isInteractive) {
+                System.err.println("Критическая ошибка: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
+        if (isInteractive) {
+            System.out.println("Завершение работы...");
+        }
+    }
+
+    private void handleResponse(CommandResponse response) {
+        if (response.isSuccess()) {
+            if (response.getMessage() != null && !response.getMessage().isEmpty()) {
+                System.out.println(response.getMessage());
+            }
+        } else {
+            System.out.println("Ошибка сервера: " + response.getMessage());
+        }
+    }
+}=== FILE: ./src/server/database/DBManager.java ===
+package server.database;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public class DBManager {
+    private static final String URL = "jdbc:postgresql://localhost:5432/studs";
+    private static final String USER = "s501385";
+    private static final String PASS = "hGKsv7wv1qpyyzgA";
+
+    static {
+        try {
+            Class.forName("org.postgresql.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("PostgreSQL JDBC driver not found", e);
+        }
+    }
+
+    public static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(URL, USER, PASS);
+    }
+}=== FILE: ./src/server/database/AuthService.java ===
+package server.database;
+
+import java.security.MessageDigest;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
+
+public class AuthService {
+
+    public static String hashMD2(String input) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD2");
+            byte[] digest = md.digest(input.getBytes());
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("MD2 algorithm unavailable", e);
+        }
+    }
+
+    public boolean register(String login, String password) {
+        if (login == null || password == null || login.isEmpty() || password.isEmpty()) {
+            return false;
+        }
+        String hash = hashMD2(password);
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "INSERT INTO users(login, password_md2) VALUES (?, ?)")) {
+            ps.setString(1, login);
+            ps.setString(2, hash);
+            return ps.executeUpdate() == 1;
+        } catch (SQLIntegrityConstraintViolationException e) {
+            return false; // логин уже занят
+        } catch (SQLException e) {
+            System.err.println("Ошибка регистрации: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean authenticate(String login, String password) {
+        if (login == null || password == null) return false;
+        String hash = hashMD2(password);
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT 1 FROM users WHERE login = ? AND password_md2 = ?")) {
+            ps.setString(1, login);
+            ps.setString(2, hash);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            System.err.println("Ошибка аутентификации: " + e.getMessage());
+            return false;
+        }
+    }
+}=== FILE: ./src/server/database/VehicleDao.java ===
+package server.database;
+
+import common.Coordinates;
+import common.FuelType;
+import common.Vehicle;
+import common.VehicleType;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class VehicleDao {
+
+    public List<Vehicle> loadAll() {
+        List<Vehicle> list = new ArrayList<>();
+        String sql = "SELECT * FROM vehicles ORDER BY id";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Ошибка загрузки коллекции: " + e.getMessage());
+        }
+        return list;
+    }
+
+    public boolean insert(Vehicle v) {
+        // Добавили price в список колонок и значений
+        String sql = "INSERT INTO vehicles(owner_login, name, x, y, creation_date, " +
+                "engine_power, distance_travelled, type, fuel_type, price) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
+
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            ps.setString(1, v.getOwnerLogin());
+            ps.setString(2, v.getName());
+            ps.setInt(3, v.getCoordinates().getX());
+            ps.setFloat(4, v.getCoordinates().getY());
+            ps.setDate(5, new java.sql.Date(v.getCreationDate().getTime()));
+            ps.setFloat(6, v.getEnginePower());
+            ps.setFloat(7, v.getDistanceTravelled());
+            ps.setString(8, v.getType() != null ? v.getType().name() : null);
+            ps.setString(9, v.getFuelType().name());
+            ps.setDouble(10, v.getPrice()); // ← НОВОЕ
+
+            if (ps.executeUpdate() == 1) {
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    if (keys.next()) {
+                        v.setId(keys.getLong(1));
+                        return true;
+                    }
+                }
+            }
+            return false;
+        } catch (SQLException e) {
+            System.err.println("Ошибка вставки: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public String getOwner(long id) {
+        String sql = "SELECT owner_login FROM vehicles WHERE id = ?";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("owner_login") : null;
+            }
+        } catch (SQLException e) {
+            return null;
+        }
+    }
+
+    public boolean update(long id, Vehicle v, String ownerLogin) {
+        // Проверяем право на изменение
+        String currentOwner = getOwner(id);
+        if (currentOwner == null || !currentOwner.equals(ownerLogin)) {
+            return false;
+        }
+        String sql = "UPDATE vehicles SET name = ?, x = ?, y = ?, creation_date = ?, " +
+                "engine_power = ?, distance_travelled = ?, type = ?, fuel_type = ? " +
+                "WHERE id = ? AND owner_login = ?";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, v.getName());
+            ps.setInt(2, v.getCoordinates().getX());
+            ps.setFloat(3, v.getCoordinates().getY());
+            ps.setDate(4, new java.sql.Date(v.getCreationDate().getTime()));
+            ps.setFloat(5, v.getEnginePower());
+            ps.setFloat(6, v.getDistanceTravelled());
+            ps.setString(7, v.getType() != null ? v.getType().name() : null);
+            ps.setString(8, v.getFuelType().name());
+            ps.setLong(9, id);
+            ps.setString(10, ownerLogin);
+            return ps.executeUpdate() == 1;
+        } catch (SQLException e) {
+            System.err.println("Ошибка обновления: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean delete(long id, String ownerLogin) {
+        String sql = "DELETE FROM vehicles WHERE id = ? AND owner_login = ?";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            ps.setString(2, ownerLogin);
+            return ps.executeUpdate() == 1;
+        } catch (SQLException e) {
+            System.err.println("Ошибка удаления: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public void clearAll(String ownerLogin) {
+        String sql = "DELETE FROM vehicles WHERE owner_login = ?";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, ownerLogin);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Ошибка очистки: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Атомарная покупка ТС. Цена берётся из БД, баланс проверяется автоматически.
+     */
+    public boolean buyVehicle(long id, String buyerLogin) {
+        try (Connection conn = DBManager.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                // 1. Блокируем строку машины, читаем владельца и цену
+                String owner;
+                double price;
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT owner_login, price FROM vehicles WHERE id = ? FOR UPDATE")) {
+                    ps.setLong(1, id);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            conn.rollback();
+                            return false;
+                        }
+                        owner = rs.getString("owner_login");
+                        price = rs.getDouble("price");
+                    }
+                }
+
+                if (owner.equals(buyerLogin)) {
+                    conn.rollback();
+                    return false; // Своя машина
+                }
+
+                // 2. Блокируем строку покупателя, проверяем баланс
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT balance FROM users WHERE login = ? FOR UPDATE")) {
+                    ps.setString(1, buyerLogin);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        double balance = rs.next() ? rs.getDouble("balance") : 0.0;
+                        if (balance < price) {
+                            conn.rollback();
+                            return false; // Недостаточно средств
+                        }
+                    }
+                }
+
+                // 3. Списываем у покупателя
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE users SET balance = balance - ? WHERE login = ?")) {
+                    ps.setDouble(1, price);
+                    ps.setString(2, buyerLogin);
+                    ps.executeUpdate();
+                }
+
+                // 4. Зачисляем продавцу
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE users SET balance = balance + ? WHERE login = ?")) {
+                    ps.setDouble(1, price);
+                    ps.setString(2, owner);
+                    ps.executeUpdate();
+                }
+
+                // 5. Передаём право владения
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE vehicles SET owner_login = ? WHERE id = ?")) {
+                    ps.setString(1, buyerLogin);
+                    ps.setLong(2, id);
+                    ps.executeUpdate();
+                }
+
+                conn.commit(); // Всё успешно
+                return true;
+            } catch (SQLException e) {
+                conn.rollback(); // Откат при любой ошибке
+                throw e;
+            } finally {
+                conn.setAutoCommit(true); // Возвращаем стандартный режим
+            }
+        } catch (SQLException e) {
+            System.err.println("Ошибка транзакции покупки: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private Vehicle mapRow(ResultSet rs) throws SQLException {
+        Vehicle v = new Vehicle();
+        v.setId(rs.getLong("id"));
+        v.setOwnerLogin(rs.getString("owner_login"));
+        v.setName(rs.getString("name"));
+        Coordinates coords = new Coordinates();
+        coords.setCoord(rs.getInt("x"), rs.getFloat("y"));
+        v.setCoordinatesObject(coords);
+        v.setCreationDateHand(rs.getDate("creation_date"));
+        v.setEnginePower(rs.getFloat("engine_power"));
+        v.setDistanceTravelled(rs.getFloat("distance_travelled"));
+        String typeStr = rs.getString("type");
+        v.setType(typeStr != null ? VehicleType.valueOf(typeStr) : null);
+        v.setFuelType(FuelType.valueOf(rs.getString("fuel_type")));
+        v.setPrice(rs.getDouble("price"));
+        return v;
+    }
+}=== FILE: ./src/server/database/UserDao.java ===
+package server.database;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+/**
+ * DAO для работы с таблицей users.
+ * Содержит методы для чтения/изменения баланса и проверки существования пользователя.
+ */
+public class UserDao {
+
+
+    /** Получить баланс пользователя */
+    public double getBalance(String login) {
+        String sql = "SELECT balance FROM users WHERE login = ?";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, login);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getDouble("balance") : 0.0;
+            }
+        } catch (SQLException e) {
+            System.err.println("Ошибка получения баланса: " + e.getMessage());
+            return 0.0;
+        }
+    }
+
+    /** Изменить баланс (amount может быть отрицательным для списания) */
+    public boolean updateBalance(String login, double amount) {
+        String sql = "UPDATE users SET balance = balance + ? WHERE login = ?";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDouble(1, amount);
+            ps.setString(2, login);
+            return ps.executeUpdate() == 1;
+        } catch (SQLException e) {
+            System.err.println("Ошибка обновления баланса: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /** Проверить, существует ли пользователь */
+    public boolean exists(String login) {
+        String sql = "SELECT 1 FROM users WHERE login = ?";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, login);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+
+    public boolean updatePrice(long id, double price, String ownerLogin) {
+        String sql = "UPDATE vehicles SET price = ? WHERE id = ? AND owner_login = ?";
+        try (Connection conn = DBManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDouble(1, price);
+            ps.setLong(2, id);
+            ps.setString(3, ownerLogin);
+            return ps.executeUpdate() == 1;
+        } catch (SQLException e) {
+            System.err.println("Ошибка обновления цены: " + e.getMessage());
+            return false;
+        }
+    }
+
+}=== FILE: ./src/server/commands/DepositCommand.java ===
+package server.commands;
+
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+
+/**
+ * Команда пополнения баланса текущего пользователя.
+ * БЕЗОПАСНОСТЬ: не принимает логин как аргумент,
+ * использует только аутентифицированный login из параметров.
+ */
+public class DepositCommand implements Command {
+    private final IVehicleManager vehicleManager;
+    private final CommandType type = CommandType.WITHARGS;
+
+    public DepositCommand(IVehicleManager vehicleManager) {
+        this.vehicleManager = vehicleManager;
+    }
+
+    @Override
+    public ReturnCode execute(CommandParams params) {
+        // args: ["deposit", "amount"]
+        if (params.args().size() != 2) {
+            if (params.isLaud()) {
+                params.responseSender().sendError("Использование: deposit <сумма>");
+            }
+            return ReturnCode.FAILED;
+        }
+
+        try {
+            double amount = Double.parseDouble(params.args().get(1));
+
+            if (amount <= 0) {
+                if (params.isLaud()) {
+                    params.responseSender().sendError("Сумма пополнения должна быть положительной");
+                }
+                return ReturnCode.FAILED;
+            }
+
+            if (vehicleManager.deposit(params.login(), amount)) {
+                if (params.isLaud()) {
+                    params.responseSender().send("Баланс успешно пополнен на " + amount);
+                }
+                return ReturnCode.OK;
+            } else {
+                if (params.isLaud()) {
+                    params.responseSender().sendError("Не удалось пополнить баланс");
+                }
+                return ReturnCode.FAILED;
+            }
+        } catch (NumberFormatException e) {
+            if (params.isLaud()) {
+                params.responseSender().sendError("Ошибка: сумма должна быть числом");
+            }
+            return ReturnCode.FAILED;
+        }
+    }
+
+    @Override
+    public String getDescription() {
+        return "пополнить баланс текущего пользователя (deposit <сумма>)";
+    }
+
+    @Override
+    public CommandType getType() {
+        return type;
+    }
+}=== FILE: ./src/server/commands/ShuffleCommand.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+import static server.commands.VehicleFormatter.printVehicleList;
+
+public class ShuffleCommand implements Command{
+    private final IVehicleManager vehicleRandom;
+    private final CommandType type = CommandType.NOARGS;
+    public ShuffleCommand(IVehicleManager vehicleRandom){ this.vehicleRandom = vehicleRandom; }
+    @Override public ReturnCode execute(CommandParams params){
+        if (params.args().size() != 1) return ReturnCode.FAILED;
+        printVehicleList(vehicleRandom.shuffle(), params.responseSender());
+        return ReturnCode.OK;
+    }
+    @Override public String getDescription(){ return " перемешать элементы коллекции в случайном порядке"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/ClearCommand.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+
+public class ClearCommand implements Command {
+    private final IVehicleManager manager;
+    private final CommandType type = CommandType.NOARGS;
+    public ClearCommand(IVehicleManager manager) { this.manager = manager; }
+    @Override public ReturnCode execute(CommandParams params) {
+        if (params.args().size() != 1) return ReturnCode.FAILED;
+        manager.clearCollection(params.login());
+        if (params.isLaud()) params.responseSender().send("Коллекция очищена (ваши объекты)");
+        return ReturnCode.OK;
+    }
+    @Override public String getDescription() { return "очистить коллекцию"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/Invoker.java ===
+package server.commands;
+
+import common.ReturnCode;
+import common.Vehicle;
+import server.database.AuthService;
+import server.service.NetworkResponseSender;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class Invoker {
+    private final Map<String, Command> commands = new HashMap<>();
+    private final AuthService authService;  // ← НОВОЕ
+
+    public Invoker(AuthService authService) {
+        this.authService = authService;
+    }
+
+    public void registerCommand(String commandName, Command command) {
+        commands.put(commandName, command);
+    }
+
+    // Обновлённый метод: добавлены login/password
+    public ReturnCode executeCommand(
+            String commandName,
+            List<String> args,
+            Vehicle vehicle,
+            Boolean isLaud,
+            NetworkResponseSender responseSender,
+            String login,
+            String password
+    ) {
+        // 1. Регистрация — единственная команда без авторизации
+        if ("register".equals(commandName)) {
+            if (args.size() < 3) {
+                if (isLaud) responseSender.sendError("register: укажите логин и пароль");
+                return ReturnCode.FAILED;
+            }
+            String regLogin = args.get(1);
+            String regPassword = args.get(2);
+            if (authService.register(regLogin, regPassword)) {
+                if (isLaud) responseSender.send("Пользователь зарегистрирован");
+                return ReturnCode.OK;
+            } else {
+                if (isLaud) responseSender.sendError("Ошибка регистрации (возможно, логин занят)");
+                return ReturnCode.FAILED;
+            }
+        }
+
+        // 2. Все остальные команды требуют авторизации
+        if (!authService.authenticate(login, password)) {
+            if (isLaud) responseSender.sendError("Неверный логин или пароль");
+            return ReturnCode.FAILED;
+        }
+
+        Command command = commands.get(commandName);
+        if (command == null) {
+            if (isLaud) responseSender.sendError("Неизвестная команда: " + commandName);
+            return ReturnCode.FAILED;
+        }
+
+        try {
+            CommandParams params = new CommandParams(args, vehicle, isLaud, responseSender, login);
+            return command.execute(params);
+        } catch (IllegalArgumentException e) {
+            if (isLaud) responseSender.sendError("Неверные аргументы: " + e.getMessage());
+            return ReturnCode.FAILED;
+        } catch (Exception e) {
+            System.out.println("Ошибка выполнения " + commandName + ": " + e.getMessage());
+            if (isLaud) responseSender.sendError("Внутренняя ошибка сервера");
+            return ReturnCode.FAILED;
+        }
+    }
+
+    public Map<String, Command> getCommands() {
+        return commands;
+    }
+}=== FILE: ./src/server/commands/HelpCommand.java ===
+package server.commands;
+
+import common.CommandType;
+import common.ReturnCode;
+
+import java.util.Map;
+
+
+public class HelpCommand implements Command {
+    private final Map<String, Command> allCommands;
+    private final CommandType type = CommandType.NOARGS;
+
+
+    public HelpCommand(Map<String, Command> allCommands){
+        this.allCommands = allCommands;
+    }
+
+    @Override
+    public ReturnCode execute(CommandParams params) {
+        if (params.args().size() != 1) return ReturnCode.FAILED;
+        params.responseSender().send("=== Доступные команды ===");
+        for (Map.Entry<String, Command> entry : allCommands.entrySet()) {
+            String name = entry.getKey();
+            String description = entry.getValue().getDescription();
+            params.responseSender().send(name + " - " + description);
+        }
+        params.responseSender().send("=========================");
+        return ReturnCode.OK;
+    }
+
+    @Override
+    public String  getDescription(){
+        return "вывести справку по доступным командам";
+    }
+
+
+    @Override
+    public CommandType getType() {
+        return this.type;
+    }
+
+}
+=== FILE: ./src/server/commands/ShowCommand.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+import static server.commands.VehicleFormatter.printVehicleList;
+
+public class ShowCommand implements Command {
+    private final IVehicleManager manager;
+    private final CommandType type = CommandType.NOARGS;
+    public ShowCommand(IVehicleManager manager) { this.manager = manager; }
+    @Override public ReturnCode execute(CommandParams params) {
+        if (params.args().size() != 1) return ReturnCode.FAILED;
+        printVehicleList(manager.showCollection(), params.responseSender());
+        return ReturnCode.OK;
+    }
+    @Override public String getDescription() { return " вывести все элементы"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/CommandParams.java ===
+package server.commands;
+
+import common.ResponseSender;
+import common.Vehicle;
+import java.util.List;
+
+public record CommandParams(
+        List<String> args,
+        Vehicle vehicle,
+        Boolean isLaud,
+        ResponseSender responseSender,
+        String login  //  логин авторизованного пользователя
+) {}=== FILE: ./src/server/commands/PrintDescendingCommand.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+import static server.commands.VehicleFormatter.printVehicleList;
+
+public class PrintDescendingCommand implements Command{
+    private final IVehicleManager vehicleRandom;
+    private final CommandType type = CommandType.NOARGS;
+    public PrintDescendingCommand(IVehicleManager vehicleRandom){ this.vehicleRandom = vehicleRandom; }
+    @Override public ReturnCode execute(CommandParams params){
+        if (params.args().size() != 1) return ReturnCode.FAILED;
+        if (params.isLaud()) printVehicleList(vehicleRandom.sortByIDDescending(), params.responseSender());
+        return ReturnCode.OK;
+    }
+    @Override public String getDescription(){ return "вывести элементы коллекции в порядке убывания"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/CommandsList.java ===
+package server.commands;
+
+import server.collection.IVehicleManager;
+import java.util.HashMap;
+import java.util.Map;
+
+public class CommandsList {
+    private final Map<String, Command> commandList = new HashMap<>();
+    private final Invoker invoker;
+
+    public CommandsList(IVehicleManager manager, Invoker invoker) {
+        this.invoker = invoker;
+        registerCommands(manager);
+    }
+
+    private void registerCommands(IVehicleManager manager) {
+        register("clear", new ClearCommand(manager));
+        register("info", new InfoCommand(manager));
+        register("show", new ShowCommand(manager));
+        register("print_descending", new PrintDescendingCommand(manager));
+        register("shuffle", new ShuffleCommand(manager));
+        register("sort", new SortCommand(manager));
+        register("help", new HelpCommand(invoker.getCommands()));
+        register("group_by", new GroupByCommand(manager));
+        register("filter_greater_than_engine_power", new CompareByEnginePowerCommand(manager));
+        register("remove_by_id", new RemoveByID(manager));
+        register("filter_less_than_type", new FilterLessThatType(manager));
+        register("add", new AddCommand(manager));
+        register("add_if_max", new AddIfMax(manager));
+        register("update", new UpdateElementID(manager));
+        register("buy", new BuyCommand(manager));
+        register("show_balance", new ShowBalanceCommand(manager));
+        register("deposit", new DepositCommand(manager));
+        register("set_price", new SetPriceCommand(manager));
+    }
+
+    private void register(String name, Command command) {
+        commandList.put(name, command);
+        invoker.registerCommand(name, command);
+    }
+
+    public Map<String, Command> getCommandList() { return commandList; }
+    public Invoker getInvoker() { return invoker; }
+}=== FILE: ./src/server/commands/BuyCommand.java ===
+package server.commands;
+
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+
+public class BuyCommand implements Command {
+    private final IVehicleManager vehicleManager;
+    private final CommandType type = CommandType.WITHARGS;
+
+    public BuyCommand(IVehicleManager vehicleManager) {
+        this.vehicleManager = vehicleManager;
+    }
+
+    @Override
+    public ReturnCode execute(CommandParams params) {
+        if (params.args().size() != 2) { // ["buy", "id"]
+            if (params.isLaud()) params.responseSender().sendError("Использование: buy <id>");
+            return ReturnCode.FAILED;
+        }
+
+        try {
+            long id = Long.parseLong(params.args().get(1));
+            if (vehicleManager.buyVehicle(id, params.login())) {
+                if (params.isLaud()) params.responseSender().send("Транспортное средство успешно куплено");
+                return ReturnCode.OK;
+            } else {
+                if (params.isLaud()) params.responseSender().sendError("Не удалось купить: нет средств, машина ваша или не найдена");
+                return ReturnCode.FAILED;
+            }
+        } catch (NumberFormatException e) {
+            if (params.isLaud()) params.responseSender().sendError("Ошибка: ID должен быть числом");
+            return ReturnCode.FAILED;
+        }
+    }
+
+    @Override public String getDescription() { return "купить транспортное средство по ID (buy <id>)"; }
+    @Override public CommandType getType() { return type; }
+}=== FILE: ./src/server/commands/InfoCommand.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+
+public class InfoCommand implements Command{
+    private final IVehicleManager vehicleCollection;
+    private final CommandType type = CommandType.NOARGS;
+    public InfoCommand(IVehicleManager vehicleCollection) { this.vehicleCollection = vehicleCollection; }
+    @Override public ReturnCode execute(CommandParams params) {
+        if (params.args().size() != 1) return ReturnCode.FAILED;
+        vehicleCollection.getInfo().forEach((key, value) -> params.responseSender().send(key + value));
+        return ReturnCode.OK;
+    }
+    @Override public String getDescription() { return " вывести в стандартный поток информацию о коллекции"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/GroupByCommand.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+import java.util.Map;
+
+public class GroupByCommand implements Command{
+    private final IVehicleManager vehicleAdder;
+    private final CommandType type = CommandType.DETECTPARAM;
+    public GroupByCommand(IVehicleManager vehicleAdder){ this.vehicleAdder = vehicleAdder; }
+    @Override public ReturnCode execute(CommandParams params) {
+        Map<Comparable<?>, Long> grouped = vehicleAdder.groupByParam(params.args());
+        String fieldName = params.args().get(0);
+        VehicleFormatter.printGroupedResult(fieldName, grouped, params.responseSender());
+        return ReturnCode.OK;
+    }
+    @Override public String getDescription() { return "сгруппировать элементы по заданному типу"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/ShowBalanceCommand.java ===
+package server.commands;
+
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+
+/**
+ * Команда показа баланса текущего пользователя.
+ * БЕЗОПАСНОСТЬ: не принимает логин как аргумент,
+ * использует только аутентифицированный login из параметров.
+ */
+public class ShowBalanceCommand implements Command {
+    private final IVehicleManager vehicleManager;
+    private final CommandType type = CommandType.NOARGS;
+
+    public ShowBalanceCommand(IVehicleManager vehicleManager) {
+        this.vehicleManager = vehicleManager;
+    }
+
+    @Override
+    public ReturnCode execute(CommandParams params) {
+        // Проверяем, что команда вызвана без лишних аргументов
+        if (params.args().size() != 1) {
+            if (params.isLaud()) {
+                params.responseSender().sendError("Использование: show_balance");
+            }
+            return ReturnCode.FAILED;
+        }
+
+        double balance = vehicleManager.getBalance(params.login());
+
+        if (params.isLaud()) {
+            params.responseSender().send("Ваш баланс: " + balance);
+        }
+        return ReturnCode.OK;
+    }
+
+    @Override
+    public String getDescription() {
+        return "показать баланс текущего пользователя";
+    }
+
+    @Override
+    public CommandType getType() {
+        return type;
+    }
+}=== FILE: ./src/server/commands/AddCommand.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+
+public class AddCommand implements Command {
+    private final CommandType type = CommandType.WITHMODEL;
+    private final IVehicleManager vehicleAdder;
+
+    public AddCommand(IVehicleManager vehicleAdder) { this.vehicleAdder = vehicleAdder; }
+
+    @Override public ReturnCode execute(CommandParams params) {
+        params.vehicle().setOwnerLogin(params.login());
+        if (vehicleAdder.addElement(params.vehicle())) {
+            if (params.isLaud()) {
+                params.responseSender().send("Транспортное средство успешно добавлено");
+                params.responseSender().send("ID: " + params.vehicle().getId());
+            }
+            return ReturnCode.OK;
+        }
+        if (params.isLaud()) params.responseSender().sendError("Не удалось добавить объект в базу данных");
+        return ReturnCode.FAILED;
+    }
+    @Override public String getDescription() { return "Добавить новый элемент в коллекцию"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/SortCommand.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+import static server.commands.VehicleFormatter.printVehicleList;
+
+public class SortCommand implements Command{
+    private final IVehicleManager vehicleRandom;
+    private final CommandType type = CommandType.NOARGS;
+    public SortCommand(IVehicleManager vehicleRandom){ this.vehicleRandom = vehicleRandom; }
+    @Override public ReturnCode execute(CommandParams params) {
+        if (params.args().size() != 1) return ReturnCode.FAILED;
+        printVehicleList(vehicleRandom.sortByID(), params.responseSender());
+        return ReturnCode.OK;
+    }
+    @Override public String getDescription(){ return " отсортировать коллекцию в естественном порядке"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/Command.java ===
+    package server.commands;
+
+    import common.CommandType;
+    import common.ReturnCode;
+
+    public interface Command {
+        ReturnCode execute(CommandParams params) throws Exception;
+        String getDescription();
+        CommandType getType();
+    }
+=== FILE: ./src/server/commands/FilterLessThatType.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import common.Vehicle;
+import common.VehicleType;
+import server.collection.IVehicleManager;
+import static server.commands.VehicleFormatter.printVehicleList;
+import java.util.ArrayList;
+
+public class FilterLessThatType implements Command{
+    private final CommandType type = CommandType.WITHARGS;
+    private final IVehicleManager vehicleManager;
+    public FilterLessThatType(IVehicleManager vehicleCollection){ this.vehicleManager = vehicleCollection; }
+    @Override public ReturnCode execute(CommandParams params) throws IllegalArgumentException{
+        if (params.args().size() != 2) return ReturnCode.FAILED;
+        VehicleType type = VehicleType.valueOf(params.args().get(1).toUpperCase());
+        ArrayList<Vehicle> veh = vehicleManager.filterLessThanType(type);
+        if (params.isLaud()) printVehicleList(veh, params.responseSender());
+        return ReturnCode.OK;
+    }
+    @Override public String getDescription() { return "вывести элементы, значение поля enginePower которых больше заданного"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/AllCommands.java ===
+package server.commands;
+
+import common.CommandType;
+
+import java.util.HashMap;
+import java.util.Map;
+
+
+public class AllCommands {
+
+    private final Map<String, CommandType> commandsInfo;
+
+    public AllCommands(CommandsList commandsList) {
+        this.commandsInfo = new HashMap<>();
+        initializeCommandsFromList(commandsList);
+    }
+
+    private void initializeCommandsFromList(CommandsList commandsList) {
+        Map<String, Command> allCommands = commandsList.getCommandList();
+
+        for (Map.Entry<String, Command> entry : allCommands.entrySet()) {
+            String commandName = entry.getKey();
+            if (commandName.equals("execute_script")) {
+                commandsInfo.put(commandName, CommandType.WITHARGS);
+                continue;
+            }
+            Command command = entry.getValue();
+            CommandType type = command.getType();
+            commandsInfo.put(commandName, type);
+        }
+    }
+
+    public CommandType getCommandType(String commandName) {
+        return commandsInfo.get(commandName);
+    }
+
+    public Map<String, CommandType> getAll() {
+        return commandsInfo;
+    }
+}=== FILE: ./src/server/commands/VehicleFormatter.java ===
+package server.commands;  // или common, если нужно и клиенту
+
+import common.ResponseSender;
+import common.Vehicle;
+
+import java.util.Map;
+
+/**
+ * Утилиты для форматирования Vehicle в строки
+ */
+public class VehicleFormatter {
+
+    /**
+     * Форматирует один Vehicle и отправляет в ResponseSender
+     */
+    public static void printVehicle(Vehicle v, ResponseSender sender) {
+        sender.send("ID: " + v.getId());
+        sender.send("Name: " + v.getName());
+        sender.send("Coordinates: (" + v.getCoordinates().getX() + ", " + v.getCoordinates().getY() + ")");
+        sender.send("Creation date: " + v.getCreationDate());
+        sender.send("Engine power: " + v.getEnginePower());
+        sender.send("Distance travelled: " + v.getDistanceTravelled());
+        sender.send("Type: " + v.getType());
+        sender.send("Fuel type: " + v.getFuelType());
+        sender.send("Price: " + v.getPrice());
+        sender.send("------------------------");
+    }
+
+    /**
+     * Форматирует список Vehicle
+     */
+    public static void printVehicleList(java.util.ArrayList<Vehicle> vehicles, ResponseSender sender) {
+        if (vehicles.isEmpty()) {
+            sender.send("Коллекция пуста");
+            return;
+        }
+        sender.send("Всего объектов: " + vehicles.size());
+        sender.send("");
+        for (Vehicle v : vehicles) {
+            printVehicle(v, sender);
+        }
+    }
+
+    public static void printGroupedResult(
+            String fieldName,
+            Map<Comparable<?>, Long> grouped,
+            ResponseSender sender) {
+
+        if (grouped.isEmpty()) {
+            sender.send("Ничего не найдено");
+            return;
+        }
+
+        sender.send("Группировка по полю: " + fieldName);
+        sender.send("-------------------------------");
+
+        grouped.forEach((key, count) ->
+                sender.send(String.format("%s: %d объект(ов)",
+                        key != null ? key.toString() : "[не задано]",
+                        count))
+        );
+
+        long total = grouped.values().stream().mapToLong(Long::longValue).sum();
+        sender.send("-------------------------------");
+        sender.send("Всего сгруппировано: " + total);
+    }
+}
+
+=== FILE: ./src/server/commands/SetPriceCommand.java ===
+package server.commands;
+
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+
+public class SetPriceCommand implements Command {
+    private final IVehicleManager vehicleManager;
+    private final CommandType type = CommandType.WITHARGS;
+
+    public SetPriceCommand(IVehicleManager vehicleManager) {
+        this.vehicleManager = vehicleManager;
+    }
+
+    @Override
+    public ReturnCode execute(CommandParams params) {
+        // args: ["set_price", "id", "price"]
+        if (params.args().size() != 3) {
+            if (params.isLaud()) params.responseSender().sendError("Использование: set_price <id> <price>");
+            return ReturnCode.FAILED;
+        }
+
+        try {
+            long id = Long.parseLong(params.args().get(1));
+            double price = Double.parseDouble(params.args().get(2));
+
+            if (price < 0) {
+                if (params.isLaud()) params.responseSender().sendError("Цена не может быть отрицательной");
+                return ReturnCode.FAILED;
+            }
+
+            if (vehicleManager.setPrice(id, price, params.login())) {
+                if (params.isLaud()) params.responseSender().send("Цена успешно установлена");
+                return ReturnCode.OK;
+            } else {
+                if (params.isLaud()) params.responseSender().sendError("Не удалось изменить цену: объект не найден или нет прав");
+                return ReturnCode.FAILED;
+            }
+        } catch (NumberFormatException e) {
+            if (params.isLaud()) params.responseSender().sendError("Ошибка: ID и цена должны быть числами");
+            return ReturnCode.FAILED;
+        }
+    }
+
+    @Override
+    public String getDescription() {
+        return "установить цену на своё транспортное средство (set_price <id> <price>)";
+    }
+
+    @Override
+    public CommandType getType() {
+        return type;
+    }
+}=== FILE: ./src/server/commands/RemoveByID.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+
+public class RemoveByID implements Command {
+    private final IVehicleManager vehicleManager;
+    private final CommandType type = CommandType.WITHARGS;
+    public RemoveByID(IVehicleManager vehicleManager) { this.vehicleManager = vehicleManager; }
+    @Override public ReturnCode execute(CommandParams params) {
+        if (params.args().size() != 2) return ReturnCode.FAILED;
+        try {
+            long id = Long.parseLong(params.args().get(1));
+            if (vehicleManager.rmByID(id, params.login())) {
+                if (params.isLaud()) params.responseSender().send("Успешно удалено");
+                return ReturnCode.OK;
+            } else {
+                if (params.isLaud()) params.responseSender().sendError("Объект не найден или нет прав");
+                return ReturnCode.FAILED;
+            }
+        } catch (NumberFormatException e) {
+            if (params.isLaud()) params.responseSender().sendError("Ошибка: введите корректный ID (число)");
+            return ReturnCode.FAILED;
+        }
+    }
+    @Override public String getDescription() { return " удалить элемент из коллекции по его id"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/AddIfMax.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+
+public class AddIfMax implements Command {
+    private final IVehicleManager vehicleAdder;
+    private final CommandType type = CommandType.WITHMODEL;
+    public AddIfMax(IVehicleManager vehicleComparator) { this.vehicleAdder = vehicleComparator; }
+    @Override public ReturnCode execute(CommandParams params) {
+        if (params.args().size() != 1) return ReturnCode.FAILED;
+        params.vehicle().setOwnerLogin(params.login());
+        if (vehicleAdder.addIfMax(params.vehicle())) {
+            if (params.isLaud()) params.responseSender().send("Элемент добавлен (максимальная дистанция)");
+            return ReturnCode.OK;
+        } else {
+            if (params.isLaud()) params.responseSender().send("Элемент не добавлен: дистанция не максимальная");
+            return ReturnCode.FAILED;
+        }
+    }
+    @Override public String getDescription() { return "добавить новый элемент в коллекцию, если его значение превышает значение наибольшего элемента этой коллекции"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/UpdateElementID.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+
+public class UpdateElementID implements Command {
+    private final IVehicleManager vehicleManager;
+    private final CommandType type = CommandType.WITHARGSMODEL;
+    public UpdateElementID(IVehicleManager vehicleManager) { this.vehicleManager = vehicleManager; }
+    @Override public ReturnCode execute(CommandParams params) {
+        if (params.args().size() != 2) return ReturnCode.FAILED;
+        try {
+            long id = Long.parseLong(params.args().get(1));
+            params.vehicle().setId(id);
+            params.vehicle().setOwnerLogin(params.login());
+            if (vehicleManager.updateElementByID(id, params.vehicle(), params.login())) {
+                if (params.isLaud()) params.responseSender().send("Элемент успешно обновлен");
+                return ReturnCode.OK;
+            } else {
+                if (params.isLaud()) params.responseSender().sendError("Объект не найден или нет прав");
+                return ReturnCode.FAILED;
+            }
+        } catch (NumberFormatException e) {
+            if (params.isLaud()) params.responseSender().sendError("Ошибка: введите корректный ID (число)");
+            return ReturnCode.FAILED;
+        }
+    }
+    @Override public String getDescription() { return " обновить значение элемента коллекции, id которого равен заданному"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/CompareByEnginePowerCommand.java ===
+package server.commands;
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.IVehicleManager;
+import common.Vehicle;
+import static server.commands.VehicleFormatter.printVehicleList;
+import java.util.ArrayList;
+
+public class CompareByEnginePowerCommand implements Command {
+    private final IVehicleManager vehicleManager;
+    private final CommandType type = CommandType.WITHARGS;
+    public CompareByEnginePowerCommand(IVehicleManager vehicleCollection) { this.vehicleManager = vehicleCollection; }
+    @Override public ReturnCode execute(CommandParams params) throws IllegalArgumentException {
+        if (params.args().size() != 2) return ReturnCode.FAILED;
+        Float number = Float.parseFloat(String.valueOf(params.args().get(1)));
+        ArrayList<Vehicle> veh = vehicleManager.filterByEnginePower(number);
+        if (params.isLaud()) printVehicleList(veh, params.responseSender());
+        return ReturnCode.OK;
+    }
+    @Override public String getDescription() { return "вывести элементы, значение поля enginePower которых больше заданного"; }
+    @Override public CommandType getType() { return this.type; }
+}=== FILE: ./src/server/commands/SaveCommand.java ===
+package server.commands;
+
+import common.CommandType;
+import common.ReturnCode;
+import server.collection.VehicleSaver;
+
+public class SaveCommand implements Command{
+    VehicleSaver vehicleSaver;
+    private final CommandType type = CommandType.NOARGS;
+
+
+    public SaveCommand(VehicleSaver vehicleSaver){
+        this.vehicleSaver = vehicleSaver;
+    }
+
+@Override
+    public ReturnCode execute(CommandParams params){
+        if (params.args().size()!= 1) return ReturnCode.FAILED;
+        if(vehicleSaver.saveToFile()) {
+            params.responseSender().send("Успешно сохранено vehicles_saved");
+            return ReturnCode.OK;
+        }
+        else{
+            params.responseSender().send("Произошла ошибка сохранения");
+            return ReturnCode.FAILED;
+        }
+    }
+
+    @Override
+    public String getDescription() {
+        return " сохранить коллекцию в файл";
+    }
+
+    @Override
+    public CommandType getType() {
+        return this.type;
+    }
+}
+=== FILE: ./src/server/ServerApp.java ===
+package server;
+
+import common.Vehicle;
+import server.service.*;
+
+import java.util.ArrayList;
+
+public class ServerApp {
+    public static void main(String[] args) {
+        System.out.println("Инициализация сервера...");
+
+        String xmlFilePath = (args.length > 0) ? args[0] : "dummy";
+
+        // 1. Создание контекста (инициализирует БД-компоненты)
+        ServerContext context = new ServerContext(7301, xmlFilePath);
+        if (!context.startNetwork()) {
+            System.err.println("Не удалось запустить сервер");
+            return;
+        }
+
+        System.out.println("Сервер запущен. Команд: " +
+                context.getCommandsList().getCommandList().size());
+
+        // 2. Загрузка данных из БД в память при старте
+        System.out.println("Загрузка коллекции из базы данных...");
+        ArrayList<Vehicle> dbVehicles = (ArrayList<Vehicle>) new server.database.VehicleDao().loadAll();
+        for (Vehicle v : dbVehicles) {
+            // addElementManually — только в память, без повторной вставки в БД
+            context.getVehicleManager().addElementManually(v);
+        }
+        System.out.println("Загружено объектов: " + dbVehicles.size());
+
+        // 3. Подготовка обработчиков
+        NetworkRequestHandler requestHandler = new NetworkRequestHandler(
+                context.getInvoker(),
+                context.getNetworkService()
+        );
+
+        ServerLoop serverLoop = new ServerLoop(context, requestHandler);
+
+        // 4. Запуск главного цикла
+        System.out.println("Сервер готов к работе. Нажмите Ctrl+C для остановки.");
+        serverLoop.run();
+    }
+}=== FILE: ./src/server/collection/VehicleManagerProxy.java ===
+package server.collection;
+
+import common.Vehicle;
+import common.VehicleType;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class VehicleManagerProxy implements IVehicleManager {
+    private final IVehicleManager realManager;
+
+    public VehicleManagerProxy(IVehicleManager realManager) {
+        this.realManager = realManager;
+    }
+
+    /** Быстрая проверка владения по данным в памяти */
+    private boolean isOwner(long id, String ownerLogin) {
+        if (ownerLogin == null) return false;
+        for (Vehicle v : realManager.showCollection()) {
+            if (v.getId() == id) {
+                return ownerLogin.equals(v.getOwnerLogin());
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean addElement(Vehicle vehicle) {
+        if (vehicle.getOwnerLogin() == null || vehicle.getOwnerLogin().isEmpty()) {
+            throw new SecurityException("Добавление элемента без указания владельца запрещено");
+        }
+        return realManager.addElement(vehicle);
+    }
+
+    @Override
+    public boolean addElementManually(Vehicle vehicle) {
+        // Внутренняя загрузка при старте сервера
+        return realManager.addElementManually(vehicle);
+    }
+
+    @Override
+    public boolean updateElementByID(long id, Vehicle vehicle, String ownerLogin) {
+        if (!isOwner(id, ownerLogin)) {
+            System.err.println("PROXY: Попытка изменения чужого элемента. ID=" + id + ", user=" + ownerLogin);
+            return false;
+        }
+        return realManager.updateElementByID(id, vehicle, ownerLogin);
+    }
+
+    @Override
+    public boolean rmByID(long id, String ownerLogin) {
+        if (!isOwner(id, ownerLogin)) {
+            System.err.println("PROXY: Попытка удаления чужого элемента. ID=" + id + ", user=" + ownerLogin);
+            return false;
+        }
+        return realManager.rmByID(id, ownerLogin);
+    }
+
+    @Override
+    public void clearCollection(String ownerLogin) {
+        // clearCollection уже фильтрует по владельцу на уровне DAO и памяти
+        realManager.clearCollection(ownerLogin);
+    }
+
+    @Override
+    public boolean addIfMax(Vehicle vehicle) {
+        if (vehicle.getOwnerLogin() == null || vehicle.getOwnerLogin().isEmpty()) {
+            throw new SecurityException("Добавление элемента без указания владельца запрещено");
+        }
+        return realManager.addIfMax(vehicle);
+    }
+    @Override
+    public boolean buyVehicle(long id, String buyerLogin) {
+        return realManager.buyVehicle(id, buyerLogin);
+    }
+
+    @Override
+    public double getBalance(String login) {
+        return realManager.getBalance(login);
+    }
+    @Override
+    public boolean deposit(String login, double amount) {
+        return realManager.deposit(login, amount);
+    }
+    @Override
+    public boolean setPrice(long id, double price, String ownerLogin) {
+        if (!isOwner(id, ownerLogin)) {
+            System.err.println("PROXY: Попытка изменения цены чужого элемента. ID=" + id + ", user=" + ownerLogin);
+            return false;
+        }
+        return realManager.setPrice(id, price, ownerLogin);
+    }
+
+
+    // Читающие методы делегируются напрямую без ограничений
+    @Override public ArrayList<Vehicle> showCollection() { return realManager.showCollection(); }
+    @Override public HashMap<String, String> getInfo() { return realManager.getInfo(); }
+    @Override public ArrayList<Vehicle> filterByEnginePower(Float power) { return realManager.filterByEnginePower(power); }
+    @Override public ArrayList<Vehicle> filterLessThanType(VehicleType type) { return realManager.filterLessThanType(type); }
+    @Override public ArrayList<Vehicle> sortByID() { return realManager.sortByID(); }
+    @Override public ArrayList<Vehicle> sortByIDDescending() { return realManager.sortByIDDescending(); }
+    @Override public ArrayList<Vehicle> shuffle() { return realManager.shuffle(); }
+    @Override public Map<Comparable<?>, Long> groupByParam(List<String> args) { return realManager.groupByParam(args); }
+}=== FILE: ./src/server/collection/GroupingField.java ===
+package server.collection;
+
+import common.Vehicle;
+import java.util.function.Function;
+
+public record GroupingField(
+        String fieldName,
+        Function<Vehicle, Comparable<?>> extractor
+) {}=== FILE: ./src/server/collection/IVehicleManager.java ===
+package server.collection;
+
+import common.Vehicle;
+import common.VehicleType;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public interface IVehicleManager {
+    boolean addElement(Vehicle vehicle);
+    boolean addElementManually(Vehicle vehicle);
+    boolean updateElementByID(long id, Vehicle vehicle, String ownerLogin);
+    boolean rmByID(long id, String ownerLogin);
+    void clearCollection(String ownerLogin);
+    boolean addIfMax(Vehicle vehicle);
+    boolean buyVehicle(long id, String buyerLogin);
+    double getBalance(String login);
+    boolean deposit(String login, double amount);
+    boolean setPrice(long id, double price, String ownerLogin);
+
+    ArrayList<Vehicle> showCollection();
+    HashMap<String, String> getInfo();
+    ArrayList<Vehicle> filterByEnginePower(Float power);
+    ArrayList<Vehicle> filterLessThanType(VehicleType type);
+    ArrayList<Vehicle> sortByID();
+    ArrayList<Vehicle> sortByIDDescending();
+    ArrayList<Vehicle> shuffle();
+    Map<Comparable<?>, Long> groupByParam(List<String> args);
+
+}=== FILE: ./src/server/collection/ValidateParams.java ===
+package server.collection;
+
+
+import common.Vehicle;
+
+
+import java.util.List;
+
+public class ValidateParams {
+
+    private final List<String> args;
+
+    public ValidateParams(List<String> args) {
+        if (args == null || args.isEmpty()) {
+            throw new IllegalArgumentException("Нет аргументов");
+        }
+        this.args = args;
+    }
+
+    public GroupingField getGroupingField() {
+        String first = args.get(1).trim().toUpperCase();
+
+        // 1. VehicleType
+        return switch (first) {
+            case "TYPE" -> new GroupingField("type", Vehicle::getType);
+
+
+            // 2. FuelType
+            case "FUELTYPE" -> new GroupingField("fueltype", Vehicle::getFuelType);
+
+
+            // 3. Координаты
+            case "COORDINATES" -> new GroupingField("coordinates", Vehicle::getCoordinates);
+            default -> throw new IllegalArgumentException("Не распознано: " + first);
+        };
+
+    }
+}
+=== FILE: ./src/server/collection/VehicleCollection.java ===
+package server.collection;
+import common.Vehicle;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Predicate;
+
+public class VehicleCollection {
+    private final ArrayList<Vehicle> vehicles = new ArrayList<>();
+    private final ReentrantLock lock = new ReentrantLock();
+    private final Instant initTime = Instant.now();
+
+    public void add(Vehicle v) {
+        lock.lock();
+        try { vehicles.add(v); } finally { lock.unlock(); }
+    }
+    public void clear() {
+        lock.lock();
+        try { vehicles.clear(); } finally { lock.unlock(); }
+    }
+    public ArrayList<Vehicle> getVehicles() {
+        lock.lock();
+        try { return new ArrayList<>(vehicles); } finally { lock.unlock(); }
+    }
+    public int size() {
+        lock.lock();
+        try { return vehicles.size(); } finally { lock.unlock(); }
+    }
+    public Instant getInitTime() { return initTime; }
+    public boolean isEmpty() {
+        lock.lock();
+        try { return vehicles.isEmpty(); } finally { lock.unlock(); }
+    }
+    public void rmEl(Vehicle v) {
+        lock.lock();
+        try { vehicles.remove(v); } finally { lock.unlock(); }
+    }
+    public void removeIf(Predicate<Vehicle> predicate) {
+        lock.lock();
+        try { vehicles.removeIf(predicate); } finally { lock.unlock(); }
+    }
+    public List<Long> getAllID() {
+        lock.lock();
+        try {
+            List<Long> id = new ArrayList<>();
+            for (Vehicle v : vehicles) id.add(v.getId());
+            return id;
+        } finally { lock.unlock(); }
+    }
+    public Vehicle getVehicleByID(long id) {
+        lock.lock();
+        try {
+            for (Vehicle v : vehicles) if (v.getId() == id) return v;
+            return null;
+        } finally { lock.unlock(); }
+    }
+    public void replaceVehicle(long id, Vehicle vehicle) {
+        lock.lock();
+        try {
+            int index = (int) id - 1;
+            if (index >= 0 && index < vehicles.size()) vehicles.set(index, vehicle);
+        } finally { lock.unlock(); }
+    }
+}=== FILE: ./src/server/collection/VehicleSaver.java ===
+package server.collection;
+
+import common.Vehicle;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.text.SimpleDateFormat;
+import java.util.TimeZone;
+
+public class VehicleSaver {
+    private final VehicleCollection collection;
+
+    public VehicleSaver(VehicleCollection collection) {
+        this.collection = collection;
+    }
+
+    public boolean saveToFile() {
+
+        try {
+
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+
+            // Create a new Document
+            Document document = builder.newDocument();
+
+            // Create root element
+            Element root = document.createElement("vehicles");
+            document.appendChild(root);
+
+            // Create book elements and add text content
+            for (Vehicle v : collection.getVehicles()) {
+                Element vehicleElem = document.createElement("vehicle");
+
+                vehicleElem.setAttribute("id", String.valueOf(v.getId()));
+
+                Element nameElem = document.createElement("name");
+                nameElem.setTextContent(v.getName());
+                vehicleElem.appendChild(nameElem);
+
+                Element coords = document.createElement("coordinates");
+                Element xelem = document.createElement("x");
+                xelem.setTextContent(String.valueOf(v.getCoordinates().getX()));
+                Element yelem = document.createElement("y");
+                yelem.setTextContent(String.valueOf(v.getCoordinates().getY()));
+                coords.appendChild(xelem);
+                coords.appendChild(yelem);
+                vehicleElem.appendChild(coords);
+
+                Element date = document.createElement("creationDate");
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+                date.setTextContent(sdf.format(v.getCreationDate()));
+                vehicleElem.appendChild(date);
+
+                Element power = document.createElement("enginePower");
+                power.setTextContent(String.valueOf(v.getEnginePower()));
+                vehicleElem.appendChild(power);
+
+                Element dist = document.createElement("distanceTravelled");
+                dist.setTextContent(String.valueOf(v.getDistanceTravelled()));
+                vehicleElem.appendChild(dist);
+
+                Element type = document.createElement("type");
+                type.setTextContent(v.getType() != null ? v.getType().name() : "");
+                vehicleElem.appendChild(type);
+
+                Element fuel = document.createElement("fuelType");
+                fuel.setTextContent(String.valueOf(v.getFuelType()));
+                vehicleElem.appendChild(fuel);
+
+                root.appendChild(vehicleElem);
+            }
+
+            // Write to XML file
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            DOMSource source = new DOMSource(document);
+
+            // Specify your local file path
+            StreamResult result = new StreamResult("vehicles_saved.xml");
+            transformer.transform(source, result);
+            return true;
+        } catch (ParserConfigurationException | TransformerException e) {
+            return false;
+        }
+
+    }
+}
+
+=== FILE: ./src/server/collection/VehicleManager.java ===
+package server.collection;
+
+import common.Vehicle;
+import common.VehicleType;
+import server.database.UserDao;
+import server.database.VehicleDao;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class VehicleManager implements IVehicleManager {
+    private final VehicleCollection collection;
+    private final VehicleDao dao;
+    private final UserDao userDao;
+
+    public VehicleManager(VehicleCollection collection, VehicleDao dao, UserDao userDao) {
+        this.collection = collection;
+        this.dao = dao;
+        this.userDao = userDao;
+    }
+
+    public ArrayList<Vehicle> showCollection() {
+        return collection.getVehicles();
+    }
+
+    public HashMap<String, String> getInfo() {
+        HashMap<String, String> paramList = new HashMap<>();
+        paramList.put("Размер коллекции : ", String.valueOf(collection.size()));
+        paramList.put("Тип коллекции : ", collection.getVehicles().getClass().getName());
+        paramList.put("Дата инициализации : ", String.valueOf(collection.getInitTime()));
+        float summa = 0;
+        for (Vehicle v : collection.getVehicles()) {
+            summa += v.getEnginePower();
+        }
+        paramList.put("Общая мощность двигателей : ", String.valueOf(summa));
+        if (!collection.isEmpty()) {
+            paramList.put("Средняя мощность двигателя : ", String.valueOf(summa / collection.size()));
+        } else {
+            paramList.put("Средняя мощность двигателя", "0 (коллекция пуста)");
+        }
+        return paramList;
+    }
+
+    public ArrayList<Vehicle> filterByEnginePower(Float power) {
+        ArrayList<Vehicle> filtered = new ArrayList<>();
+        for (Vehicle v : collection.getVehicles()) {
+            if (v.getEnginePower() >= power) {
+                filtered.add(v);
+            }
+        }
+        return filtered;
+    }
+
+    public ArrayList<Vehicle> filterLessThanType(VehicleType type) {
+        ArrayList<Vehicle> filtered = new ArrayList<>();
+        for (Vehicle v : collection.getVehicles()) {
+            if (v.getType() != null && v.getType().compareTo(type) < 0) {
+                filtered.add(v);
+            }
+        }
+        return filtered;
+    }
+
+    public ArrayList<Vehicle> sortByID() {
+        ArrayList<Vehicle> vehicles = collection.getVehicles();
+        vehicles.sort(Comparator.comparingLong(Vehicle::getId));
+        return vehicles;
+    }
+
+    public ArrayList<Vehicle> sortByIDDescending() {
+        ArrayList<Vehicle> vehicles = collection.getVehicles();
+        vehicles.sort(Comparator.comparingLong(Vehicle::getId).reversed());
+        return vehicles;
+    }
+
+    public ArrayList<Vehicle> shuffle() {
+        ArrayList<Vehicle> vehicles = collection.getVehicles();
+        Collections.shuffle(vehicles);
+        return vehicles;
+    }
+
+    public Map<Comparable<?>, Long> groupByParam(List<String> args) {
+        ValidateParams validator = new ValidateParams(args);
+        GroupingField field = validator.getGroupingField();
+        return collection.getVehicles().stream()
+                .collect(Collectors.groupingBy(field.extractor(), Collectors.counting()));
+    }
+
+    //  запись: сначала БД, потом память
+
+    public boolean addElement(Vehicle vehicle) {
+        // 1. Сохраняем в БД (там генерируется ID через sequence)
+        if (dao.insert(vehicle)) {
+            // 2. Только при успехе добавляем в память
+            collection.add(vehicle);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean buyVehicle(long id, String buyerLogin) {
+        if (dao.buyVehicle(id, buyerLogin)) {
+            Vehicle v = collection.getVehicleByID(id);
+            if (v != null) {
+                v.setOwnerLogin(buyerLogin); // ← Синхронизация памяти для прокси
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public boolean addElementManually(Vehicle vehicle) {
+        // только для начальной загрузки из БД при старте сервера
+        // Не вызывает dao.insert(), сразу добавляет в память
+        collection.add(vehicle);
+        return true;
+    }
+
+    public boolean updateElementByID(long id, Vehicle vehicle, String ownerLogin) {
+        // 1. Обновляем в БД с проверкой владельца
+        if (dao.update(id, vehicle, ownerLogin)) {
+            // 2. Синхронизируем память
+            collection.replaceVehicle(id, vehicle);
+            return true;
+        }
+        return false;
+    }
+
+    public boolean rmByID(long id, String ownerLogin) {
+        // 1. Удаляем из БД с проверкой владельца
+        if (dao.delete(id, ownerLogin)) {
+            // 2. Удаляем из памяти
+            Vehicle v = collection.getVehicleByID(id);
+            if (v != null) collection.rmEl(v);
+            return true;
+        }
+        return false;
+    }
+
+    public boolean addIfMax(Vehicle veh) {
+        Optional<Vehicle> max = collection.getVehicles().stream()
+                .max(Comparator.comparingDouble(Vehicle::getDistanceTravelled));
+        if (max.isEmpty() || veh.getDistanceTravelled() > max.get().getDistanceTravelled()) {
+            return addElement(veh); // используем метод с БД
+        }
+        return false;
+    }
+    @Override
+    public double getBalance(String login) {
+        return userDao.getBalance(login);
+    }
+
+    @Override
+    public boolean deposit(String login, double amount) {
+        if (amount <= 0) return false; // Защита от отрицательных/нулевых пополнений
+        return userDao.updateBalance(login, amount);
+    }
+
+    @Override
+    public boolean setPrice(long id, double price, String ownerLogin) {
+        if (price < 0) return false; // Валидация
+
+        // 1. Обновляем в БД (там уже идёт проверка owner_login)
+        if (userDao.updatePrice(id, price, ownerLogin)) {
+            // 2. Обновляем объект в памяти
+            Vehicle v = collection.getVehicleByID(id);
+            if (v != null) {
+                v.setPrice(price);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public void clearCollection(String ownerLogin) {
+        // 1. Удаляем из БД только объекты владельца
+        dao.clearAll(ownerLogin);
+
+
+        // 2. Синхронизируем память
+        collection.removeIf(v -> ownerLogin.equals(v.getOwnerLogin()));
+    }
+}=== FILE: ./src/server/service/ConsoleCommandHandler.java ===
+//package server.service;
+//
+//import common.ReturnCode;
+//import server.commands.Invoker;
+//
+//import java.io.BufferedReader;
+//import java.io.InputStreamReader;
+//import java.util.Arrays;
+//import java.util.List;
+//
+//public class ConsoleCommandHandler implements Runnable {
+//
+//    private final Invoker invoker;
+//    private final ServerContext context;
+//    private volatile boolean running = true;
+//
+//    public ConsoleCommandHandler(Invoker invoker, ServerContext context) {
+//        this.invoker = invoker;
+//        this.context = context;
+//    }
+//
+//    public void stop() {
+//        running = false;
+//    }
+//
+//    @Override
+//    public void run() {
+//        BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
+//        try {
+//            String line;
+//            while (running && (line = consoleReader.readLine()) != null) {
+//                line = line.trim();
+//                if (line.isEmpty()) continue;
+//
+//                if (line.equals("exit")) {
+//                    System.out.println("Остановка сервера...");
+//                    context.stop();
+//                    break;
+//                }
+//
+//                executeConsoleCommand(line);
+//            }
+//        } catch (Exception e) {
+//            System.err.println("Ошибка чтения консоли: " + e.getMessage());
+//        }
+//    }
+//
+//    private void executeConsoleCommand(String line) {
+//        String[] tokens = line.split("\\s+");
+//        String commandName = tokens[0];
+//        List<String> arguments = Arrays.asList(tokens);
+//
+//        System.out.printf("Консоль: %s | args=%s%n", commandName, arguments);
+//
+//        NetworkResponseSender consoleSender = new NetworkResponseSender();
+//
+//        ReturnCode statusCode = invoker.executeCommand(
+//                commandName,
+//                arguments,
+//                null,
+//                true,
+//                consoleSender
+//        );
+//
+//        String output = consoleSender.getOutput();
+//        if (!output.isEmpty()) {
+//            System.out.println(output);
+//        } else {
+//            System.out.println(statusCode == ReturnCode.OK ? "Команда выполнена" : "Ошибка выполнения");
+//        }
+//    }
+//}=== FILE: ./src/server/service/NetworkResponseSender.java ===
+package server.service;
+
+import common.ResponseSender;
+
+public class NetworkResponseSender implements ResponseSender {
+    private final StringBuilder output = new StringBuilder();
+
+    @Override
+    public void send(String message) {
+        output.append(message).append("\n");
+    }
+
+    @Override
+    public void sendError(String error) {
+        output.append("ERROR").append(error).append("\n");
+    }
+
+    @Override
+    public String getOutput() {
+        String result = output.toString();
+        clear(); // очищаем после чтения
+        return result;
+    }
+
+    @Override
+    public void clear() {
+        output.setLength(0);
+    }
+}=== FILE: ./src/server/service/Parser.java ===
+package server.service;
+
+import common.FuelType;
+import common.Vehicle;
+import common.VehicleType;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.TimeZone;
+
+public class Parser {
+
+    public static ArrayList<Vehicle> parse(String filePath) throws Exception {
+        ArrayList<Vehicle> list = new ArrayList<>();
+        InputStreamReader isr = new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_8);
+
+        DocumentBuilderFactory f = DocumentBuilderFactory.newInstance();
+        DocumentBuilder b = f.newDocumentBuilder();
+        Document doc = b.parse(new InputSource(isr));
+        isr.close();
+
+        NodeList n = doc.getElementsByTagName("vehicle");
+        for (int i = 0; i < n.getLength(); i++) {
+            try {
+                Element e = (Element) n.item(i);
+                Vehicle v = new Vehicle();
+
+                // Парсинг имени
+                String name = e.getElementsByTagName("name").item(0).getTextContent();
+                v.setName(name);
+
+                // Парсинг координат
+                Element c = (Element) e.getElementsByTagName("coordinates").item(0);
+                int x = Integer.parseInt(c.getElementsByTagName("x").item(0).getTextContent());
+                float y = Float.parseFloat(c.getElementsByTagName("y").item(0).getTextContent());
+                v.setCoordinates(x, y);
+
+                // Парсинг даты
+                String dateStr = e.getElementsByTagName("creationDate").item(0).getTextContent().trim();
+                try {
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                    sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+                    Date parsedDate = sdf.parse(dateStr);
+                    v.setCreationDateHand(parsedDate);
+                } catch (ParseException ec) {
+                    v.setCreationDate(); // Если дата неверная, ставим текущую
+                }
+
+                // Парсинг числовых полей
+                v.setEnginePower(Float.parseFloat(e.getElementsByTagName("enginePower").item(0).getTextContent()));
+                v.setDistanceTravelled(Float.parseFloat(e.getElementsByTagName("distanceTravelled").item(0).getTextContent()));
+
+                // Парсинг типа (может быть null)
+                var typeNode = e.getElementsByTagName("type").item(0);
+                if (typeNode != null && !typeNode.getTextContent().trim().isEmpty()) {
+                    v.setType(VehicleType.valueOf(typeNode.getTextContent().trim().toUpperCase()));
+                } else {
+                    v.setType(null);
+                }
+
+                // Парсинг типа топлива
+                v.setFuelType(FuelType.valueOf(e.getElementsByTagName("fuelType").item(0).getTextContent().trim().toUpperCase()));
+
+                // Валидация объекта
+                if (v.getName() == null || v.getName().trim().isEmpty() ||
+                        v.getCoordinates() == null ||
+                        v.getCoordinates().getY() <= -668F ||
+                        v.getEnginePower() <= 0 ||
+                        v.getDistanceTravelled() <= 0) {
+                    throw new IllegalArgumentException("Некорректные данные объекта");
+                }
+
+                list.add(v);
+
+            } catch (Exception e) {
+                System.out.println("Объект номер " + (i + 1) + " пропущен (ошибка валидации или структуры XML)");
+            }
+        }
+        return list;
+    }
+}=== FILE: ./src/server/service/NetworkRequestHandler.java ===
+package server.service;
+
+import common.CommandRequest;
+import common.CommandResponse;
+import common.ReturnCode;
+import server.commands.Invoker;
+
+import java.nio.channels.SocketChannel;
+
+public class NetworkRequestHandler {
+    private final Invoker invoker;
+    private final ServerNetworkService networkService;
+
+    public NetworkRequestHandler(Invoker invoker, ServerNetworkService networkService) {
+        this.invoker = invoker;
+        this.networkService = networkService;
+    }
+
+    public void processRequest(SocketChannel clientChannel, CommandRequest request) {
+        try {
+            String commandName = request.getCommandName();
+            var arguments = request.getArguments();
+            var vehicle = request.getVehicle();
+            var isLaud = request.getBoolean();
+            // ← Получаем логин/пароль из запроса
+            String login = request.getLogin();
+            String password = request.getPassword();
+
+            System.out.printf("Запрос от %s: %s (user: %s)%n",
+                    clientChannel.getRemoteAddress(), commandName, login);
+
+            NetworkResponseSender networkSender = new NetworkResponseSender();
+
+            // ← Передаём login/password в invoker
+            ReturnCode statusCode = invoker.executeCommand(
+                    commandName,
+                    arguments,
+                    vehicle,
+                    isLaud,
+                    networkSender,
+                    login,
+                    password
+            );
+
+            String commandOutput = networkSender.getOutput();
+            CommandResponse response = new CommandResponse(
+                    statusCode == ReturnCode.OK,
+                    commandOutput.isEmpty() ? "Команда выполнена" : commandOutput,
+                    null
+            );
+            networkService.queueResponse(clientChannel, response);
+        } catch (Exception e) {
+            System.err.println("Ошибка обработки запроса: " + e.getMessage());
+            CommandResponse error = new CommandResponse(
+                    false,
+                    "Ошибка сервера: " + e.getMessage(),
+                    null
+            );
+            networkService.queueResponse(clientChannel, error);
+        }
+    }
+}=== FILE: ./src/server/service/XmlDataLoader.java ===
+//package server.service;
+//
+//import common.Vehicle;
+//import server.commands.Invoker;
+//
+//import java.io.File;
+//import java.util.ArrayList;
+//
+//public class XmlDataLoader {
+//
+//    public static void loadAndRegister(String xmlFilePath, Invoker invoker) {
+//        if (xmlFilePath == null || xmlFilePath.isEmpty()) {
+//            return;
+//        }
+//        try {
+//            File xmlFile = new File(xmlFilePath);
+//            if (xmlFile.exists()) {
+//                System.out.println("Найден файл: " + xmlFilePath);
+//                ArrayList<Vehicle> vehicles = Parser.parse(xmlFilePath);
+//                for (Vehicle v : vehicles) {
+//                    invoker.executeCommand("add", null, v, false, null);
+//                }
+//            }
+//        } catch (Exception e) {
+//            System.err.println("Ошибка при парсинге файла: " + e.getMessage());
+//        }
+//    }
+//}=== FILE: ./src/server/service/ServerNetworkService.java ===
+package server.service;
+import common.CommandRequest;
+import common.CommandResponse;
+import common.CommandType;
+import common.Serializer;
+import server.commands.Command;
+import server.commands.CommandsList;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+
+public class ServerNetworkService {
+    private ServerSocketChannel serverChannel;
+    private final Selector selector;
+    private final int port;
+    private final CommandsList commandsList;
+    private final Map<SocketChannel, ClientData> clients = new ConcurrentHashMap<>();
+
+    // Пулы потоков
+    private final ExecutorService readPool = Executors.newFixedThreadPool(4);
+    private final ForkJoinPool processPool = new ForkJoinPool();
+    private final ForkJoinPool sendPool = new ForkJoinPool();
+
+    public ForkJoinPool getProcessPool() { return processPool; }
+
+    public static class ClientData {
+        public ByteBuffer sizeBuffer = ByteBuffer.allocate(4);
+        public ByteBuffer dataBuffer;
+        public int expectedSize = -1;
+        public boolean readingSize = true;
+        public boolean initialized = false;
+        private final int maxpack = 1000;
+        public final Queue<ByteBuffer> writeQueue = new ArrayDeque<>();
+        public ByteBuffer currentWriteBuffer = null;
+        public void reset() {
+            sizeBuffer.clear(); dataBuffer = null; expectedSize = -1; readingSize = true;
+        }
+    }
+
+    public ServerNetworkService(int port, CommandsList commandsList) {
+        this.port = port;
+        this.commandsList = commandsList;
+        try { selector = Selector.open(); }
+        catch (IOException e) { throw new RuntimeException("Не удалось создать селектор", e); }
+    }
+
+    public void queueResponse(SocketChannel clientChannel, CommandResponse response) {
+        try {
+            byte[] data = Serializer.serialize(response);
+            ByteBuffer sizeBuffer = ByteBuffer.allocate(4);
+            sizeBuffer.putInt(data.length); sizeBuffer.flip();
+            ByteBuffer message = ByteBuffer.allocate(4 + data.length);
+            message.put(sizeBuffer); message.put(data); message.flip();
+
+            ClientData client = clients.get(clientChannel);
+            if (client != null) {
+                synchronized (client.writeQueue) {
+                    client.writeQueue.offer(message);
+                }
+                SelectionKey key = clientChannel.keyFor(selector);
+                if (key != null && key.isValid()) {
+                    key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+                    selector.wakeup(); // Будим селектор, чтобы он сразу отработал OP_WRITE
+                }
+            }
+        } catch (IOException e) {
+            removeClient(clientChannel);
+        }
+    }
+
+    public boolean start() {
+        try {
+            serverChannel = ServerSocketChannel.open();
+            serverChannel.configureBlocking(false);
+            serverChannel.bind(new InetSocketAddress(port));
+            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+            System.out.println("Сервер запущен на порту " + port + ", ожидание подключений...");
+            return true;
+        } catch (IOException e) {
+            System.out.println("Не удалось запустить сервер: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public List<SelectionKey> processEvents() {
+        try {
+            selector.select();
+            Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
+            List<SelectionKey> readyKeys = new ArrayList<>();
+            while (keys.hasNext()) {
+                SelectionKey key = keys.next(); keys.remove();
+                if (!key.isValid()) continue;
+                if (key.isAcceptable()) handleAccept(key);
+                else if (key.isReadable()) handleRead(key);
+                else if (key.isWritable()) handleWrite(key);
+                if (key.attachment() instanceof CommandRequest) readyKeys.add(key);
+            }
+            return readyKeys;
+        } catch (IOException e) {
+            System.out.println("Ошибка обработки событий: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private void handleAccept(SelectionKey key) throws IOException {
+        ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
+        SocketChannel clientChannel = serverChannel.accept();
+        if (clientChannel != null) {
+            clientChannel.configureBlocking(false);
+            clientChannel.register(selector, SelectionKey.OP_READ);
+            clients.put(clientChannel, new ClientData());
+            System.out.println("Клиент подключён: " + clientChannel.getRemoteAddress());
+            sendCommandsMap(clientChannel);
+        }
+    }
+
+    private void sendCommandsMap(SocketChannel clientChannel) {
+        Map<String, CommandType> commandsMap = new HashMap<>();
+        for (Map.Entry<String, Command> entry : commandsList.getCommandList().entrySet())
+            commandsMap.put(entry.getKey(), entry.getValue().getType());
+        CommandResponse initResponse = new CommandResponse(true, "connected", commandsMap);
+        queueResponse(clientChannel, initResponse);
+        ClientData data = clients.get(clientChannel);
+        if (data != null) data.initialized = true;
+    }
+
+    public CommandRequest readFromClient(SocketChannel clientChannel) {
+        ClientData data = clients.get(clientChannel);
+        if (data == null) return null;
+        try {
+            if (data.readingSize) {
+                while (data.sizeBuffer.hasRemaining()) {
+                    int bytesRead = clientChannel.read(data.sizeBuffer);
+                    if (bytesRead == -1) { removeClient(clientChannel); return null; }
+                    if (bytesRead == 0) return null; // Данные не готовы, вернёмся при следующем OP_READ
+                }
+                data.sizeBuffer.flip();
+                data.expectedSize = data.sizeBuffer.getInt();
+                data.sizeBuffer.clear();
+
+                if (data.expectedSize <= 0 || data.expectedSize > data.maxpack) {
+                    System.out.println("Некорректный размер сообщения: " + data.expectedSize);
+                    removeClient(clientChannel); return null;
+                }
+                data.dataBuffer = ByteBuffer.allocate(data.expectedSize);
+                data.readingSize = false;
+            }
+
+            while (data.dataBuffer.hasRemaining()) {
+                int bytesRead = clientChannel.read(data.dataBuffer);
+                if (bytesRead == -1) { removeClient(clientChannel); return null; }
+                if (bytesRead == 0) return null; // Защита от бесконечного цикла
+            }
+
+            data.dataBuffer.flip();
+            byte[] bytes = new byte[data.expectedSize];
+            data.dataBuffer.get(bytes);
+            data.reset();
+            return (CommandRequest) Serializer.deserialize(bytes);
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Ошибка чтения от клиента: " + e.getMessage());
+            removeClient(clientChannel);
+            return null;
+        }
+    }
+
+    // Чтение делегируется в FixedThreadPool
+
+    private void handleRead(SelectionKey key) {
+        SocketChannel clientChannel = (SocketChannel) key.channel();
+        ClientData data = clients.get(clientChannel);
+        if (data == null) return;
+
+        // Читаем В ТОМ ЖЕ ПОТОКЕ, чтобы request был готов до проверки в ServerLoop
+        try {
+            CommandRequest request = readFromClient(clientChannel);
+            if (request != null) {
+                key.attach(request);
+            }
+        } catch (Exception e) {
+            System.err.println("Ошибка чтения: " + e.getMessage());
+        }
+    }
+
+    // Запись делегируется в ForkJoinPool
+    private void handleWrite(SelectionKey key) throws IOException {
+        SocketChannel clientChannel = (SocketChannel) key.channel();
+        ClientData client = clients.get(clientChannel);
+        if (client == null) { key.cancel(); return; }
+        sendPool.submit(() -> {
+            try {
+                synchronized (client.writeQueue) {
+                    if (client.currentWriteBuffer == null) client.currentWriteBuffer = client.writeQueue.poll();
+                    while (client.currentWriteBuffer != null && client.currentWriteBuffer.hasRemaining()) {
+                        if (clientChannel.write(client.currentWriteBuffer) == -1) { removeClient(clientChannel); return; }
+                    }
+                    if (client.currentWriteBuffer != null) client.currentWriteBuffer = null;
+                    if (client.writeQueue.isEmpty() && key.isValid())
+                        key.interestOps(SelectionKey.OP_READ);
+                }
+            } catch (Exception e) { System.err.println("Ошибка отправки: " + e.getMessage()); }
+        });
+    }
+
+    public void removeClient(SocketChannel clientChannel) {
+        if (clientChannel != null) {
+            clients.remove(clientChannel);
+            try { clientChannel.close(); } catch (IOException ignored) {}
+            System.out.println("Клиент отключён (осталось: " + clients.size() + ")");
+        }
+    }
+
+    public void stop() {
+        readPool.shutdownNow();
+        processPool.shutdownNow();
+        sendPool.shutdownNow();
+        for (SocketChannel client : clients.keySet()) {
+            try { client.close(); } catch (IOException ignored) {}
+        }
+        clients.clear();
+        try {
+            if (serverChannel != null && serverChannel.isOpen()) serverChannel.close();
+            if (selector != null && selector.isOpen()) selector.close();
+            System.out.println("Сервер остановлен");
+        } catch (IOException e) { System.out.println("Ошибка при остановке сервера: " + e.getMessage()); }
+    }
+}=== FILE: ./src/server/service/ServerLoop.java ===
+package server.service;
+import common.CommandRequest;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.SocketChannel;
+import java.util.List;
+
+public class ServerLoop {
+    private final ServerContext context;
+    private final NetworkRequestHandler requestHandler;
+    private volatile boolean running = true;
+
+    public ServerLoop(ServerContext context, NetworkRequestHandler requestHandler) {
+        this.context = context;
+        this.requestHandler = requestHandler;
+    }
+
+
+    public void run() {
+        ServerNetworkService network = context.getNetworkService();
+        while (running) {
+            List<SelectionKey> readyKeys = network.processEvents();
+            for (SelectionKey key : readyKeys) {
+                CommandRequest request = (CommandRequest) key.attachment();
+                if (request == null) continue;
+                key.attach(null);
+                SocketChannel channel = (SocketChannel) key.channel();
+
+                // Многопоточная обработка запроса через ForkJoinPool
+                network.getProcessPool().submit(() -> {
+                    try {
+                        requestHandler.processRequest(channel, request);
+                    } catch (Exception e) {
+                        System.err.println("Ошибка обработки запроса: " + e.getMessage());
+                    }
+                });
+            }
+        }
+    }
+}=== FILE: ./src/server/service/ServerContext.java ===
+package server.service;
+
+import server.collection.IVehicleManager;
+import server.collection.VehicleCollection;
+import server.collection.VehicleManager;
+import server.collection.VehicleManagerProxy;
+import server.commands.CommandsList;
+import server.commands.Invoker;
+import server.database.AuthService;
+import server.database.UserDao;
+import server.database.VehicleDao;
+
+public class ServerContext {
+    private final CommandsList commandsList;
+    private final Invoker invoker;
+    private final ServerNetworkService networkService;
+    private final IVehicleManager vehicleManager;
+    private final String xmlFilePath;
+    private final int port;
+
+
+    public ServerContext(int port, String xmlFilePath) {
+        this.port = port;
+        this.xmlFilePath = xmlFilePath;
+        AuthService authService = new AuthService();
+        VehicleDao vehicleDao = new VehicleDao();
+        VehicleCollection collection = new VehicleCollection();
+        UserDao userDao = new UserDao();
+
+        this.invoker = new Invoker(authService);
+
+        IVehicleManager realManager = new VehicleManager(collection, vehicleDao, userDao);
+        this.vehicleManager = new VehicleManagerProxy(realManager);
+
+        this.commandsList = new CommandsList(vehicleManager, invoker);
+        this.networkService = new ServerNetworkService(port, commandsList);
+    }
+
+    public boolean startNetwork() { return networkService.start(); }
+
+    public CommandsList getCommandsList() { return commandsList; }
+    public Invoker getInvoker() { return invoker; }
+    public ServerNetworkService getNetworkService() { return networkService; }
+    public IVehicleManager getVehicleManager() { return vehicleManager; }
+    public String getXmlFilePath() { return xmlFilePath; }
+    public int getPort() { return port; }
+
+    public void stop() {
+        if (networkService != null) networkService.stop();
+    }
+}=== FILE: ./src/common/Vehicle.java ===
+package common;
+
+import java.io.Serializable;
+import java.util.Date;
+
+public class Vehicle implements Serializable {
+    private long id;
+    private String name;
+    private Coordinates coordinates;
+    private Date creationDate;
+    private float enginePower;
+    private float distanceTravelled;
+    private VehicleType type;
+    private FuelType fuelType;
+    private String ownerLogin;
+    private double price;
+
+
+    // Конструктор без параметров (для сериализации и создания новых объектов)
+    public Vehicle() {
+        this.creationDate = new Date();
+    }
+
+    // Геттеры
+    public long getId() { return id; }
+    public String getName() { return name; }
+    public Coordinates getCoordinates() { return coordinates; }
+    public Date getCreationDate() { return creationDate; }
+    public float getEnginePower() { return enginePower; }
+    public float getDistanceTravelled() { return distanceTravelled; }
+    public VehicleType getType() { return type; }
+    public FuelType getFuelType() { return fuelType; }
+    public String getOwnerLogin() { return ownerLogin; } // ← НОВЫЙ ГЕТТЕР
+
+    // Сеттеры
+    public void setId(long id) { this.id = id; }
+    public void setName(String name) { this.name = name; }
+
+    public void setCoordinates(int x, float y) {
+        if (this.coordinates == null) {
+            this.coordinates = new Coordinates();
+        }
+        this.coordinates.setCoord(x, y);
+    }
+
+    // объекта Coordinates (нужен для DAO)
+    public void setCoordinatesObject(Coordinates coordinates) {
+        this.coordinates = coordinates;
+    }
+
+    public void setCreationDate() {
+        long fiveYearsInMillis = 5L * 365 * 24 * 60 * 60 * 1000;
+        long randomMillis = System.currentTimeMillis() - (long) (Math.random() * fiveYearsInMillis);
+        this.creationDate = new Date(randomMillis);
+    }
+
+    public void setCreationDateHand(Date date) {
+        this.creationDate = date;
+    }
+
+    public void setEnginePower(Float power) {
+        if (power > 0) {
+            this.enginePower = power;
+        } else {
+            System.out.println("Мощность двигателя не может быть отрицательной");
+        }
+    }
+
+    public void setType(VehicleType type) { this.type = type; }
+    public void setDistanceTravelled(float distanceTravelled) { this.distanceTravelled = distanceTravelled; }
+    public void setFuelType(FuelType fuel) { this.fuelType = fuel; }
+    public void setOwnerLogin(String ownerLogin) { this.ownerLogin = ownerLogin; }
+    public double getPrice() { return price; }
+    public void setPrice(double price) { this.price = price; }
+}=== FILE: ./src/common/CommandResponse.java ===
+package common;
+
+import common.Vehicle;
+import java.io.Serializable;
+import java.util.List;
+
+public class CommandResponse implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private boolean success;           // Успешно ли выполнилась команда
+    private String message;            // Текстовое сообщение для пользователя
+    private Object data;        // Данные (коллекция объектов)
+
+    // Конструктор для команд с данными
+    public CommandResponse(boolean success, String message, Object data) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
+    }
+
+
+    // Геттеры
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public Object getData() {
+        return data;
+    }
+
+}=== FILE: ./src/common/CommandRequest.java ===
+package common;
+
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.List;
+
+public class CommandRequest implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    private String commandname;
+    private List<String> args;
+    private Vehicle vehicle;
+    private boolean islaud;
+    private String login;      // ← НОВОЕ
+    private String password;   // ← НОВОЕ
+
+    // Обновлённый конструктор
+    public CommandRequest(String commandname, List<String> args, Vehicle vehicle, boolean islaud, String login, String password) {
+        this.commandname = commandname;
+        this.args = args;
+        this.vehicle = vehicle;
+        this.islaud = islaud;
+        this.login = login;
+        this.password = password;
+    }
+
+    // Геттеры
+    public String getCommandName() { return commandname; }
+    public List<String> getArguments() { return args; }
+    public boolean getBoolean() { return islaud; }
+    public Vehicle getVehicle() { return vehicle; }
+    public String getLogin() { return login; }           // ← НОВЫЙ
+    public String getPassword() { return password; }     // ← НОВЫЙ
+}=== FILE: ./src/common/ReturnCode.java ===
+package common;
+
+import java.io.Serializable;
+
+public enum ReturnCode implements Serializable {
+    OK,
+    FAILED
+
+}
+=== FILE: ./src/common/Coordinates.java ===
+package common;
+
+
+import java.io.Serializable;
+
+import static java.lang.Math.sqrt;
+
+public class Coordinates implements Comparable<Coordinates>, Serializable {
+    int x;
+    float y;
+
+    public int getX(){
+        return this.x;
+    }
+    public float getY(){
+        return this.y;
+    }
+
+
+
+public void setCoord(int x, float y){
+        this.x = x;
+        this.y = y;
+    }
+
+    @Override
+    public int compareTo(Coordinates other) {
+        return Double.compare(this.x * this.x + this.y * this.y, other.x*other.x + other.y * other.y);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof Coordinates that)) return false;
+
+        double thisDist;
+        thisDist = sqrt(this.x * this.x + this.y * this.y);
+        double thatDist = sqrt(that.x * that.x + that.y * that.y);
+
+        return Math.abs(thisDist - thatDist) < 0.001;
+    }
+
+}
+
+=== FILE: ./src/common/FuelType.java ===
+package common;
+
+import java.io.Serializable;
+
+public enum FuelType implements Serializable { GASOLINE, KEROSENE, ELECTRICITY, DIESEL, NUCLEAR }
+=== FILE: ./src/common/Serializer.java ===
+package common;
+
+import java.io.*;
+
+public class Serializer {
+
+    public static byte[] serialize(Object obj) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(baos);
+        oos.writeObject(obj);
+        oos.flush();
+        return baos.toByteArray();
+    }
+
+    public static Object deserialize(byte[] data) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream bais = new ByteArrayInputStream(data);
+        ObjectInputStream ois = new ObjectInputStream(bais);
+        Object obj = ois.readObject();
+        ois.close();
+        bais.close();
+        return obj;
+    }
+}
+=== FILE: ./src/common/CommandType.java ===
+package common;
+
+import java.io.Serializable;
+
+public enum CommandType implements Serializable {NOARGS, WITHARGS, WITHMODEL, WITHARGSMODEL, DETECTPARAM}
+=== FILE: ./src/common/VehicleType.java ===
+package common;
+
+import java.io.Serializable;
+
+public enum VehicleType implements Serializable { BOAT, HELICOPTER, HOVERBOARD, PLANE, SHIP  }
+
+=== FILE: ./src/common/ResponseSender.java ===
+package common;
+
+public interface ResponseSender {
+    void send(String message);
+    void sendError(String error);
+
+
+    /** Получить накопленные сообщения */
+    String getOutput();
+
+    /** Очистить буфер */
+    void clear();
+}

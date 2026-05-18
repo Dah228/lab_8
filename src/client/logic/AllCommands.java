@@ -1,4 +1,4 @@
-package client;
+package client.logic;
 
 import common.CommandType;
 import java.util.HashMap;

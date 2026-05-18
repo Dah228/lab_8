@@ -1,4 +1,4 @@
-package client;
+package client.logic;
 
 import common.FuelType;
 import common.Vehicle;
