@@ -1,10 +1,8 @@
 package server.collection;
-
 import common.Vehicle;
 import common.VehicleType;
 import server.database.UserDao;
 import server.database.VehicleDao;
-
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -86,12 +84,8 @@ public class VehicleManager implements IVehicleManager {
                 .collect(Collectors.groupingBy(field.extractor(), Collectors.counting()));
     }
 
-    //  запись: сначала БД, потом память
-
     public boolean addElement(Vehicle vehicle) {
-        // 1. Сохраняем в БД (там генерируется ID через sequence)
         if (dao.insert(vehicle)) {
-            // 2. Только при успехе добавляем в память
             collection.add(vehicle);
             return true;
         }
@@ -103,7 +97,7 @@ public class VehicleManager implements IVehicleManager {
         if (dao.buyVehicle(id, buyerLogin)) {
             Vehicle v = collection.getVehicleByID(id);
             if (v != null) {
-                v.setOwnerLogin(buyerLogin); // ← Синхронизация памяти для прокси
+                v.setOwnerLogin(buyerLogin);
             }
             return true;
         }
@@ -111,16 +105,12 @@ public class VehicleManager implements IVehicleManager {
     }
 
     public boolean addElementManually(Vehicle vehicle) {
-        // только для начальной загрузки из БД при старте сервера
-        // Не вызывает dao.insert(), сразу добавляет в память
         collection.add(vehicle);
         return true;
     }
 
     public boolean updateElementByID(long id, Vehicle vehicle, String ownerLogin) {
-        // 1. Обновляем в БД с проверкой владельца
         if (dao.update(id, vehicle, ownerLogin)) {
-            // 2. Синхронизируем память
             collection.replaceVehicle(id, vehicle);
             return true;
         }
@@ -128,9 +118,7 @@ public class VehicleManager implements IVehicleManager {
     }
 
     public boolean rmByID(long id, String ownerLogin) {
-        // 1. Удаляем из БД с проверкой владельца
         if (dao.delete(id, ownerLogin)) {
-            // 2. Удаляем из памяти
             Vehicle v = collection.getVehicleByID(id);
             if (v != null) collection.rmEl(v);
             return true;
@@ -142,10 +130,11 @@ public class VehicleManager implements IVehicleManager {
         Optional<Vehicle> max = collection.getVehicles().stream()
                 .max(Comparator.comparingDouble(Vehicle::getDistanceTravelled));
         if (max.isEmpty() || veh.getDistanceTravelled() > max.get().getDistanceTravelled()) {
-            return addElement(veh); // используем метод с БД
+            return addElement(veh);
         }
         return false;
     }
+
     @Override
     public double getBalance(String login) {
         return userDao.getBalance(login);
@@ -153,17 +142,14 @@ public class VehicleManager implements IVehicleManager {
 
     @Override
     public boolean deposit(String login, double amount) {
-        if (amount <= 0) return false; // Защита от отрицательных/нулевых пополнений
+        if (amount <= 0) return false;
         return userDao.updateBalance(login, amount);
     }
 
     @Override
     public boolean setPrice(long id, double price, String ownerLogin) {
-        if (price < 0) return false; // Валидация
-
-        // 1. Обновляем в БД (там уже идёт проверка owner_login)
+        if (price < 0) return false;
         if (userDao.updatePrice(id, price, ownerLogin)) {
-            // 2. Обновляем объект в памяти
             Vehicle v = collection.getVehicleByID(id);
             if (v != null) {
                 v.setPrice(price);
@@ -174,11 +160,7 @@ public class VehicleManager implements IVehicleManager {
     }
 
     public void clearCollection(String ownerLogin) {
-        // 1. Удаляем из БД только объекты владельца
         dao.clearAll(ownerLogin);
-
-
-        // 2. Синхронизируем память
         collection.removeIf(v -> ownerLogin.equals(v.getOwnerLogin()));
     }
 }

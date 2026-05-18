@@ -1,18 +1,9 @@
-package server.commands;  // или common, если нужно и клиенту
-
+package server.commands;
 import common.ResponseSender;
 import common.Vehicle;
-
 import java.util.Map;
 
-/**
- * Утилиты для форматирования Vehicle в строки
- */
 public class VehicleFormatter {
-
-    /**
-     * Форматирует один Vehicle и отправляет в ResponseSender
-     */
     public static void printVehicle(Vehicle v, ResponseSender sender) {
         sender.send("ID: " + v.getId());
         sender.send("Name: " + v.getName());
@@ -23,12 +14,10 @@ public class VehicleFormatter {
         sender.send("Type: " + v.getType());
         sender.send("Fuel type: " + v.getFuelType());
         sender.send("Price: " + v.getPrice());
+        sender.send("Owner: " + (v.getOwnerLogin() != null ? v.getOwnerLogin() : "null"));
         sender.send("------------------------");
     }
 
-    /**
-     * Форматирует список Vehicle
-     */
     public static void printVehicleList(java.util.ArrayList<Vehicle> vehicles, ResponseSender sender) {
         if (vehicles.isEmpty()) {
             sender.send("Коллекция пуста");
@@ -41,28 +30,20 @@ public class VehicleFormatter {
         }
     }
 
-    public static void printGroupedResult(
-            String fieldName,
-            Map<Comparable<?>, Long> grouped,
-            ResponseSender sender) {
-
+    public static void printGroupedResult(String fieldName, Map<Comparable<?>, Long> grouped, ResponseSender sender) {
         if (grouped.isEmpty()) {
             sender.send("Ничего не найдено");
             return;
         }
-
         sender.send("Группировка по полю: " + fieldName);
         sender.send("-------------------------------");
-
         grouped.forEach((key, count) ->
                 sender.send(String.format("%s: %d объект(ов)",
                         key != null ? key.toString() : "[не задано]",
                         count))
         );
-
         long total = grouped.values().stream().mapToLong(Long::longValue).sum();
         sender.send("-------------------------------");
         sender.send("Всего сгруппировано: " + total);
     }
 }
-

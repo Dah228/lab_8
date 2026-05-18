@@ -1,5 +1,4 @@
 package server.collection;
-
 import common.Vehicle;
 import common.VehicleType;
 import java.util.ArrayList;
@@ -14,7 +13,6 @@ public class VehicleManagerProxy implements IVehicleManager {
         this.realManager = realManager;
     }
 
-    /** Быстрая проверка владения по данным в памяти */
     private boolean isOwner(long id, String ownerLogin) {
         if (ownerLogin == null) return false;
         for (Vehicle v : realManager.showCollection()) {
@@ -35,7 +33,6 @@ public class VehicleManagerProxy implements IVehicleManager {
 
     @Override
     public boolean addElementManually(Vehicle vehicle) {
-        // Внутренняя загрузка при старте сервера
         return realManager.addElementManually(vehicle);
     }
 
@@ -59,7 +56,6 @@ public class VehicleManagerProxy implements IVehicleManager {
 
     @Override
     public void clearCollection(String ownerLogin) {
-        // clearCollection уже фильтрует по владельцу на уровне DAO и памяти
         realManager.clearCollection(ownerLogin);
     }
 
@@ -70,6 +66,7 @@ public class VehicleManagerProxy implements IVehicleManager {
         }
         return realManager.addIfMax(vehicle);
     }
+
     @Override
     public boolean buyVehicle(long id, String buyerLogin) {
         return realManager.buyVehicle(id, buyerLogin);
@@ -79,10 +76,12 @@ public class VehicleManagerProxy implements IVehicleManager {
     public double getBalance(String login) {
         return realManager.getBalance(login);
     }
+
     @Override
     public boolean deposit(String login, double amount) {
         return realManager.deposit(login, amount);
     }
+
     @Override
     public boolean setPrice(long id, double price, String ownerLogin) {
         if (!isOwner(id, ownerLogin)) {
@@ -92,8 +91,6 @@ public class VehicleManagerProxy implements IVehicleManager {
         return realManager.setPrice(id, price, ownerLogin);
     }
 
-
-    // Читающие методы делегируются напрямую без ограничений
     @Override public ArrayList<Vehicle> showCollection() { return realManager.showCollection(); }
     @Override public HashMap<String, String> getInfo() { return realManager.getInfo(); }
     @Override public ArrayList<Vehicle> filterByEnginePower(Float power) { return realManager.filterByEnginePower(power); }

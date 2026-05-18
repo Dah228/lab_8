@@ -1,17 +1,15 @@
 package server.commands;
-
 import common.ReturnCode;
 import common.Vehicle;
 import server.database.AuthService;
 import server.service.NetworkResponseSender;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class Invoker {
     private final Map<String, Command> commands = new HashMap<>();
-    private final AuthService authService;  // ← НОВОЕ
+    private final AuthService authService;
 
     public Invoker(AuthService authService) {
         this.authService = authService;
@@ -21,7 +19,6 @@ public class Invoker {
         commands.put(commandName, command);
     }
 
-    // Обновлённый метод: добавлены login/password
     public ReturnCode executeCommand(
             String commandName,
             List<String> args,
@@ -31,7 +28,6 @@ public class Invoker {
             String login,
             String password
     ) {
-        // 1. Регистрация — единственная команда без авторизации
         if ("register".equals(commandName)) {
             if (args.size() < 3) {
                 if (isLaud) responseSender.sendError("register: укажите логин и пароль");
@@ -48,7 +44,6 @@ public class Invoker {
             }
         }
 
-        // 2. Все остальные команды требуют авторизации
         if (!authService.authenticate(login, password)) {
             if (isLaud) responseSender.sendError("Неверный логин или пароль");
             return ReturnCode.FAILED;
