@@ -35,6 +35,9 @@
 /home/dashalin/IdeaProjects/lab8/src/client/logic/Main.java
 /home/dashalin/IdeaProjects/lab8/src/server/database/VehicleDao.java
 /home/dashalin/IdeaProjects/lab8/src/server/commands/GroupByCommand.java
+/home/dashalin/IdeaProjects/lab8/src/client/gui/MainScene.java
+/home/dashalin/IdeaProjects/lab8/src/client/gui/VehicleCanvasController.java
+/home/dashalin/IdeaProjects/lab8/src/client/gui/VehicleTableController.java
 /home/dashalin/IdeaProjects/lab8/src/client/logic/ClientConfig.java
 /home/dashalin/IdeaProjects/lab8/src/server/commands/SortCommand.java
 /home/dashalin/IdeaProjects/lab8/src/server/commands/DepositCommand.java
@@ -47,6 +50,7 @@
 /home/dashalin/IdeaProjects/lab8/src/server/commands/CompareByEnginePowerCommand.java
 /home/dashalin/IdeaProjects/lab8/src/server/service/XmlDataLoader.java
 /home/dashalin/IdeaProjects/lab8/src/server/collection/VehicleManagerProxy.java
+/home/dashalin/IdeaProjects/lab8/src/client/gui/AuthScene.java
 /home/dashalin/IdeaProjects/lab8/src/server/collection/ValidateParams.java
 /home/dashalin/IdeaProjects/lab8/src/client/gui/GuiApp.java
 /home/dashalin/IdeaProjects/lab8/src/server/ServerApp.java

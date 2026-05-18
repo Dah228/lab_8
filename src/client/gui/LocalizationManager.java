@@ -51,6 +51,7 @@ public class LocalizationManager {
         // RU
         resources.put(RU, Map.ofEntries(
                 Map.entry("app.title", "Vehicle Manager"),
+                Map.entry("confirm.exit", "Вы действительно хотите выйти?"),
                 Map.entry("auth.login", "Логин"),
                 Map.entry("auth.password", "Пароль"),
                 Map.entry("auth.register", "Регистрация"),
@@ -98,7 +99,10 @@ public class LocalizationManager {
                 Map.entry("app.status.disconnecting", "Закрытие соединения..."),
                 Map.entry("error.handshake", "Сервер не ответил на рукопожатие"),
                 Map.entry("error.commands_load", "Ошибка загрузки карты команд"),
-                Map.entry("error.unknown", "Неизвестная ошибка")
+                Map.entry("error.unknown", "Неизвестная ошибка"),
+
+                Map.entry("vehicle.info", "Информация об объекте"),
+                Map.entry("table.refresh", "Обновить")
         ));
 
         // NL
@@ -108,6 +112,10 @@ public class LocalizationManager {
                 Map.entry("auth.password", "Wachtwoord"),
                 Map.entry("auth.register", "Registreren"),
                 Map.entry("auth.login.button", "Inloggen"),
+
+                Map.entry("table.refresh", "Vernieuwen"),
+
+                Map.entry("vehicle.info", "Objectinformatie"),
 
                 // Status en fouten
                 Map.entry("app.status.initializing", "Verbinding initialiseren..."),
@@ -121,6 +129,8 @@ public class LocalizationManager {
                 Map.entry("error.handshake", "Server reageerde niet op handshake"),
                 Map.entry("error.commands_load", "Fout bij laden van commando's"),
                 Map.entry("error.unknown", "Onbekende fout"),
+
+                Map.entry("confirm.exit", "Weet u zeker dat u wilt afsluiten?"),
 
                 Map.entry("auth.register.button", "Registreren"),
                 Map.entry("auth.error.empty", "Gebruikersnaam en wachtwoord mogen niet leeg zijn"),
@@ -157,6 +167,7 @@ public class LocalizationManager {
         ));
 
         // DA
+        // DA
         resources.put(DA, Map.ofEntries(
                 Map.entry("app.title", "Køretøjsstyring"),
                 Map.entry("auth.login", "Brugernavn"),
@@ -164,6 +175,11 @@ public class LocalizationManager {
                 Map.entry("auth.register", "Registrer"),
                 Map.entry("auth.login.button", "Log ind"),
                 Map.entry("auth.register.button", "Registrer"),
+
+                // Добавленные ключи локализации
+                Map.entry("table.refresh", "Opdater"),
+                Map.entry("vehicle.info", "Objektinformation"),
+
                 // Status og fejl
                 Map.entry("app.status.initializing", "Initialiserer forbindelse..."),
                 Map.entry("app.status.connecting", "Forbinder til server..."),
@@ -173,9 +189,11 @@ public class LocalizationManager {
                 Map.entry("app.commands_loaded", "Kommandoer indlæst"),
                 Map.entry("app.status.error", "Fejl"),
                 Map.entry("app.status.disconnecting", "Lukker forbindelse..."),
+                Map.entry("confirm.exit", "Er du sikker på, at du vil lukke?"),
                 Map.entry("error.handshake", "Server svarede ikke på handshake"),
                 Map.entry("error.commands_load", "Fejl ved indlæsning af kommandoer"),
                 Map.entry("error.unknown", "Ukendt fejl"),
+
                 Map.entry("auth.error.empty", "Brugernavn og adgangskode må ikke være tomme"),
                 Map.entry("auth.error.auth", "Forkert brugernavn eller adgangskode"),
                 Map.entry("auth.error.register", "Registreringsfejl"),
@@ -215,6 +233,11 @@ public class LocalizationManager {
                 Map.entry("auth.login", "Username"),
                 Map.entry("auth.password", "Password"),
                 Map.entry("auth.register", "Register"),
+
+                Map.entry("confirm.exit", "Are you sure you want to exit?"),
+
+                Map.entry("vehicle.info", "Vehicle Info"),
+
                 Map.entry("auth.login.button", "Sign In"),
                 Map.entry("auth.register.button", "Register"),
                 Map.entry("auth.error.empty", "Username and password cannot be empty"),
