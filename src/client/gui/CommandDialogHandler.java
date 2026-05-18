@@ -228,7 +228,7 @@ public class CommandDialogHandler {
                 Platform.runLater(() -> {
                     if (response != null) {
                         if (response.isSuccess()) {
-                            // Для команды show парсим текст обратно в объекты
+                            // Для команды show ТОЛЬКО обновляем таблицу (без диалога)
                             if ("show".equals(commandName)) {
                                 String message = response.getMessage();
                                 if (message != null && !message.trim().isEmpty()) {
@@ -236,7 +236,7 @@ public class CommandDialogHandler {
                                     if (tableController != null && !vehicles.isEmpty()) {
                                         tableController.updateData(vehicles);
                                     }
-                                    showScrollableInfo(message);
+                                    // УБРАЛИ showScrollableInfo(message);
                                 }
                             } else {
                                 // Для остальных команд - как было
@@ -267,7 +267,6 @@ public class CommandDialogHandler {
             }
         }).start();
     }
-
     /** Прокручиваемое окно для текстовых результатов */
     private void showScrollableInfo(String message) {
         Dialog<Void> dialog = new Dialog<>();

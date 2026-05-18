@@ -51,7 +51,7 @@ public class VehicleTableController {
     /**
      * Создает VBox с панелью фильтров и таблицей.
      */
-    public VBox createTablePane() {
+    public VBox createTablePane(){
         VBox root = new VBox(10);
         root.setPadding(new Insets(10));
 
@@ -63,16 +63,12 @@ public class VehicleTableController {
         tableView.setItems(filteredVehicles);
         setupColumns();
 
-        // 3. Кнопка обновления (для явного вызова show, если нужно)
-        Button refreshBtn = new Button(localization.get("table.refresh")); // Нужно добавить ключ
-        refreshBtn.setOnAction(e -> requestShowFromServer()); // Заглушка, реализуем позже
-
-        root.getChildren().addAll(filterPanel, tableView, refreshBtn);
+        // УБРАЛИ кнопку обновления
+        root.getChildren().addAll(filterPanel, tableView);
         VBox.setVgrow(tableView, javafx.scene.layout.Priority.ALWAYS);
 
         return root;
     }
-
     private HBox createFilterPanel() {
         HBox hbox = new HBox(10);
         hbox.setPadding(new Insets(5));
