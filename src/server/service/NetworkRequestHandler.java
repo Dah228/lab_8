@@ -3,9 +3,10 @@ package server.service;
 import common.CommandRequest;
 import common.CommandResponse;
 import common.ReturnCode;
+import common.Vehicle;
 import server.commands.Invoker;
-
 import java.nio.channels.SocketChannel;
+import java.util.List;
 
 public class NetworkRequestHandler {
     private final Invoker invoker;
@@ -22,7 +23,6 @@ public class NetworkRequestHandler {
             var arguments = request.getArguments();
             var vehicle = request.getVehicle();
             var isLaud = request.getBoolean();
-            // ← Получаем логин/пароль из запроса
             String login = request.getLogin();
             String password = request.getPassword();
 
@@ -31,7 +31,6 @@ public class NetworkRequestHandler {
 
             NetworkResponseSender networkSender = new NetworkResponseSender();
 
-            // ← Передаём login/password в invoker
             ReturnCode statusCode = invoker.executeCommand(
                     commandName,
                     arguments,
@@ -43,11 +42,15 @@ public class NetworkRequestHandler {
             );
 
             String commandOutput = networkSender.getOutput();
+            List<Vehicle> collectionData = networkSender.getCollectionData();
+
+            // Если есть данные коллекции, отправляем их в data
             CommandResponse response = new CommandResponse(
                     statusCode == ReturnCode.OK,
                     commandOutput.isEmpty() ? "Команда выполнена" : commandOutput,
-                    null
+                    collectionData.isEmpty() ? null : collectionData
             );
+
             networkService.queueResponse(clientChannel, response);
         } catch (Exception e) {
             System.err.println("Ошибка обработки запроса: " + e.getMessage());

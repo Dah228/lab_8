@@ -1,13 +1,11 @@
 package common;
 
+import java.util.List;
+
 public interface ResponseSender {
     void send(String message);
     void sendError(String error);
-
-
-    /** Получить накопленные сообщения */
+    void sendCollection(List<Vehicle> vehicles);
     String getOutput();
-
-    /** Очистить буфер */
     void clear();
 }

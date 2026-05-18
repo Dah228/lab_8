@@ -267,10 +267,15 @@ public class VehicleTableController {
      * Обновляет исходные данные извне (после получения ответа от сервера).
      */
     public void updateData(List<Vehicle> vehicles) {
-        if (vehicles == null) return;
+        if (vehicles == null) {
+            allVehicles.clear();
+            filteredVehicles.clear();
+            return;
+        }
+
         // Заменяем содержимое исходного списка
         allVehicles.setAll(vehicles);
-        // Переприменяем фильтры (чтобы обновить отображаемый список)
+        // Переприменяем фильтры
         applyFilters();
     }
 

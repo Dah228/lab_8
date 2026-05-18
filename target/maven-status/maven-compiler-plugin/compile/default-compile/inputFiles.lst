@@ -57,6 +57,7 @@
 /home/dashalin/IdeaProjects/lab8/src/common/FuelType.java
 /home/dashalin/IdeaProjects/lab8/src/server/commands/FilterLessThatType.java
 /home/dashalin/IdeaProjects/lab8/src/server/commands/CommandParams.java
+/home/dashalin/IdeaProjects/lab8/src/client/gui/CommandDialogHandler.java
 /home/dashalin/IdeaProjects/lab8/src/client/logic/CommandRegistryLoader.java
 /home/dashalin/IdeaProjects/lab8/src/server/commands/ShowCommand.java
 /home/dashalin/IdeaProjects/lab8/src/server/commands/Command.java

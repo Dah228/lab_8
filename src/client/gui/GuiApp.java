@@ -6,6 +6,8 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -79,9 +81,9 @@ public class GuiApp extends Application {
     }
 
     private void showMainScene(Stage stage) {
-        MainScene mainScene = new MainScene(stage, localization, currentUserLogin);
+        MainScene mainScene = new MainScene(stage, localization, networkService,
+                currentUserLogin, currentUserPassword);
         Scene scene = mainScene.createScene();
-
         stage.setScene(scene);
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
         stage.setMinWidth(1200);
@@ -89,14 +91,14 @@ public class GuiApp extends Application {
 
         // Обработка закрытия окна
         stage.setOnCloseRequest(e -> {
-            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.CONFIRMATION);
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle(localization.get("app.title"));
             alert.setHeaderText(null);
             alert.setContentText(localization.get("confirm.exit"));
-            if (alert.showAndWait().orElse(javafx.scene.control.ButtonType.CANCEL) != javafx.scene.control.ButtonType.OK) {
-                e.consume(); // Отменяем закрытие
+            if (alert.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+                e.consume();
             } else {
-                cleanup(); // Закрываем сеть
+                cleanup();
             }
         });
     }

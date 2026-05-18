@@ -20,6 +20,7 @@ server/collection/VehicleCollection.class
 client/logic/AllCommands.class
 server/commands/PrintDescendingCommand.class
 client/logic/CommandRegistryLoader.class
+client/gui/CommandDialogHandler.class
 server/collection/VehicleSaver.class
 server/commands/AddIfMax.class
 server/commands/UpdateElementID.class
