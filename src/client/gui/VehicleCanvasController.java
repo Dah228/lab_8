@@ -10,11 +10,13 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.text.Font;
-
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Контроллер Canvas для визуализации объектов Vehicle.
+ */
 public class VehicleCanvasController {
     private final LocalizationManager localization;
     private Canvas canvas;
@@ -32,13 +34,13 @@ public class VehicleCanvasController {
     // Текущие данные
     private List<Vehicle> vehicles = List.of();
 
-    // Размер фигуры
-    private static final double SIZE = 20;
-
     public VehicleCanvasController(LocalizationManager localization) {
         this.localization = localization;
     }
 
+    /**
+     * Создает Canvas и возвращает его.
+     */
     public Canvas createCanvas(double width, double height) {
         canvas = new Canvas(width, height);
         gc = canvas.getGraphicsContext2D();
@@ -50,6 +52,9 @@ public class VehicleCanvasController {
         return canvas;
     }
 
+    /**
+     * Обновляет данные и перерисовывает Canvas.
+     */
     public void updateData(List<Vehicle> vehicles) {
         if (vehicles == null) return;
         this.vehicles = vehicles;
@@ -57,6 +62,9 @@ public class VehicleCanvasController {
         drawAll();
     }
 
+    /**
+     * Рассчитывает масштаб и смещение на основе всех координат.
+     */
     private void calculateScaling() {
         if (vehicles.isEmpty()) {
             scaleX = 1.0;
@@ -78,6 +86,7 @@ public class VehicleCanvasController {
             if (y > maxY) maxY = y;
         }
 
+        // Добавляем отступы, чтобы объекты не прилипали к краям
         double padding = 50;
         double rangeX = maxX - minX + 2 * padding;
         double rangeY = maxY - minY + 2 * padding;
@@ -93,15 +102,21 @@ public class VehicleCanvasController {
         offsetY = padding - minY * scaleY;
     }
 
+    /**
+     * Преобразует логические координаты в пиксели Canvas.
+     */
     private double toPixelX(double logicalX) {
         return logicalX * scaleX + offsetX;
     }
 
     private double toPixelY(double logicalY) {
-        // Инвертируем Y потому что в canvas Y растёт вниз
+        // Инвертируем Y, потому что в Canvas ось Y направлена вниз, а в математике/БД обычно вверх
         return canvas.getHeight() - (logicalY * scaleY + offsetY);
     }
 
+    /**
+     * Получает цвет для владельца (хеш → HSB).
+     */
     private Color getOwnerColor(String ownerLogin) {
         if (ownerLogin == null || ownerLogin.isEmpty()) {
             return Color.GRAY;
@@ -113,59 +128,103 @@ public class VehicleCanvasController {
         });
     }
 
+    /**
+     * Отрисовывает все объекты.
+     */
     private void drawAll() {
         if (gc == null) return;
 
-        // Очистка canvas
+        // Очистка
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
-        // Рисуем сетку
-        drawGrid();
+        // Рисуем сетку и оси
+        drawGridAndAxes();
 
-        // Рисуем все объекты
+        // Рисуем объекты
         for (Vehicle v : vehicles) {
             drawVehicle(v);
         }
     }
 
-    private void drawGrid() {
+    /**
+     * Отрисовывает сетку и координатные оси X и Y.
+     */
+    private void drawGridAndAxes() {
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+
+        // --- Сетка ---
         gc.setStroke(Color.LIGHTGRAY);
         gc.setLineWidth(0.5);
 
-        for (double x = 0; x < canvas.getWidth(); x += 50) {
-            gc.strokeLine(x, 0, x, canvas.getHeight());
+        // Вертикальные линии сетки
+        for (double x = 0; x <= w; x += 50) {
+            gc.strokeLine(x, 0, x, h);
         }
-        for (double y = 0; y < canvas.getHeight(); y += 50) {
-            gc.strokeLine(0, y, canvas.getWidth(), y);
+        // Горизонтальные линии сетки
+        for (double y = 0; y <= h; y += 50) {
+            gc.strokeLine(0, y, w, y);
+        }
+
+        // --- Оси X и Y ---
+        // Находим пиксельные координаты нуля (0,0) из логических координат
+        double zeroX = toPixelX(0);
+        double zeroY = toPixelY(0);
+
+        gc.setStroke(Color.BLACK);
+        gc.setLineWidth(2.0);
+
+        // Ось X (горизонтальная линия через Y=0)
+        if (zeroY >= 0 && zeroY <= h) {
+            gc.strokeLine(0, zeroY, w, zeroY);
+            // Подпись "X"
+            gc.setFill(Color.BLACK);
+            gc.setFont(Font.font(14));
+            gc.fillText("X", w - 20, zeroY - 10);
+        }
+
+        // Ось Y (вертикальная линия через X=0)
+        if (zeroX >= 0 && zeroX <= w) {
+            gc.strokeLine(zeroX, 0, zeroX, h);
+            // Подпись "Y"
+            gc.setFill(Color.BLACK);
+            gc.setFont(Font.font(14));
+            gc.fillText("Y", zeroX + 10, 20);
+
+            // Подпись "0" в начале координат
+            gc.fillText("0", zeroX + 5, zeroY + 15);
         }
     }
 
+    /**
+     * Отрисовывает один объект в зависимости от типа.
+     */
     private void drawVehicle(Vehicle v) {
         double px = toPixelX(v.getCoordinates().getX());
         double py = toPixelY(v.getCoordinates().getY());
+        double size = 20; // Размер фигуры
 
         Color color = getOwnerColor(v.getOwnerLogin());
         gc.setFill(color);
         gc.setStroke(color.darker());
         gc.setLineWidth(2);
 
-        // Рисуем в зависимости от типа (используем существующие значения VehicleType)
         switch (v.getType()) {
-            case BOAT -> drawBoat(px, py, SIZE);
-            case HELICOPTER -> drawHelicopter(px, py, SIZE);
-            case HOVERBOARD -> drawHoverboard(px, py, SIZE);
-            case PLANE -> drawPlane(px, py, SIZE);
-            case SHIP -> drawShip(px, py, SIZE);
-            default -> drawCircle(px, py, SIZE); // fallback
+            case BOAT -> drawBoat(px, py, size);
+            case HELICOPTER -> drawHelicopter(px, py, size);
+            case HOVERBOARD -> drawHoverboard(px, py, size);
+            case PLANE -> drawPlane(px, py, size);
+            case SHIP -> drawShip(px, py, size);
+            default -> drawCircle(px, py, size); // fallback
         }
 
-        // Подпись только ID (как в оригинале)
+        // Подпись ID
         gc.setFill(Color.BLACK);
         gc.setFont(Font.font(10));
-        gc.fillText(String.valueOf(v.getId()), px - 5, py + SIZE + 15);
+        gc.fillText(String.valueOf(v.getId()), px - 5, py + size + 15);
     }
 
-    // === Примитивы отрисовки (как в оригинале) ===
+    // === Примитивы ===
 
     private void drawCircle(double cx, double cy, double r) {
         gc.fillOval(cx - r, cy - r, 2 * r, 2 * r);
@@ -205,6 +264,9 @@ public class VehicleCanvasController {
         gc.strokePolygon(xPoints, yPoints, 4);
     }
 
+    /**
+     * Обработка клика по Canvas — поиск ближайшего объекта.
+     */
     private void handleMouseClick(MouseEvent event) {
         double clickX = event.getX();
         double clickY = event.getY();
@@ -217,8 +279,7 @@ public class VehicleCanvasController {
             double vy = toPixelY(v.getCoordinates().getY());
             double dist = Math.sqrt(Math.pow(clickX - vx, 2) + Math.pow(clickY - vy, 2));
 
-            // Радиус попадания 20px как в оригинале
-            if (dist < 20 && dist < minDist) {
+            if (dist < 20 && dist < minDist) { // радиус попадания 20px
                 minDist = dist;
                 closest = v;
             }
@@ -229,6 +290,9 @@ public class VehicleCanvasController {
         }
     }
 
+    /**
+     * Показывает информацию об объекте в Alert.
+     */
     private void showVehicleInfo(Vehicle v) {
         Alert alert = new Alert(AlertType.INFORMATION);
         alert.setTitle(localization.get("vehicle.info"));
@@ -242,5 +306,12 @@ public class VehicleCanvasController {
                         "Price: " + v.getPrice()
         );
         alert.showAndWait();
+    }
+
+    /**
+     * Публичный метод для внешнего обновления данных.
+     */
+    public void setData(List<Vehicle> vehicles) {
+        updateData(vehicles);
     }
 }
