@@ -228,22 +228,34 @@ public class CommandDialogHandler {
                 Platform.runLater(() -> {
                     if (response != null) {
                         if (response.isSuccess()) {
-                            // 1. Обновление таблицы, если сервер вернул коллекцию
-                            Object data = response.getData();
-                            if (data instanceof List) {
-                                List<?> dataList = (List<?>) data;
-                                List<Vehicle> vehicles = dataList.stream()
-                                        .filter(obj -> obj instanceof Vehicle)
-                                        .map(obj -> (Vehicle) obj)
-                                        .collect(Collectors.toList());
-                                if (tableController != null && !vehicles.isEmpty()) {
-                                    tableController.updateData(vehicles);
+                            // Для команды show парсим текст обратно в объекты
+                            if ("show".equals(commandName)) {
+                                String message = response.getMessage();
+                                if (message != null && !message.trim().isEmpty()) {
+                                    List<Vehicle> vehicles = VehicleTextParser.parseVehicleList(message);
+                                    if (tableController != null && !vehicles.isEmpty()) {
+                                        tableController.updateData(vehicles);
+                                    }
+                                    showScrollableInfo(message);
                                 }
-                            }
-                            // 2. Показ текстового результата
-                            String message = response.getMessage();
-                            if (message != null && !message.trim().isEmpty()) {
-                                showScrollableInfo(message);
+                            } else {
+                                // Для остальных команд - как было
+                                Object data = response.getData();
+                                if (data instanceof List) {
+                                    List<?> dataList = (List<?>) data;
+                                    List<Vehicle> vehicles = dataList.stream()
+                                            .filter(obj -> obj instanceof Vehicle)
+                                            .map(obj -> (Vehicle) obj)
+                                            .collect(Collectors.toList());
+                                    if (tableController != null && !vehicles.isEmpty()) {
+                                        tableController.updateData(vehicles);
+                                    }
+                                }
+
+                                String message = response.getMessage();
+                                if (message != null && !message.trim().isEmpty()) {
+                                    showScrollableInfo(message);
+                                }
                             }
                         } else {
                             showError(response.getMessage());

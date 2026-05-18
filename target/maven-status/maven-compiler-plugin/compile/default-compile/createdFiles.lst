@@ -43,6 +43,7 @@ server/collection/VehicleManager.class
 server/database/VehicleDao.class
 common/CommandResponse.class
 server/commands/CommandParams.class
+client/gui/VehicleTextParser.class
 client/gui/MainScene.class
 common/Vehicle.class
 client/gui/VehicleTableController$1.class

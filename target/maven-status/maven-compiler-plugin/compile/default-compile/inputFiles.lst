@@ -17,6 +17,7 @@
 /home/dashalin/IdeaProjects/lab8/src/server/commands/ShowBalanceCommand.java
 /home/dashalin/IdeaProjects/lab8/src/server/service/ServerContext.java
 /home/dashalin/IdeaProjects/lab8/src/client/logic/Executor.java
+/home/dashalin/IdeaProjects/lab8/src/client/gui/VehicleTextParser.java
 /home/dashalin/IdeaProjects/lab8/src/common/CommandResponse.java
 /home/dashalin/IdeaProjects/lab8/src/server/collection/VehicleManager.java
 /home/dashalin/IdeaProjects/lab8/src/common/CommandRequest.java

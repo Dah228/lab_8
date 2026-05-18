@@ -5,7 +5,6 @@ import common.CommandRequest;
 import common.CommandResponse;
 import common.Vehicle;
 import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -22,6 +21,7 @@ public class MainScene {
     private final String currentUserPassword;
     private final NetworkService networkService;
 
+    // Контроллеры
     private VehicleTableController tableController;
     private VehicleCanvasController canvasController;
     private CommandDialogHandler commandHandler;
@@ -97,18 +97,27 @@ public class MainScene {
         hbox.getChildren().addAll(userLabel, spacer, langLabel, langComboBox);
         return hbox;
     }
+
     private VBox createCenterBox() {
         VBox vbox = new VBox(15);
         vbox.setPadding(new Insets(10));
-        vbox.setAlignment(Pos.CENTER);
+        vbox.setAlignment(Pos.TOP_CENTER);
         vbox.setStyle("-fx-background-color: #f5f5f5;");
 
-        // Пустой центральный блок или можно добавить логотип/заголовок
-        Label titleLabel = new Label("Vehicle Manager");
-        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
+        // 1. Создаем контроллер таблицы
+        tableController = new VehicleTableController(localization);
+        VBox tablePane = tableController.createTablePane();
 
-        vbox.getChildren().add(titleLabel);
-        VBox.setVgrow(titleLabel, Priority.ALWAYS);
+        // 2. Связываем контроллер таблицы с обработчиком команд
+        // Это позволит команде show (и другим) обновлять данные в таблице
+        if (commandHandler != null) {
+            commandHandler.setTableController(tableController);
+        }
+
+        // 3. Добавляем таблицу в центральный блок
+        vbox.getChildren().add(tablePane);
+        VBox.setVgrow(tablePane, Priority.ALWAYS);
+
         return vbox;
     }
 
@@ -177,64 +186,6 @@ public class MainScene {
     private void updateUITexts() {
         userLabel.setText(localization.get("main.user.label") + " " + currentUserLogin);
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
-    }
-
-    public void requestShowFromServer() {
-        new Thread(() -> {
-            try {
-                CommandRequest request = new CommandRequest("show", List.of("show"), null, true,
-                        currentUserLogin, currentUserPassword);
-                networkService.send(request);
-                CommandResponse response = networkService.receive();
-
-                if (response != null && response.isSuccess()) {
-                    // Получаем данные из response
-                    Object data = response.getData();
-                    if (data instanceof List) {
-                        List<?> dataList = (List<?>) data;
-                        // Преобразуем в список Vehicle
-                        List<Vehicle> vehicles = dataList.stream()
-                                .filter(obj -> obj instanceof Vehicle)
-                                .map(obj -> (Vehicle) obj)
-                                .toList();
-
-                        javafx.application.Platform.runLater(() -> {
-                            if (tableController != null) {
-                                tableController.updateData(vehicles);
-                            }
-                        });
-                    }
-
-                    // Показываем сообщение если есть
-                    String message = response.getMessage();
-                    if (message != null && !message.trim().isEmpty()) {
-                        javafx.application.Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                            alert.setTitle(localization.get("app.title"));
-                            alert.setHeaderText(null);
-                            alert.setContentText(message);
-                            alert.showAndWait();
-                        });
-                    }
-                } else if (response != null) {
-                    javafx.application.Platform.runLater(() -> {
-                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle(localization.get("app.title"));
-                        alert.setHeaderText(null);
-                        alert.setContentText(response.getMessage());
-                        alert.showAndWait();
-                    });
-                }
-            } catch (Exception e) {
-                javafx.application.Platform.runLater(() -> {
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle(localization.get("app.title"));
-                    alert.setHeaderText(null);
-                    alert.setContentText("Ошибка сети: " + e.getMessage());
-                    alert.showAndWait();
-                });
-            }
-        }).start();
     }
 
     // Метод для обновления данных извне (если нужно)
