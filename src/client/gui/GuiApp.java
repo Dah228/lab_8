@@ -1,88 +1,163 @@
 package client.gui;
 
-import client.*;
-import client.logic.ClientConfig;
-import client.logic.CommandRegistryLoader;
-import client.logic.ConnectionInitializer;
-import client.logic.NetworkService;
+import client.logic.*;
 import common.CommandResponse;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
-/**
- * Точка входа в GUI-клиент.
- * Заменяет консольный Main.java для графического режима.
- */
+import java.util.Locale;
+
 public class GuiApp extends Application {
 
     private NetworkService networkService;
     private AllCommands allCommands;
+    private LocalizationManager localization;
+    private ComboBox<Locale> langComboBox;
+    private Label statusLabel;  // ← ДОБАВИЛИ: поле для статуса
+    private Label langLabel;    // ← ДОБАВИЛИ: поле для метки языка
 
     @Override
     public void start(Stage primaryStage) {
-        // 1. Базовая сцена-заглушка
-        StackPane root = new StackPane();
-        Label statusLabel = new Label("Инициализация подключения...");
-        statusLabel.setStyle("-fx-font-size: 18px;");
-        root.getChildren().add(statusLabel);
+        localization = new LocalizationManager();
+
+        BorderPane root = new BorderPane();
+        HBox topPanel = createTopPanel();
+        root.setTop(topPanel);
+
+        StackPane center = new StackPane();
+        statusLabel = createStatusLabel(localization.get("app.status.initializing")); // ← СОХРАНЯЕМ
+        center.getChildren().add(statusLabel);
+        root.setCenter(center);
 
         Scene scene = new Scene(root, 900, 600);
-        primaryStage.setTitle("Vehicle Manager Client");
+        primaryStage.setTitle(localization.get("app.title"));
         primaryStage.setScene(scene);
         primaryStage.setResizable(true);
+        primaryStage.setOnCloseRequest(e -> cleanup());
         primaryStage.show();
 
-        // 2. Сетевая инициализация в фоновом потоке
+        startInitialization();
+    }
+
+    private HBox createTopPanel() {
+        HBox hbox = new HBox(10);
+        hbox.setPadding(new Insets(10));
+        hbox.setAlignment(Pos.CENTER_RIGHT);
+
+        langLabel = new Label(localization.get("main.lang.label")); // ← СОХРАНЯЕМ
+
+        langComboBox = new ComboBox<>();
+        langComboBox.getItems().setAll(localization.getAvailableLocales());
+        langComboBox.setCellFactory(lv -> new javafx.scene.control.ListCell<>() {
+            @Override
+            protected void updateItem(Locale item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : localization.getLocaleDisplayName(item));
+            }
+        });
+        langComboBox.setButtonCell(new javafx.scene.control.ListCell<>() {
+            @Override
+            protected void updateItem(Locale item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : localization.getLocaleDisplayName(item));
+            }
+        });
+
+        langComboBox.setValue(localization.getCurrentLocale());
+
+        langComboBox.setOnAction(e -> {
+            Locale selected = langComboBox.getValue();
+            if (selected != null) {
+                localization.setLocale(selected);
+                updateUITexts();
+            }
+        });
+
+        hbox.getChildren().addAll(langLabel, langComboBox);
+        return hbox;
+    }
+
+    private void updateUITexts() {
+        // Обновляем ВСЕ тексты в UI при смене языка
+        Stage stage = (Stage) langComboBox.getScene().getWindow();
+        stage.setTitle(localization.get("app.title"));
+
+        // Обновляем метку языка
+        if (langLabel != null) {
+            langLabel.setText(localization.get("main.lang.label"));
+        }
+
+        // Обновляем статус (если уже инициализирован)
+        if (statusLabel != null && allCommands != null) {
+            statusLabel.setText(localization.get("app.status.connected") +
+                    " | " + localization.get("app.commands_loaded") + ": " +
+                    allCommands.getCommandType("help"));
+        }
+    }
+
+    private Label createStatusLabel(String text) {
+        Label label = new Label(text);
+        label.setStyle("-fx-font-size: 18px;");
+        return label;
+    }
+
+    // ← УБРАЛИ параметр statusLabel, теперь используем поле класса
+    private void startInitialization() {
         Task<Void> initTask = new Task<>() {
             @Override
-            protected Void call() throws Exception {
-                updateMessage("Подключение к серверу...");
-                ClientConfig config = ClientConfig.defaultConfig();
-                networkService = new NetworkService(config.host(), config.port());
+            protected Void call() {
+                try {
+                    updateMessage(localization.get("app.status.connecting"));
 
-                ConnectionInitializer initializer = new ConnectionInitializer(networkService, "connected");
-                CommandResponse initResponse = initializer.initialize();
+                    ClientConfig config = ClientConfig.defaultConfig();
+                    networkService = new NetworkService(config.host(), config.port());
 
-                if (initResponse == null) {
-                    throw new RuntimeException("Сервер не ответил на рукопожатие");
+                    ConnectionInitializer initializer = new ConnectionInitializer(networkService, "connected");
+                    CommandResponse initResponse = initializer.initialize();
+                    if (initResponse == null) {
+                        throw new RuntimeException(localization.get("error.handshake"));
+                    }
+
+                    updateMessage(localization.get("app.status.loading_commands"));
+
+                    CommandRegistryLoader loader = new CommandRegistryLoader(networkService);
+                    allCommands = loader.loadCommands(initResponse);
+                    if (allCommands == null) {
+                        throw new RuntimeException(localization.get("error.commands_load"));
+                    }
+
+                    updateMessage(localization.get("app.status.ready"));
+                    return null;
+                } catch (Exception e) {
+                    throw new RuntimeException(e.getMessage(), e);
                 }
-
-                updateMessage("Загрузка команд...");
-                CommandRegistryLoader registryLoader = new CommandRegistryLoader(networkService);
-                allCommands = registryLoader.loadCommands(initResponse);
-
-                if (allCommands == null) {
-                    throw new RuntimeException("Ошибка загрузки карты команд");
-                }
-
-                updateMessage("Готово! Переход к авторизации...");
-                return null;
             }
         };
 
-        // 3. Обработка успешного завершения (выполняется в JavaFX Thread)
-        initTask.setOnSucceeded(e -> {
-            Platform.runLater(() -> {
-                statusLabel.setText("✅ Подключено. Загружено команд: " + allCommands.getCommandType("help"));
-                // В следующих этапах здесь будет вызов AuthScene
-            });
-        });
+        initTask.setOnSucceeded(e -> Platform.runLater(() -> {
+            // ← Используем поле класса statusLabel
+            statusLabel.setText(localization.get("app.status.connected") +
+                    " | " + localization.get("app.commands_loaded") + ": " +
+                    allCommands.getCommandType("help"));
+        }));
 
-        // 4. Обработка ошибок
-        initTask.setOnFailed(e -> {
-            Platform.runLater(() -> {
-                String error = initTask.getException() != null ? initTask.getException().getMessage() : "Неизвестная ошибка";
-                statusLabel.setText("❌ Ошибка подключения: " + error);
-                // Можно добавить кнопку "Повторить" или завершить приложение
-            });
-        });
+        initTask.setOnFailed(e -> Platform.runLater(() -> {
+            String error = initTask.getException() != null
+                    ? initTask.getException().getMessage()
+                    : localization.get("error.unknown");
+            statusLabel.setText(localization.get("app.status.error") + ": " + error);
+        }));
 
-        // 5. Запуск в отдельном потоке
         Thread thread = new Thread(initTask, "Client-Init-Thread");
         thread.setDaemon(true);
         thread.start();
@@ -90,14 +165,16 @@ public class GuiApp extends Application {
 
     @Override
     public void stop() {
-        // Корректное закрытие сети при выходе из приложения
+        cleanup();
+    }
+
+    private void cleanup() {
         if (networkService != null && networkService.isConnected()) {
-            System.out.println("Закрытие сетевого соединения...");
+            System.out.println(localization.get("app.status.disconnecting"));
             networkService.disconnect();
         }
     }
 
-    // Запуск через JavaFX Application Thread
     public static void main(String[] args) {
         launch(args);
     }
