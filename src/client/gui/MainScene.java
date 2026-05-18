@@ -97,29 +97,18 @@ public class MainScene {
         hbox.getChildren().addAll(userLabel, spacer, langLabel, langComboBox);
         return hbox;
     }
-
     private VBox createCenterBox() {
         VBox vbox = new VBox(15);
         vbox.setPadding(new Insets(10));
-        vbox.setAlignment(Pos.TOP_CENTER);
+        vbox.setAlignment(Pos.CENTER);
+        vbox.setStyle("-fx-background-color: #f5f5f5;");
 
-        Label tableTitle = new Label(localization.get("main.table.title"));
-        tableTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        // Пустой центральный блок или можно добавить логотип/заголовок
+        Label titleLabel = new Label("Vehicle Manager");
+        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
 
-        tableController = new VehicleTableController(localization);
-        VBox tablePane = tableController.createTablePane();
-        commandHandler.setTableController(tableController);
-
-        // Canvas пока заглушка
-        StackPane canvasPlaceholder = new StackPane();
-        canvasPlaceholder.setMinHeight(200);
-        canvasPlaceholder.setStyle("-fx-border-color: gray; -fx-border-width: 1; -fx-background-color: white;");
-        Label canvasText = new Label("[Canvas с визуализацией - будет добавлен]");
-        canvasPlaceholder.getChildren().add(canvasText);
-
-        vbox.getChildren().addAll(tableTitle, tablePane, canvasPlaceholder);
-        VBox.setVgrow(tablePane, Priority.ALWAYS);
-
+        vbox.getChildren().add(titleLabel);
+        VBox.setVgrow(titleLabel, Priority.ALWAYS);
         return vbox;
     }
 
@@ -129,14 +118,12 @@ public class MainScene {
         hbox.setAlignment(Pos.CENTER);
         hbox.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #cccccc; -fx-border-width: 1 0 0 0;");
 
-        // Создаем кнопки с локализованными названиями
-        Button btnShow = new Button(localization.get("table.refresh"));
+        // Создаем кнопки
+        Button btnShow = new Button("show");
         Button btnAdd = new Button("add");
         Button btnUpdate = new Button("update");
         Button btnRemove = new Button("remove_by_id");
         Button btnClear = new Button("clear");
-
-        // Дополнительные команды
         Button btnInfo = new Button("info");
         Button btnSort = new Button("sort");
         Button btnPrintDesc = new Button("print_descending");
@@ -148,8 +135,8 @@ public class MainScene {
         Button btnDeposit = new Button("deposit");
         Button btnExit = new Button("exit");
 
-        // Обработчики
-        btnShow.setOnAction(e -> requestShowFromServer());
+        // Обработчики — ВСЕ команды через commandHandler
+        btnShow.setOnAction(e -> commandHandler.executeShow());
         btnAdd.setOnAction(e -> commandHandler.executeAdd());
         btnUpdate.setOnAction(e -> commandHandler.executeUpdate());
         btnRemove.setOnAction(e -> commandHandler.executeRemoveById());

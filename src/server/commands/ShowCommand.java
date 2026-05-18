@@ -16,8 +16,17 @@ public class ShowCommand implements Command {
     public ReturnCode execute(CommandParams params) {
         if (params.args().size() != 1) return ReturnCode.FAILED;
 
-        // Отправляем объекты в data, а не как текст
+        // 1. Отправляем коллекцию в data (для таблицы на клиенте)
         params.responseSender().sendCollection(manager.showCollection());
+
+        // 2. Отправляем форматированный текст (для окна с результатом)
+        if (params.isLaud()) {
+            VehicleFormatter.printVehicleList(
+                    new java.util.ArrayList<>(manager.showCollection()),
+                    params.responseSender()
+            );
+        }
+
         return ReturnCode.OK;
     }
 

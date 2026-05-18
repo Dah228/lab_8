@@ -355,4 +355,8 @@ public class CommandDialogHandler {
 
         return dialog.showAndWait().orElse(null);
     }
+
+    public void executeShow() {
+        sendCommand("show", List.of("show"), null);
+    }
 }
