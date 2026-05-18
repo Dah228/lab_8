@@ -1,22 +1,20 @@
 package client.gui;
 
 import client.logic.NetworkService;
-import common.CommandRequest;
-import common.CommandResponse;
-import common.Vehicle;
-import common.VehicleType;
-import common.FuelType;
+import common.*;
+import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
-import javafx.util.Callback;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class CommandDialogHandler {
     private final NetworkService networkService;
     private final LocalizationManager localization;
     private final String login;
     private final String password;
+    private VehicleTableController tableController;
 
     public CommandDialogHandler(NetworkService networkService, LocalizationManager localization,
                                 String login, String password) {
@@ -25,6 +23,12 @@ public class CommandDialogHandler {
         this.login = login;
         this.password = password;
     }
+
+    public void setTableController(VehicleTableController tableController) {
+        this.tableController = tableController;
+    }
+
+    // ==================== ПУБЛИЧНЫЕ МЕТОДЫ КОМАНД ====================
 
     public void executeAdd() {
         Vehicle vehicle = showVehicleDialog(null);
@@ -38,10 +42,9 @@ public class CommandDialogHandler {
         dialog.setTitle(localization.get("app.title"));
         dialog.setHeaderText("Удаление по ID");
         dialog.setContentText("Введите ID:");
-
         dialog.showAndWait().ifPresent(id -> {
             try {
-                long idLong = Long.parseLong(id);
+                Long.parseLong(id); // валидация
                 sendCommand("remove_by_id", List.of("remove_by_id", id), null);
             } catch (NumberFormatException e) {
                 showError("Некорректный ID");
@@ -54,7 +57,6 @@ public class CommandDialogHandler {
         alert.setTitle(localization.get("app.title"));
         alert.setHeaderText("Очистка коллекции");
         alert.setContentText("Вы уверены, что хотите удалить все свои объекты?");
-
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 sendCommand("clear", List.of("clear"), null);
@@ -69,7 +71,6 @@ public class CommandDialogHandler {
             dialog.setTitle(localization.get("app.title"));
             dialog.setHeaderText("Обновление элемента");
             dialog.setContentText("Введите ID:");
-
             dialog.showAndWait().ifPresent(id -> {
                 try {
                     long idLong = Long.parseLong(id);
@@ -82,35 +83,20 @@ public class CommandDialogHandler {
         }
     }
 
-    public void executeInfo() {
-        sendCommand("info", List.of("info"), null);
-    }
-
-    public void executeSort() {
-        sendCommand("sort", List.of("sort"), null);
-    }
-
-    public void executePrintDescending() {
-        sendCommand("print_descending", List.of("print_descending"), null);
-    }
-
-    public void executeShuffle() {
-        sendCommand("shuffle", List.of("shuffle"), null);
-    }
-
-    public void executeHelp() {
-        sendCommand("help", List.of("help"), null);
-    }
+    public void executeInfo() { sendCommand("info", List.of("info"), null); }
+    public void executeSort() { sendCommand("sort", List.of("sort"), null); }
+    public void executePrintDescending() { sendCommand("print_descending", List.of("print_descending"), null); }
+    public void executeShuffle() { sendCommand("shuffle", List.of("shuffle"), null); }
+    public void executeHelp() { sendCommand("help", List.of("help"), null); }
 
     public void executeFilterByEnginePower() {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle(localization.get("app.title"));
         dialog.setHeaderText("Фильтр по мощности двигателя");
         dialog.setContentText("Введите минимальную мощность:");
-
         dialog.showAndWait().ifPresent(power -> {
             try {
-                float powerFloat = Float.parseFloat(power);
+                Float.parseFloat(power);
                 sendCommand("filter_greater_than_engine_power",
                         List.of("filter_greater_than_engine_power", power), null);
             } catch (NumberFormatException e) {
@@ -123,12 +109,10 @@ public class CommandDialogHandler {
         ComboBox<VehicleType> comboBox = new ComboBox<>();
         comboBox.getItems().addAll(VehicleType.values());
         comboBox.setValue(VehicleType.BOAT);
-
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle(localization.get("app.title"));
         alert.setHeaderText("Фильтр по типу (меньше)");
         alert.getDialogPane().setContent(comboBox);
-
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 VehicleType type = comboBox.getValue();
@@ -142,12 +126,10 @@ public class CommandDialogHandler {
         ComboBox<String> comboBox = new ComboBox<>();
         comboBox.getItems().addAll("TYPE", "FUELTYPE", "COORDINATES");
         comboBox.setValue("TYPE");
-
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle(localization.get("app.title"));
         alert.setHeaderText("Группировка по полю");
         alert.getDialogPane().setContent(comboBox);
-
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 String field = comboBox.getValue();
@@ -168,10 +150,9 @@ public class CommandDialogHandler {
         dialog.setTitle(localization.get("app.title"));
         dialog.setHeaderText("Покупка ТС");
         dialog.setContentText("Введите ID транспортного средства:");
-
         dialog.showAndWait().ifPresent(id -> {
             try {
-                long idLong = Long.parseLong(id);
+                Long.parseLong(id);
                 sendCommand("buy", List.of("buy", id), null);
             } catch (NumberFormatException e) {
                 showError("Некорректный ID");
@@ -179,16 +160,13 @@ public class CommandDialogHandler {
         });
     }
 
-    public void executeShowBalance() {
-        sendCommand("show_balance", List.of("show_balance"), null);
-    }
+    public void executeShowBalance() { sendCommand("show_balance", List.of("show_balance"), null); }
 
     public void executeDeposit() {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle(localization.get("app.title"));
         dialog.setHeaderText("Пополнение баланса");
         dialog.setContentText("Введите сумму:");
-
         dialog.showAndWait().ifPresent(amount -> {
             try {
                 double amountDouble = Double.parseDouble(amount);
@@ -208,16 +186,13 @@ public class CommandDialogHandler {
         idDialog.setTitle(localization.get("app.title"));
         idDialog.setHeaderText("Установка цены");
         idDialog.setContentText("Введите ID:");
-
         idDialog.showAndWait().ifPresent(id -> {
             try {
-                long idLong = Long.parseLong(id);
-
+                Long.parseLong(id);
                 TextInputDialog priceDialog = new TextInputDialog();
                 priceDialog.setTitle(localization.get("app.title"));
                 priceDialog.setHeaderText("Установка цены");
                 priceDialog.setContentText("Введите цену:");
-
                 priceDialog.showAndWait().ifPresent(price -> {
                     try {
                         double priceDouble = Double.parseDouble(price);
@@ -236,6 +211,83 @@ public class CommandDialogHandler {
         });
     }
 
+    // ==================== ВНУТРЕННЯЯ ЛОГИКА ====================
+
+    /**
+     * Отправляет команду на сервер и обрабатывает ответ:
+     * - если в data есть List<Vehicle> → обновляет таблицу
+     * - если есть текстовое сообщение → показывает в прокручиваемом окне
+     */
+    private void sendCommand(String commandName, List<String> args, Vehicle vehicle) {
+        new Thread(() -> {
+            try {
+                CommandRequest request = new CommandRequest(commandName, args, vehicle, true, login, password);
+                networkService.send(request);
+                CommandResponse response = networkService.receive();
+
+                Platform.runLater(() -> {
+                    if (response != null) {
+                        if (response.isSuccess()) {
+                            // 1. Обновление таблицы, если сервер вернул коллекцию
+                            Object data = response.getData();
+                            if (data instanceof List) {
+                                List<?> dataList = (List<?>) data;
+                                List<Vehicle> vehicles = dataList.stream()
+                                        .filter(obj -> obj instanceof Vehicle)
+                                        .map(obj -> (Vehicle) obj)
+                                        .collect(Collectors.toList());
+                                if (tableController != null && !vehicles.isEmpty()) {
+                                    tableController.updateData(vehicles);
+                                }
+                            }
+                            // 2. Показ текстового результата
+                            String message = response.getMessage();
+                            if (message != null && !message.trim().isEmpty()) {
+                                showScrollableInfo(message);
+                            }
+                        } else {
+                            showError(response.getMessage());
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showError("Ошибка сети: " + e.getMessage()));
+            }
+        }).start();
+    }
+
+    /** Прокручиваемое окно для текстовых результатов */
+    private void showScrollableInfo(String message) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle(localization.get("app.title"));
+        dialog.setHeaderText("Результат выполнения");
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
+        dialog.setResizable(true);
+
+        TextArea textArea = new TextArea(message);
+        textArea.setEditable(false);
+        textArea.setWrapText(true);
+        textArea.setStyle("-fx-font-size: 13px; -fx-background-color: transparent;");
+
+        ScrollPane scrollPane = new ScrollPane(textArea);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setPrefSize(600, 350);
+
+        dialog.getDialogPane().setContent(scrollPane);
+        dialog.showAndWait();
+    }
+
+    /** Окно ошибки (компактное, без скролла) */
+    private void showError(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(localization.get("app.title"));
+        alert.setHeaderText(null);
+        alert.setContentText(message != null ? message : "Произошла неизвестная ошибка");
+        alert.showAndWait();
+    }
+
+    /** Диалог добавления/редактирования Vehicle */
     private Vehicle showVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
         dialog.setTitle(localization.get("app.title"));
@@ -269,22 +321,14 @@ public class CommandDialogHandler {
         fuelCombo.getItems().addAll(FuelType.values());
         fuelCombo.setValue(existing != null && existing.getFuelType() != null ? existing.getFuelType() : FuelType.GASOLINE);
 
-        grid.add(new Label("Название:"), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label("X:"), 0, 1);
-        grid.add(xField, 1, 1);
-        grid.add(new Label("Y:"), 0, 2);
-        grid.add(yField, 1, 2);
-        grid.add(new Label("Мощность:"), 0, 3);
-        grid.add(powerField, 1, 3);
-        grid.add(new Label("Дистанция:"), 0, 4);
-        grid.add(distanceField, 1, 4);
-        grid.add(new Label("Тип:"), 0, 5);
-        grid.add(typeCombo, 1, 5);
-        grid.add(new Label("Топливо:"), 0, 6);
-        grid.add(fuelCombo, 1, 6);
-        grid.add(new Label("Цена:"), 0, 7);
-        grid.add(priceField, 1, 7);
+        grid.add(new Label("Название:"), 0, 0); grid.add(nameField, 1, 0);
+        grid.add(new Label("X:"), 0, 1); grid.add(xField, 1, 1);
+        grid.add(new Label("Y:"), 0, 2); grid.add(yField, 1, 2);
+        grid.add(new Label("Мощность:"), 0, 3); grid.add(powerField, 1, 3);
+        grid.add(new Label("Дистанция:"), 0, 4); grid.add(distanceField, 1, 4);
+        grid.add(new Label("Тип:"), 0, 5); grid.add(typeCombo, 1, 5);
+        grid.add(new Label("Топливо:"), 0, 6); grid.add(fuelCombo, 1, 6);
+        grid.add(new Label("Цена:"), 0, 7); grid.add(priceField, 1, 7);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -310,45 +354,5 @@ public class CommandDialogHandler {
         });
 
         return dialog.showAndWait().orElse(null);
-    }
-
-    private void sendCommand(String commandName, List<String> args, Vehicle vehicle) {
-        new Thread(() -> {
-            try {
-                CommandRequest request = new CommandRequest(commandName, args, vehicle, true, login, password);
-                networkService.send(request);
-                CommandResponse response = networkService.receive();
-
-                if (response != null) {
-                    javafx.application.Platform.runLater(() -> {
-                        if (response.isSuccess()) {
-                            showInfo(response.getMessage());
-                        } else {
-                            showError(response.getMessage());
-                        }
-                    });
-                }
-            } catch (Exception e) {
-                javafx.application.Platform.runLater(() ->
-                        showError("Ошибка сети: " + e.getMessage())
-                );
-            }
-        }).start();
-    }
-
-    private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(localization.get("app.title"));
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
-
-    private void showInfo(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(localization.get("app.title"));
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
     }
 }

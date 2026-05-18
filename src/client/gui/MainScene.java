@@ -108,6 +108,7 @@ public class MainScene {
 
         tableController = new VehicleTableController(localization);
         VBox tablePane = tableController.createTablePane();
+        commandHandler.setTableController(tableController);
 
         // Canvas пока заглушка
         StackPane canvasPlaceholder = new StackPane();

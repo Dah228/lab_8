@@ -1,6 +1,10 @@
 === FILE: ./src/client/gui/MainScene.java ===
 package client.gui;
 
+import client.logic.NetworkService;
+import common.CommandRequest;
+import common.CommandResponse;
+import common.Vehicle;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -8,23 +12,35 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+
+import java.util.List;
 import java.util.Locale;
 
 public class MainScene {
-
     private final Stage stage;
     private final LocalizationManager localization;
     private final String currentUserLogin;
+    private final String currentUserPassword;
+    private final NetworkService networkService;
+
     private VehicleTableController tableController;
-    private VehicleCanvasController canvasController; // Добавим позже
+    private VehicleCanvasController canvasController;
+    private CommandDialogHandler commandHandler;
 
     private Label userLabel;
     private ComboBox<Locale> langComboBox;
 
-    public MainScene(Stage stage, LocalizationManager localization, String currentUserLogin) {
+    public MainScene(Stage stage, LocalizationManager localization, NetworkService networkService,
+                     String currentUserLogin, String currentUserPassword) {
         this.stage = stage;
         this.localization = localization;
+        this.networkService = networkService;
         this.currentUserLogin = currentUserLogin;
+        this.currentUserPassword = currentUserPassword;
+
+        // Создаем обработчик команд
+        this.commandHandler = new CommandDialogHandler(networkService, localization,
+                currentUserLogin, currentUserPassword);
     }
 
     public Scene createScene() {
@@ -94,20 +110,15 @@ public class MainScene {
         tableController = new VehicleTableController(localization);
         VBox tablePane = tableController.createTablePane();
 
-        SplitPane splitPane = new SplitPane();
-        splitPane.setOrientation(Orientation.VERTICAL);
-        splitPane.getItems().add(tablePane);
-
+        // Canvas пока заглушка
         StackPane canvasPlaceholder = new StackPane();
         canvasPlaceholder.setMinHeight(200);
         canvasPlaceholder.setStyle("-fx-border-color: gray; -fx-border-width: 1; -fx-background-color: white;");
-        Label canvasText = new Label("[Здесь будет Canvas с визуализацией]");
+        Label canvasText = new Label("[Canvas с визуализацией - будет добавлен]");
         canvasPlaceholder.getChildren().add(canvasText);
-        splitPane.getItems().add(canvasPlaceholder);
-        splitPane.setDividerPositions(0.7);
 
-        vbox.getChildren().addAll(tableTitle, splitPane);
-        VBox.setVgrow(splitPane, Priority.ALWAYS);
+        vbox.getChildren().addAll(tableTitle, tablePane, canvasPlaceholder);
+        VBox.setVgrow(tablePane, Priority.ALWAYS);
 
         return vbox;
     }
@@ -118,11 +129,40 @@ public class MainScene {
         hbox.setAlignment(Pos.CENTER);
         hbox.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #cccccc; -fx-border-width: 1 0 0 0;");
 
-        Button btnShow = new Button("show");
+        // Создаем кнопки с локализованными названиями
+        Button btnShow = new Button(localization.get("table.refresh"));
         Button btnAdd = new Button("add");
+        Button btnUpdate = new Button("update");
         Button btnRemove = new Button("remove_by_id");
         Button btnClear = new Button("clear");
+
+        // Дополнительные команды
+        Button btnInfo = new Button("info");
+        Button btnSort = new Button("sort");
+        Button btnPrintDesc = new Button("print_descending");
+        Button btnShuffle = new Button("shuffle");
+        Button btnHelp = new Button("help");
+        Button btnFilterEngine = new Button("filter_engine");
+        Button btnBuy = new Button("buy");
+        Button btnBalance = new Button("balance");
+        Button btnDeposit = new Button("deposit");
         Button btnExit = new Button("exit");
+
+        // Обработчики
+        btnShow.setOnAction(e -> requestShowFromServer());
+        btnAdd.setOnAction(e -> commandHandler.executeAdd());
+        btnUpdate.setOnAction(e -> commandHandler.executeUpdate());
+        btnRemove.setOnAction(e -> commandHandler.executeRemoveById());
+        btnClear.setOnAction(e -> commandHandler.executeClear());
+        btnInfo.setOnAction(e -> commandHandler.executeInfo());
+        btnSort.setOnAction(e -> commandHandler.executeSort());
+        btnPrintDesc.setOnAction(e -> commandHandler.executePrintDescending());
+        btnShuffle.setOnAction(e -> commandHandler.executeShuffle());
+        btnHelp.setOnAction(e -> commandHandler.executeHelp());
+        btnFilterEngine.setOnAction(e -> commandHandler.executeFilterByEnginePower());
+        btnBuy.setOnAction(e -> commandHandler.executeBuy());
+        btnBalance.setOnAction(e -> commandHandler.executeShowBalance());
+        btnDeposit.setOnAction(e -> commandHandler.executeDeposit());
 
         btnExit.setOnAction(e -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -130,18 +170,20 @@ public class MainScene {
             alert.setHeaderText(null);
             alert.setContentText(localization.get("confirm.exit"));
             if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+                if (networkService != null && networkService.isConnected()) {
+                    networkService.disconnect();
+                }
                 stage.close();
             }
         });
 
-        // Подключаем кнопку Show к загрузке данных
-        btnShow.setOnAction(e -> {
-            if (tableController != null) {
-                tableController.requestShowFromServer();
-            }
-        });
+        hbox.getChildren().addAll(
+                btnShow, btnAdd, btnUpdate, btnRemove, btnClear,
+                btnInfo, btnSort, btnPrintDesc, btnShuffle,
+                btnFilterEngine, btnBuy, btnBalance, btnDeposit,
+                btnHelp, btnExit
+        );
 
-        hbox.getChildren().addAll(btnShow, btnAdd, btnRemove, btnClear, btnExit);
         return hbox;
     }
 
@@ -150,17 +192,68 @@ public class MainScene {
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
     }
 
-    // Метод для обновления данных таблицы извне
-    public void updateTableData(java.util.List<common.Vehicle> vehicles) {
-        if (tableController != null) {
-            tableController.updateData(vehicles);
-        }
+    public void requestShowFromServer() {
+        new Thread(() -> {
+            try {
+                CommandRequest request = new CommandRequest("show", List.of("show"), null, true,
+                        currentUserLogin, currentUserPassword);
+                networkService.send(request);
+                CommandResponse response = networkService.receive();
+
+                if (response != null && response.isSuccess()) {
+                    // Получаем данные из response
+                    Object data = response.getData();
+                    if (data instanceof List) {
+                        List<?> dataList = (List<?>) data;
+                        // Преобразуем в список Vehicle
+                        List<Vehicle> vehicles = dataList.stream()
+                                .filter(obj -> obj instanceof Vehicle)
+                                .map(obj -> (Vehicle) obj)
+                                .toList();
+
+                        javafx.application.Platform.runLater(() -> {
+                            if (tableController != null) {
+                                tableController.updateData(vehicles);
+                            }
+                        });
+                    }
+
+                    // Показываем сообщение если есть
+                    String message = response.getMessage();
+                    if (message != null && !message.trim().isEmpty()) {
+                        javafx.application.Platform.runLater(() -> {
+                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                            alert.setTitle(localization.get("app.title"));
+                            alert.setHeaderText(null);
+                            alert.setContentText(message);
+                            alert.showAndWait();
+                        });
+                    }
+                } else if (response != null) {
+                    javafx.application.Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.ERROR);
+                        alert.setTitle(localization.get("app.title"));
+                        alert.setHeaderText(null);
+                        alert.setContentText(response.getMessage());
+                        alert.showAndWait();
+                    });
+                }
+            } catch (Exception e) {
+                javafx.application.Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle(localization.get("app.title"));
+                    alert.setHeaderText(null);
+                    alert.setContentText("Ошибка сети: " + e.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        }).start();
     }
 
-    // Метод для обновления Canvas (будет реализован на этапе 6)
-    public void updateVisualData(java.util.List<common.Vehicle> vehicles) {
-        if (canvasController != null) {
-            canvasController.setData(vehicles);
+    // Метод для обновления данных извне (если нужно)
+    public void updateTableData(List<Vehicle> vehicles) {
+        if (tableController != null) {
+            tableController.updateData(vehicles);
         }
     }
 }=== FILE: ./src/client/gui/GuiApp.java ===
@@ -172,6 +265,8 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -245,9 +340,9 @@ public class GuiApp extends Application {
     }
 
     private void showMainScene(Stage stage) {
-        MainScene mainScene = new MainScene(stage, localization, currentUserLogin);
+        MainScene mainScene = new MainScene(stage, localization, networkService,
+                currentUserLogin, currentUserPassword);
         Scene scene = mainScene.createScene();
-
         stage.setScene(scene);
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
         stage.setMinWidth(1200);
@@ -255,14 +350,14 @@ public class GuiApp extends Application {
 
         // Обработка закрытия окна
         stage.setOnCloseRequest(e -> {
-            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.CONFIRMATION);
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle(localization.get("app.title"));
             alert.setHeaderText(null);
             alert.setContentText(localization.get("confirm.exit"));
-            if (alert.showAndWait().orElse(javafx.scene.control.ButtonType.CANCEL) != javafx.scene.control.ButtonType.OK) {
-                e.consume(); // Отменяем закрытие
+            if (alert.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+                e.consume();
             } else {
-                cleanup(); // Закрываем сеть
+                cleanup();
             }
         });
     }
@@ -921,10 +1016,15 @@ public class VehicleTableController {
      * Обновляет исходные данные извне (после получения ответа от сервера).
      */
     public void updateData(List<Vehicle> vehicles) {
-        if (vehicles == null) return;
+        if (vehicles == null) {
+            allVehicles.clear();
+            filteredVehicles.clear();
+            return;
+        }
+
         // Заменяем содержимое исходного списка
         allVehicles.setAll(vehicles);
-        // Переприменяем фильтры (чтобы обновить отображаемый список)
+        // Переприменяем фильтры
         applyFilters();
     }
 
@@ -952,6 +1052,360 @@ public class VehicleTableController {
         v2.setFuelType(common.FuelType.KEROSENE); v2.setEnginePower(5000f); v2.setDistanceTravelled(100000f);
 
         updateData(List.of(v1, v2));
+    }
+}=== FILE: ./src/client/gui/CommandDialogHandler.java ===
+package client.gui;
+
+import client.logic.NetworkService;
+import common.CommandRequest;
+import common.CommandResponse;
+import common.Vehicle;
+import common.VehicleType;
+import common.FuelType;
+import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
+import javafx.util.Callback;
+
+import java.util.List;
+
+public class CommandDialogHandler {
+    private final NetworkService networkService;
+    private final LocalizationManager localization;
+    private final String login;
+    private final String password;
+
+    public CommandDialogHandler(NetworkService networkService, LocalizationManager localization,
+                                String login, String password) {
+        this.networkService = networkService;
+        this.localization = localization;
+        this.login = login;
+        this.password = password;
+    }
+
+    public void executeAdd() {
+        Vehicle vehicle = showVehicleDialog(null);
+        if (vehicle != null) {
+            sendCommand("add", List.of("add"), vehicle);
+        }
+    }
+
+    public void executeRemoveById() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle(localization.get("app.title"));
+        dialog.setHeaderText("Удаление по ID");
+        dialog.setContentText("Введите ID:");
+
+        dialog.showAndWait().ifPresent(id -> {
+            try {
+                long idLong = Long.parseLong(id);
+                sendCommand("remove_by_id", List.of("remove_by_id", id), null);
+            } catch (NumberFormatException e) {
+                showError("Некорректный ID");
+            }
+        });
+    }
+
+    public void executeClear() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(localization.get("app.title"));
+        alert.setHeaderText("Очистка коллекции");
+        alert.setContentText("Вы уверены, что хотите удалить все свои объекты?");
+
+        alert.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                sendCommand("clear", List.of("clear"), null);
+            }
+        });
+    }
+
+    public void executeUpdate() {
+        Vehicle vehicle = showVehicleDialog(null);
+        if (vehicle != null) {
+            TextInputDialog dialog = new TextInputDialog();
+            dialog.setTitle(localization.get("app.title"));
+            dialog.setHeaderText("Обновление элемента");
+            dialog.setContentText("Введите ID:");
+
+            dialog.showAndWait().ifPresent(id -> {
+                try {
+                    long idLong = Long.parseLong(id);
+                    vehicle.setId(idLong);
+                    sendCommand("update", List.of("update", id), vehicle);
+                } catch (NumberFormatException e) {
+                    showError("Некорректный ID");
+                }
+            });
+        }
+    }
+
+    public void executeInfo() {
+        sendCommand("info", List.of("info"), null);
+    }
+
+    public void executeSort() {
+        sendCommand("sort", List.of("sort"), null);
+    }
+
+    public void executePrintDescending() {
+        sendCommand("print_descending", List.of("print_descending"), null);
+    }
+
+    public void executeShuffle() {
+        sendCommand("shuffle", List.of("shuffle"), null);
+    }
+
+    public void executeHelp() {
+        sendCommand("help", List.of("help"), null);
+    }
+
+    public void executeFilterByEnginePower() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle(localization.get("app.title"));
+        dialog.setHeaderText("Фильтр по мощности двигателя");
+        dialog.setContentText("Введите минимальную мощность:");
+
+        dialog.showAndWait().ifPresent(power -> {
+            try {
+                float powerFloat = Float.parseFloat(power);
+                sendCommand("filter_greater_than_engine_power",
+                        List.of("filter_greater_than_engine_power", power), null);
+            } catch (NumberFormatException e) {
+                showError("Некорректное значение");
+            }
+        });
+    }
+
+    public void executeFilterLessThanType() {
+        ComboBox<VehicleType> comboBox = new ComboBox<>();
+        comboBox.getItems().addAll(VehicleType.values());
+        comboBox.setValue(VehicleType.BOAT);
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(localization.get("app.title"));
+        alert.setHeaderText("Фильтр по типу (меньше)");
+        alert.getDialogPane().setContent(comboBox);
+
+        alert.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                VehicleType type = comboBox.getValue();
+                sendCommand("filter_less_than_type",
+                        List.of("filter_less_than_type", type.name()), null);
+            }
+        });
+    }
+
+    public void executeGroupBy() {
+        ComboBox<String> comboBox = new ComboBox<>();
+        comboBox.getItems().addAll("TYPE", "FUELTYPE", "COORDINATES");
+        comboBox.setValue("TYPE");
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(localization.get("app.title"));
+        alert.setHeaderText("Группировка по полю");
+        alert.getDialogPane().setContent(comboBox);
+
+        alert.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                String field = comboBox.getValue();
+                sendCommand("group_by", List.of("group_by", field), null);
+            }
+        });
+    }
+
+    public void executeAddIfMax() {
+        Vehicle vehicle = showVehicleDialog(null);
+        if (vehicle != null) {
+            sendCommand("add_if_max", List.of("add_if_max"), vehicle);
+        }
+    }
+
+    public void executeBuy() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle(localization.get("app.title"));
+        dialog.setHeaderText("Покупка ТС");
+        dialog.setContentText("Введите ID транспортного средства:");
+
+        dialog.showAndWait().ifPresent(id -> {
+            try {
+                long idLong = Long.parseLong(id);
+                sendCommand("buy", List.of("buy", id), null);
+            } catch (NumberFormatException e) {
+                showError("Некорректный ID");
+            }
+        });
+    }
+
+    public void executeShowBalance() {
+        sendCommand("show_balance", List.of("show_balance"), null);
+    }
+
+    public void executeDeposit() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle(localization.get("app.title"));
+        dialog.setHeaderText("Пополнение баланса");
+        dialog.setContentText("Введите сумму:");
+
+        dialog.showAndWait().ifPresent(amount -> {
+            try {
+                double amountDouble = Double.parseDouble(amount);
+                if (amountDouble > 0) {
+                    sendCommand("deposit", List.of("deposit", amount), null);
+                } else {
+                    showError("Сумма должна быть положительной");
+                }
+            } catch (NumberFormatException e) {
+                showError("Некорректная сумма");
+            }
+        });
+    }
+
+    public void executeSetPrice() {
+        TextInputDialog idDialog = new TextInputDialog();
+        idDialog.setTitle(localization.get("app.title"));
+        idDialog.setHeaderText("Установка цены");
+        idDialog.setContentText("Введите ID:");
+
+        idDialog.showAndWait().ifPresent(id -> {
+            try {
+                long idLong = Long.parseLong(id);
+
+                TextInputDialog priceDialog = new TextInputDialog();
+                priceDialog.setTitle(localization.get("app.title"));
+                priceDialog.setHeaderText("Установка цены");
+                priceDialog.setContentText("Введите цену:");
+
+                priceDialog.showAndWait().ifPresent(price -> {
+                    try {
+                        double priceDouble = Double.parseDouble(price);
+                        if (priceDouble >= 0) {
+                            sendCommand("set_price", List.of("set_price", id, price), null);
+                        } else {
+                            showError("Цена не может быть отрицательной");
+                        }
+                    } catch (NumberFormatException e) {
+                        showError("Некорректная цена");
+                    }
+                });
+            } catch (NumberFormatException e) {
+                showError("Некорректный ID");
+            }
+        });
+    }
+
+    private Vehicle showVehicleDialog(Vehicle existing) {
+        Dialog<Vehicle> dialog = new Dialog<>();
+        dialog.setTitle(localization.get("app.title"));
+        dialog.setHeaderText(existing == null ? "Добавление ТС" : "Редактирование ТС");
+
+        ButtonType saveButtonType = new ButtonType(localization.get("dialog.save"), ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+
+        TextField nameField = new TextField(existing != null ? existing.getName() : "");
+        nameField.setPromptText("Название");
+        TextField xField = new TextField(existing != null ? String.valueOf(existing.getCoordinates().getX()) : "0");
+        xField.setPromptText("X");
+        TextField yField = new TextField(existing != null ? String.valueOf(existing.getCoordinates().getY()) : "0");
+        yField.setPromptText("Y");
+        TextField powerField = new TextField(existing != null ? String.valueOf(existing.getEnginePower()) : "0");
+        powerField.setPromptText("Мощность");
+        TextField distanceField = new TextField(existing != null ? String.valueOf(existing.getDistanceTravelled()) : "0");
+        distanceField.setPromptText("Дистанция");
+        TextField priceField = new TextField(existing != null ? String.valueOf(existing.getPrice()) : "0");
+        priceField.setPromptText("Цена");
+
+        ComboBox<VehicleType> typeCombo = new ComboBox<>();
+        typeCombo.getItems().addAll(VehicleType.values());
+        typeCombo.setValue(existing != null && existing.getType() != null ? existing.getType() : VehicleType.BOAT);
+
+        ComboBox<FuelType> fuelCombo = new ComboBox<>();
+        fuelCombo.getItems().addAll(FuelType.values());
+        fuelCombo.setValue(existing != null && existing.getFuelType() != null ? existing.getFuelType() : FuelType.GASOLINE);
+
+        grid.add(new Label("Название:"), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label("X:"), 0, 1);
+        grid.add(xField, 1, 1);
+        grid.add(new Label("Y:"), 0, 2);
+        grid.add(yField, 1, 2);
+        grid.add(new Label("Мощность:"), 0, 3);
+        grid.add(powerField, 1, 3);
+        grid.add(new Label("Дистанция:"), 0, 4);
+        grid.add(distanceField, 1, 4);
+        grid.add(new Label("Тип:"), 0, 5);
+        grid.add(typeCombo, 1, 5);
+        grid.add(new Label("Топливо:"), 0, 6);
+        grid.add(fuelCombo, 1, 6);
+        grid.add(new Label("Цена:"), 0, 7);
+        grid.add(priceField, 1, 7);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType == saveButtonType) {
+                try {
+                    Vehicle v = existing != null ? existing : new Vehicle();
+                    v.setName(nameField.getText());
+                    v.setCoordinates(Integer.parseInt(xField.getText()), Float.parseFloat(yField.getText()));
+                    v.setEnginePower(Float.parseFloat(powerField.getText()));
+                    v.setDistanceTravelled(Float.parseFloat(distanceField.getText()));
+                    v.setType(typeCombo.getValue());
+                    v.setFuelType(fuelCombo.getValue());
+                    v.setPrice(Double.parseDouble(priceField.getText()));
+                    if (existing == null) v.setCreationDate();
+                    return v;
+                } catch (NumberFormatException e) {
+                    showError("Некорректные данные: " + e.getMessage());
+                    return null;
+                }
+            }
+            return null;
+        });
+
+        return dialog.showAndWait().orElse(null);
+    }
+
+    private void sendCommand(String commandName, List<String> args, Vehicle vehicle) {
+        new Thread(() -> {
+            try {
+                CommandRequest request = new CommandRequest(commandName, args, vehicle, true, login, password);
+                networkService.send(request);
+                CommandResponse response = networkService.receive();
+
+                if (response != null) {
+                    javafx.application.Platform.runLater(() -> {
+                        if (response.isSuccess()) {
+                            showInfo(response.getMessage());
+                        } else {
+                            showError(response.getMessage());
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                javafx.application.Platform.runLater(() ->
+                        showError("Ошибка сети: " + e.getMessage())
+                );
+            }
+        }).start();
+    }
+
+    private void showError(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(localization.get("app.title"));
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void showInfo(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(localization.get("app.title"));
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }=== FILE: ./src/client/gui/AuthScene.java ===
 package client.gui;
@@ -2659,22 +3113,37 @@ public class HelpCommand implements Command {
 }
 === FILE: ./src/server/commands/ShowCommand.java ===
 package server.commands;
+
 import common.CommandType;
 import common.ReturnCode;
 import server.collection.IVehicleManager;
-import static server.commands.VehicleFormatter.printVehicleList;
 
 public class ShowCommand implements Command {
     private final IVehicleManager manager;
     private final CommandType type = CommandType.NOARGS;
-    public ShowCommand(IVehicleManager manager) { this.manager = manager; }
-    @Override public ReturnCode execute(CommandParams params) {
+
+    public ShowCommand(IVehicleManager manager) {
+        this.manager = manager;
+    }
+
+    @Override
+    public ReturnCode execute(CommandParams params) {
         if (params.args().size() != 1) return ReturnCode.FAILED;
-        printVehicleList(manager.showCollection(), params.responseSender());
+
+        // Отправляем объекты в data, а не как текст
+        params.responseSender().sendCollection(manager.showCollection());
         return ReturnCode.OK;
     }
-    @Override public String getDescription() { return " вывести все элементы"; }
-    @Override public CommandType getType() { return this.type; }
+
+    @Override
+    public String getDescription() {
+        return " вывести все элементы";
+    }
+
+    @Override
+    public CommandType getType() {
+        return this.type;
+    }
 }=== FILE: ./src/server/commands/CommandParams.java ===
 package server.commands;
 
@@ -3908,9 +4377,13 @@ public class VehicleManager implements IVehicleManager {
 package server.service;
 
 import common.ResponseSender;
+import common.Vehicle;
+import java.util.List;
+import java.util.ArrayList;
 
 public class NetworkResponseSender implements ResponseSender {
     private final StringBuilder output = new StringBuilder();
+    private List<Vehicle> collectionData = new ArrayList<>();
 
     @Override
     public void send(String message) {
@@ -3919,19 +4392,31 @@ public class NetworkResponseSender implements ResponseSender {
 
     @Override
     public void sendError(String error) {
-        output.append("ERROR").append(error).append("\n");
+        output.append("ERROR: ").append(error).append("\n");
+    }
+
+    @Override
+    public void sendCollection(List<Vehicle> vehicles) {
+        this.collectionData = vehicles != null ? new ArrayList<>(vehicles) : new ArrayList<>();
     }
 
     @Override
     public String getOutput() {
         String result = output.toString();
-        clear(); // очищаем после чтения
+        clear();
         return result;
+    }
+
+    public List<Vehicle> getCollectionData() {
+        List<Vehicle> data = new ArrayList<>(collectionData);
+        collectionData.clear();
+        return data;
     }
 
     @Override
     public void clear() {
         output.setLength(0);
+        collectionData.clear();
     }
 }=== FILE: ./src/server/service/Parser.java ===
 package server.service;
@@ -4031,9 +4516,10 @@ package server.service;
 import common.CommandRequest;
 import common.CommandResponse;
 import common.ReturnCode;
+import common.Vehicle;
 import server.commands.Invoker;
-
 import java.nio.channels.SocketChannel;
+import java.util.List;
 
 public class NetworkRequestHandler {
     private final Invoker invoker;
@@ -4050,7 +4536,6 @@ public class NetworkRequestHandler {
             var arguments = request.getArguments();
             var vehicle = request.getVehicle();
             var isLaud = request.getBoolean();
-            // ← Получаем логин/пароль из запроса
             String login = request.getLogin();
             String password = request.getPassword();
 
@@ -4059,7 +4544,6 @@ public class NetworkRequestHandler {
 
             NetworkResponseSender networkSender = new NetworkResponseSender();
 
-            // ← Передаём login/password в invoker
             ReturnCode statusCode = invoker.executeCommand(
                     commandName,
                     arguments,
@@ -4071,11 +4555,15 @@ public class NetworkRequestHandler {
             );
 
             String commandOutput = networkSender.getOutput();
+            List<Vehicle> collectionData = networkSender.getCollectionData();
+
+            // Если есть данные коллекции, отправляем их в data
             CommandResponse response = new CommandResponse(
                     statusCode == ReturnCode.OK,
                     commandOutput.isEmpty() ? "Команда выполнена" : commandOutput,
-                    null
+                    collectionData.isEmpty() ? null : collectionData
             );
+
             networkService.queueResponse(clientChannel, response);
         } catch (Exception e) {
             System.err.println("Ошибка обработки запроса: " + e.getMessage());
@@ -4687,14 +5175,12 @@ public enum VehicleType implements Serializable { BOAT, HELICOPTER, HOVERBOARD, 
 === FILE: ./src/common/ResponseSender.java ===
 package common;
 
+import java.util.List;
+
 public interface ResponseSender {
     void send(String message);
     void sendError(String error);
-
-
-    /** Получить накопленные сообщения */
+    void sendCollection(List<Vehicle> vehicles);
     String getOutput();
-
-    /** Очистить буфер */
     void clear();
 }
