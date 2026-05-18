@@ -127,22 +127,22 @@ public class MainScene {
         hbox.setAlignment(Pos.CENTER);
         hbox.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #cccccc; -fx-border-width: 1 0 0 0;");
 
-        // Создаем кнопки
-        Button btnShow = new Button("show");
-        Button btnAdd = new Button("add");
-        Button btnUpdate = new Button("update");
-        Button btnRemove = new Button("remove_by_id");
-        Button btnClear = new Button("clear");
-        Button btnInfo = new Button("info");
-        Button btnSort = new Button("sort");
-        Button btnPrintDesc = new Button("print_descending");
-        Button btnShuffle = new Button("shuffle");
-        Button btnHelp = new Button("help");
-        Button btnFilterEngine = new Button("filter_engine");
-        Button btnBuy = new Button("buy");
-        Button btnBalance = new Button("balance");
-        Button btnDeposit = new Button("deposit");
-        Button btnExit = new Button("exit");
+        // Создаем кнопки с локализованными названиями
+        Button btnShow = new Button(localization.get("btn.show"));
+        Button btnAdd = new Button(localization.get("btn.add"));
+        Button btnUpdate = new Button(localization.get("btn.update"));
+        Button btnRemove = new Button(localization.get("btn.remove"));
+        Button btnClear = new Button(localization.get("btn.clear"));
+        Button btnInfo = new Button(localization.get("btn.info"));
+        Button btnSort = new Button(localization.get("btn.sort"));
+        Button btnPrintDesc = new Button(localization.get("btn.print_desc"));
+        Button btnShuffle = new Button(localization.get("btn.shuffle"));
+        Button btnFilterEngine = new Button(localization.get("btn.filter_engine"));
+        Button btnBuy = new Button(localization.get("btn.buy"));
+        Button btnBalance = new Button(localization.get("btn.balance"));
+        Button btnDeposit = new Button(localization.get("btn.deposit"));
+        Button btnHelp = new Button(localization.get("btn.help"));
+        Button btnExit = new Button(localization.get("btn.exit"));
 
         // Обработчики — ВСЕ команды через commandHandler
         btnShow.setOnAction(e -> commandHandler.executeShow());
@@ -154,12 +154,11 @@ public class MainScene {
         btnSort.setOnAction(e -> commandHandler.executeSort());
         btnPrintDesc.setOnAction(e -> commandHandler.executePrintDescending());
         btnShuffle.setOnAction(e -> commandHandler.executeShuffle());
-        btnHelp.setOnAction(e -> commandHandler.executeHelp());
         btnFilterEngine.setOnAction(e -> commandHandler.executeFilterByEnginePower());
         btnBuy.setOnAction(e -> commandHandler.executeBuy());
         btnBalance.setOnAction(e -> commandHandler.executeShowBalance());
         btnDeposit.setOnAction(e -> commandHandler.executeDeposit());
-
+        btnHelp.setOnAction(e -> commandHandler.executeHelp());
         btnExit.setOnAction(e -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle(localization.get("app.title"));
@@ -186,8 +185,41 @@ public class MainScene {
     private void updateUITexts() {
         userLabel.setText(localization.get("main.user.label") + " " + currentUserLogin);
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
-    }
 
+        // Обновляем тексты кнопок
+        HBox bottomPanel = (HBox) ((BorderPane) stage.getScene().getRoot()).getBottom();
+        if (bottomPanel != null) {
+            int i = 0;
+            for (javafx.scene.Node node : bottomPanel.getChildren()) {
+                if (node instanceof Button) {
+                    Button btn = (Button) node;
+                    switch (i) {
+                        case 0: btn.setText(localization.get("btn.show")); break;
+                        case 1: btn.setText(localization.get("btn.add")); break;
+                        case 2: btn.setText(localization.get("btn.update")); break;
+                        case 3: btn.setText(localization.get("btn.remove")); break;
+                        case 4: btn.setText(localization.get("btn.clear")); break;
+                        case 5: btn.setText(localization.get("btn.info")); break;
+                        case 6: btn.setText(localization.get("btn.sort")); break;
+                        case 7: btn.setText(localization.get("btn.print_desc")); break;
+                        case 8: btn.setText(localization.get("btn.shuffle")); break;
+                        case 9: btn.setText(localization.get("btn.filter_engine")); break;
+                        case 10: btn.setText(localization.get("btn.buy")); break;
+                        case 11: btn.setText(localization.get("btn.balance")); break;
+                        case 12: btn.setText(localization.get("btn.deposit")); break;
+                        case 13: btn.setText(localization.get("btn.help")); break;
+                        case 14: btn.setText(localization.get("btn.exit")); break;
+                    }
+                    i++;
+                }
+            }
+        }
+
+        // Обновляем таблицу
+        if (tableController != null) {
+            tableController.updateLocalization();
+        }
+    }
     // Метод для обновления данных извне (если нужно)
     public void updateTableData(List<Vehicle> vehicles) {
         if (tableController != null) {

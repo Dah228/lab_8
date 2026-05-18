@@ -20,6 +20,7 @@ server/collection/VehicleCollection.class
 client/logic/AllCommands.class
 server/commands/PrintDescendingCommand.class
 client/logic/CommandRegistryLoader.class
+client/gui/VehicleTableController$4.class
 client/gui/CommandDialogHandler.class
 server/collection/VehicleSaver.class
 server/commands/AddIfMax.class
@@ -46,6 +47,7 @@ server/commands/CommandParams.class
 client/gui/VehicleTextParser.class
 client/gui/MainScene.class
 common/Vehicle.class
+client/gui/VehicleTableController$5.class
 client/gui/VehicleTableController$1.class
 client/gui/MainScene$2.class
 server/service/NetworkResponseSender.class

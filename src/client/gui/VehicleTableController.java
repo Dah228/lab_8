@@ -76,54 +76,78 @@ public class VehicleTableController {
 
         // Текстовые фильтры
         filterId = new TextField();
-        filterId.setPromptText("ID");
+        filterId.setPromptText(localization.get("table.column.id"));
         filterId.setPrefWidth(60);
-
         filterName = new TextField();
         filterName.setPromptText(localization.get("table.column.name"));
         filterName.setPrefWidth(100);
-
         filterOwner = new TextField();
         filterOwner.setPromptText(localization.get("table.column.owner"));
         filterOwner.setPrefWidth(100);
 
         // Числовые фильтры
         filterMinPrice = new TextField();
-        filterMinPrice.setPromptText("Min Price");
+        filterMinPrice.setPromptText(localization.get("filter.min_price"));
         filterMinPrice.setPrefWidth(70);
-
         filterMaxPrice = new TextField();
-        filterMaxPrice.setPromptText("Max Price");
+        filterMaxPrice.setPromptText(localization.get("filter.max_price"));
         filterMaxPrice.setPrefWidth(70);
 
         // Выпадающие списки
         filterType = new ComboBox<>();
-        filterType.getItems().add(null); // "Все"
+        filterType.getItems().add(null);
         filterType.getItems().addAll(VehicleType.values());
-        filterType.setPromptText("Type");
+        filterType.setPromptText(localization.get("table.column.type"));
         filterType.setCellFactory(cb -> new ListCell<>() {
             @Override protected void updateItem(VehicleType item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? "All Types" : item.toString());
+                if (empty || item == null) {
+                    setText(localization.get("table.filter.all_types"));
+                } else {
+                    setText(item.toString());
+                }
+            }
+        });
+        filterType.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(VehicleType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(localization.get("table.filter.all_types"));
+                } else {
+                    setText(item.toString());
+                }
             }
         });
         filterType.setValue(null);
 
         filterFuel = new ComboBox<>();
-        filterFuel.getItems().add(null); // "Все"
+        filterFuel.getItems().add(null);
         filterFuel.getItems().addAll(FuelType.values());
-        filterFuel.setPromptText("Fuel");
+        filterFuel.setPromptText(localization.get("table.column.fuel"));
         filterFuel.setCellFactory(cb -> new ListCell<>() {
             @Override protected void updateItem(FuelType item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? "All Fuels" : item.toString());
+                if (empty || item == null) {
+                    setText(localization.get("table.filter.all_fuels"));
+                } else {
+                    setText(item.toString());
+                }
+            }
+        });
+        filterFuel.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(FuelType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(localization.get("table.filter.all_fuels"));
+                } else {
+                    setText(item.toString());
+                }
             }
         });
         filterFuel.setValue(null);
 
         // Привязка событий изменения фильтров
         Callback<Void, Void> updateFilter = v -> { applyFilters(); return null; };
-
         filterId.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterName.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterOwner.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
@@ -133,57 +157,56 @@ public class VehicleTableController {
         filterFuel.valueProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
 
         hbox.getChildren().addAll(
-                new Label("Filters:"),
+                new Label(localization.get("table.filter")),
                 filterId, filterName, filterOwner,
                 filterMinPrice, filterMaxPrice,
                 filterType, filterFuel
         );
-
         return hbox;
     }
 
     private void setupColumns() {
-        TableColumn<Vehicle, Number> colId = new TableColumn<>(localization.get("table.column.id")); // Тип изменился на Number
+        TableColumn<Vehicle, Number> colId = new TableColumn<>(localization.get("col.id"));
         colId.setCellValueFactory(data -> new javafx.beans.property.SimpleLongProperty(data.getValue().getId()));
         colId.setPrefWidth(50);
 
-        TableColumn<Vehicle, String> colName = new TableColumn<>(localization.get("table.column.name"));
+        TableColumn<Vehicle, String> colName = new TableColumn<>(localization.get("col.name"));
         colName.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getName()));
         colName.setPrefWidth(150);
 
-        TableColumn<Vehicle, String> colCoords = new TableColumn<>("Coords (X,Y)");
+        TableColumn<Vehicle, String> colCoords = new TableColumn<>(localization.get("col.coords"));
         colCoords.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
                 data.getValue().getCoordinates().getX() + ", " + data.getValue().getCoordinates().getY()
         ));
         colCoords.setPrefWidth(100);
 
-        TableColumn<Vehicle, String> colDate = new TableColumn<>(localization.get("table.column.date"));
+        TableColumn<Vehicle, String> colDate = new TableColumn<>(localization.get("col.creation_date"));
         colDate.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
                 data.getValue().getCreationDate().toInstant().atZone(java.time.ZoneId.systemDefault()).format(DATE_FORMATTER)
         ));
         colDate.setPrefWidth(130);
 
-        TableColumn<Vehicle, Float> colPower = new TableColumn<>(localization.get("table.column.power"));
+        TableColumn<Vehicle, Float> colPower = new TableColumn<>(localization.get("col.engine_power"));
         colPower.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getEnginePower()));
         colPower.setPrefWidth(80);
 
-        TableColumn<Vehicle, Float> colDist = new TableColumn<>(localization.get("table.column.distance"));
+        TableColumn<Vehicle, Float> colDist = new TableColumn<>(localization.get("col.distance"));
         colDist.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getDistanceTravelled()));
         colDist.setPrefWidth(80);
 
-        TableColumn<Vehicle, VehicleType> colType = new TableColumn<>(localization.get("table.column.type"));
+        TableColumn<Vehicle, VehicleType> colType = new TableColumn<>(localization.get("col.type"));
         colType.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getType()));
         colType.setPrefWidth(100);
 
-        TableColumn<Vehicle, FuelType> colFuel = new TableColumn<>(localization.get("table.column.fuel"));
+        TableColumn<Vehicle, FuelType> colFuel = new TableColumn<>(localization.get("col.fuel"));
         colFuel.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getFuelType()));
         colFuel.setPrefWidth(100);
 
-        TableColumn<Vehicle, String> colOwner = new TableColumn<>(localization.get("table.column.owner"));
+        TableColumn<Vehicle, String> colOwner = new TableColumn<>(localization.get("col.owner"));
         colOwner.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getOwnerLogin()));
         colOwner.setPrefWidth(100);
 
-        TableColumn<Vehicle, Double> colPrice = new TableColumn<>(localization.get("table.column.price"));
+        TableColumn<Vehicle, Double> colPrice = new TableColumn<>(localization.get("col.price"));
         colPrice.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getPrice()));
         colPrice.setCellFactory(tc -> new TableCell<>() {
             @Override protected void updateItem(Double price, boolean empty) {
@@ -198,6 +221,31 @@ public class VehicleTableController {
         colPrice.setPrefWidth(90);
 
         tableView.getColumns().addAll(colId, colName, colCoords, colDate, colPower, colDist, colType, colFuel, colOwner, colPrice);
+    }
+
+    public void updateLocalization() {
+        // Обновляем заголовки столбцов
+        tableView.getColumns().clear();
+        setupColumns();
+
+        // Обновляем фильтры
+        HBox filterPanel = (HBox) ((VBox) tableView.getParent()).getChildren().get(0);
+        filterPanel.getChildren().clear();
+        filterPanel.getChildren().addAll(
+                new Label(localization.get("table.filter") + ":"),
+                filterId, filterName, filterOwner,
+                filterMinPrice, filterMaxPrice,
+                filterType, filterFuel
+        );
+
+        // Обновляем prompt text
+        filterId.setPromptText(localization.get("filter.id"));
+        filterName.setPromptText(localization.get("filter.name"));
+        filterOwner.setPromptText(localization.get("filter.owner"));
+        filterMinPrice.setPromptText(localization.get("filter.min_price"));
+        filterMaxPrice.setPromptText(localization.get("filter.max_price"));
+        filterType.setPromptText(localization.get("filter.type"));
+        filterFuel.setPromptText(localization.get("filter.fuel"));
     }
 
     /**

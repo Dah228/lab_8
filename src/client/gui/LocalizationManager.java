@@ -50,6 +50,13 @@ public class LocalizationManager {
     private void initializeResources() {
         // RU
         resources.put(RU, Map.ofEntries(
+
+                Map.entry("table.filter.all_types", "Все типы"),
+                Map.entry("table.filter.all_fuels", "Все виды топлива"),
+
+                Map.entry("filter.all_types", "Все типы"),  // для RU
+                Map.entry("filter.all_fuels", "Все топлива"),
+
                 Map.entry("app.title", "Vehicle Manager"),
                 Map.entry("confirm.exit", "Вы действительно хотите выйти?"),
                 Map.entry("auth.login", "Логин"),
@@ -102,11 +109,52 @@ public class LocalizationManager {
                 Map.entry("error.unknown", "Неизвестная ошибка"),
 
                 Map.entry("vehicle.info", "Информация об объекте"),
+
+                Map.entry("btn.show", "Показать"),
+                Map.entry("btn.add", "Добавить"),
+                Map.entry("btn.update", "Обновить"),
+                Map.entry("btn.remove", "Удалить по ID"),
+                Map.entry("btn.clear", "Очистить"),
+                Map.entry("btn.info", "Инфо"),
+                Map.entry("btn.sort", "Сортировать"),
+                Map.entry("btn.print_desc", "Печать (по убыванию)"),
+                Map.entry("btn.shuffle", "Перемешать"),
+                Map.entry("btn.filter_engine", "Фильтр по мощности"),
+                Map.entry("btn.buy", "Купить"),
+                Map.entry("btn.balance", "Баланс"),
+                Map.entry("btn.deposit", "Пополнить"),
+                Map.entry("btn.help", "Помощь"),
+                Map.entry("btn.exit", "Выход"),
+                Map.entry("col.id", "ID"),
+                Map.entry("col.name", "Имя"),
+                Map.entry("col.coords", "Координаты (X,Y)"),
+                Map.entry("col.creation_date", "Дата создания"),
+                Map.entry("col.engine_power", "Мощность"),
+                Map.entry("col.distance", "Дистанция"),
+                Map.entry("col.type", "Тип"),
+                Map.entry("col.fuel", "Топливо"),
+                Map.entry("col.owner", "Владелец"),
+                Map.entry("col.price", "Цена"),
+                Map.entry("filter.id", "ID"),
+                Map.entry("filter.name", "Имя"),
+                Map.entry("filter.owner", "Владелец"),
+                Map.entry("filter.min_price", "Мин. цена"),
+                Map.entry("filter.max_price", "Макс. цена"),
+                Map.entry("filter.type", "Тип"),
+                Map.entry("filter.fuel", "Топливо"),
+
                 Map.entry("table.refresh", "Обновить")
         ));
 
         // NL
         resources.put(NL, Map.ofEntries(
+
+                Map.entry("table.filter.all_types", "Alle typen"),
+                Map.entry("table.filter.all_fuels", "Alle brandstoffen"),
+
+                Map.entry("filter.all_types", "Alle typen"),
+                Map.entry("filter.all_fuels", "Alle brandstoffen"),
+
                 Map.entry("app.title", "Voertuigbeheer"),
                 Map.entry("auth.login", "Gebruikersnaam"),
                 Map.entry("auth.password", "Wachtwoord"),
@@ -114,8 +162,8 @@ public class LocalizationManager {
                 Map.entry("auth.login.button", "Inloggen"),
 
                 Map.entry("table.refresh", "Vernieuwen"),
-
                 Map.entry("vehicle.info", "Objectinformatie"),
+
 
                 // Status en fouten
                 Map.entry("app.status.initializing", "Verbinding initialiseren..."),
@@ -131,6 +179,39 @@ public class LocalizationManager {
                 Map.entry("error.unknown", "Onbekende fout"),
 
                 Map.entry("confirm.exit", "Weet u zeker dat u wilt afsluiten?"),
+
+                Map.entry("btn.show", "Tonen"),
+                Map.entry("btn.add", "Toevoegen"),
+                Map.entry("btn.update", "Bijwerken"),
+                Map.entry("btn.remove", "Verwijderen op ID"),
+                Map.entry("btn.clear", "Wissen"),
+                Map.entry("btn.info", "Info"),
+                Map.entry("btn.sort", "Sorteren"),
+                Map.entry("btn.print_desc", "Afdalen weergeven"),
+                Map.entry("btn.shuffle", "Mengen"),
+                Map.entry("btn.filter_engine", "Filter op vermogen"),
+                Map.entry("btn.buy", "Kopen"),
+                Map.entry("btn.balance", "Balans"),
+                Map.entry("btn.deposit", "Storten"),
+                Map.entry("btn.help", "Help"),
+                Map.entry("btn.exit", "Afsluiten"),
+                Map.entry("col.id", "ID"),
+                Map.entry("col.name", "Naam"),
+                Map.entry("col.coords", "Coördinaten (X,Y)"),
+                Map.entry("col.creation_date", "Aanmaakdatum"),
+                Map.entry("col.engine_power", "Vermogen"),
+                Map.entry("col.distance", "Afstand"),
+                Map.entry("col.type", "Type"),
+                Map.entry("col.fuel", "Brandstof"),
+                Map.entry("col.owner", "Eigenaar"),
+                Map.entry("col.price", "Prijs"),
+                Map.entry("filter.id", "ID"),
+                Map.entry("filter.name", "Naam"),
+                Map.entry("filter.owner", "Eigenaar"),
+                Map.entry("filter.min_price", "Min. prijs"),
+                Map.entry("filter.max_price", "Max. prijs"),
+                Map.entry("filter.type", "Type"),
+                Map.entry("filter.fuel", "Brandstof"),
 
                 Map.entry("auth.register.button", "Registreren"),
                 Map.entry("auth.error.empty", "Gebruikersnaam en wachtwoord mogen niet leeg zijn"),
@@ -176,9 +257,49 @@ public class LocalizationManager {
                 Map.entry("auth.login.button", "Log ind"),
                 Map.entry("auth.register.button", "Registrer"),
 
+                Map.entry("table.filter.all_types", "Alle typer"),
+                Map.entry("table.filter.all_fuels", "Alle brændstoffer"),
+
+                Map.entry("filter.all_types", "Alle typer"),
+                Map.entry("filter.all_fuels", "Alle brændstoffer"),
+
+                Map.entry("vehicle.info", "Objektinformation"),
+
+                Map.entry("btn.show", "Vis"),
+                Map.entry("btn.add", "Tilføj"),
+                Map.entry("btn.update", "Opdater"),
+                Map.entry("btn.remove", "Fjern efter ID"),
+                Map.entry("btn.clear", "Ryd"),
+                Map.entry("btn.info", "Info"),
+                Map.entry("btn.sort", "Sorter"),
+                Map.entry("btn.print_desc", "Udskriv faldende"),
+                Map.entry("btn.shuffle", "Bland"),
+                Map.entry("btn.filter_engine", "Filtrer efter effekt"),
+                Map.entry("btn.buy", "Køb"),
+                Map.entry("btn.balance", "Balance"),
+                Map.entry("btn.deposit", "Indsæt"),
+                Map.entry("btn.help", "Hjælp"),
+                Map.entry("btn.exit", "Afslut"),
+                Map.entry("col.id", "ID"),
+                Map.entry("col.name", "Navn"),
+                Map.entry("col.coords", "Koordinater (X,Y)"),
+                Map.entry("col.creation_date", "Oprettelsesdato"),
+                Map.entry("col.engine_power", "Effekt"),
+                Map.entry("col.distance", "Distance"),
+                Map.entry("col.type", "Type"),
+                Map.entry("col.fuel", "Brændstof"),
+                Map.entry("col.owner", "Ejer"),
+                Map.entry("col.price", "Pris"),
+                Map.entry("filter.id", "ID"),
+                Map.entry("filter.name", "Navn"),
+                Map.entry("filter.owner", "Ejer"),
+                Map.entry("filter.min_price", "Min. pris"),
+                Map.entry("filter.max_price", "Maks. pris"),
+                Map.entry("filter.type", "Type"),
+                Map.entry("filter.fuel", "Brændstof"),
+
                 // Добавленные ключи локализации
                 Map.entry("table.refresh", "Opdater"),
-                Map.entry("vehicle.info", "Objektinformation"),
 
                 // Status og fejl
                 Map.entry("app.status.initializing", "Initialiserer forbindelse..."),
@@ -234,9 +355,49 @@ public class LocalizationManager {
                 Map.entry("auth.password", "Password"),
                 Map.entry("auth.register", "Register"),
 
+                Map.entry("vehicle.info", "Vehicle Info"),
+
+                Map.entry("table.filter.all_types", "All Types"),
+                Map.entry("table.filter.all_fuels", "All Fuels"),
+
+                Map.entry("btn.show", "Show"),
+                Map.entry("btn.add", "Add"),
+                Map.entry("btn.update", "Update"),
+                Map.entry("btn.remove", "Remove by ID"),
+                Map.entry("btn.clear", "Clear"),
+                Map.entry("btn.info", "Info"),
+                Map.entry("btn.sort", "Sort"),
+                Map.entry("btn.print_desc", "Print Descending"),
+                Map.entry("btn.shuffle", "Shuffle"),
+                Map.entry("btn.filter_engine", "Filter by Engine"),
+                Map.entry("btn.buy", "Buy"),
+                Map.entry("btn.balance", "Balance"),
+                Map.entry("btn.deposit", "Deposit"),
+                Map.entry("btn.help", "Help"),
+                Map.entry("btn.exit", "Exit"),
+                Map.entry("col.id", "ID"),
+                Map.entry("col.name", "Name"),
+                Map.entry("col.coords", "Coords (X,Y)"),
+                Map.entry("col.creation_date", "Creation Date"),
+                Map.entry("col.engine_power", "Engine Power"),
+                Map.entry("col.distance", "Distance"),
+                Map.entry("col.type", "Type"),
+                Map.entry("col.fuel", "Fuel"),
+                Map.entry("col.owner", "Owner"),
+                Map.entry("col.price", "Price"),
+                Map.entry("filter.id", "ID"),
+                Map.entry("filter.name", "Name"),
+                Map.entry("filter.owner", "Owner"),
+                Map.entry("filter.min_price", "Min Price"),
+                Map.entry("filter.max_price", "Max Price"),
+                Map.entry("filter.type", "Type"),
+                Map.entry("filter.fuel", "Fuel"),
+
+                Map.entry("filter.all_types", "All Types"),
+                Map.entry("filter.all_fuels", "All Fuels"),
+
                 Map.entry("confirm.exit", "Are you sure you want to exit?"),
 
-                Map.entry("vehicle.info", "Vehicle Info"),
 
                 Map.entry("auth.login.button", "Sign In"),
                 Map.entry("auth.register.button", "Register"),
