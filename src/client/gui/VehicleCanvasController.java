@@ -307,7 +307,6 @@ public class VehicleCanvasController {
         );
         alert.showAndWait();
     }
-
     /**
      * Публичный метод для внешнего обновления данных.
      */
