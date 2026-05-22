@@ -370,4 +370,19 @@ public class CommandDialogHandler {
     public void executeShow() {
         sendCommand("show", List.of("show"), null);
     }
+
+    /** Тихий вызов show (без диалоговых окон) для автообновления */
+    public void executeShowSilent() {
+        sendCommand("show", List.of("show"), null);
+    }
+
+    /** Редактирование существующего объекта (вызывается из таблицы или канваса) */
+    public void executeEdit(Vehicle existingVehicle) {
+        if (existingVehicle == null) return;
+        Vehicle vehicleToSave = showVehicleDialog(existingVehicle);
+        if (vehicleToSave != null) {
+            vehicleToSave.setId(existingVehicle.getId()); // сохраняем оригинальный ID
+            sendCommand("update", List.of("update", String.valueOf(existingVehicle.getId())), vehicleToSave);
+        }
+    }
 }

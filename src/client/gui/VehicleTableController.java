@@ -354,4 +354,8 @@ public class VehicleTableController {
     public List<Vehicle> getAllVehicles() {
         return new ArrayList<>(allVehicles); // возвращаем копию, чтобы не ломать фильтры
     }
+
+    public TableView<Vehicle> getTable() {
+        return tableView;
+    }
 }

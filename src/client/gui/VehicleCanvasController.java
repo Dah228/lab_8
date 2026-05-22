@@ -13,6 +13,7 @@ import javafx.scene.text.Font;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * Контроллер Canvas для визуализации объектов Vehicle.
@@ -21,6 +22,8 @@ public class VehicleCanvasController {
     private final LocalizationManager localization;
     private Canvas canvas;
     private GraphicsContext gc;
+
+    private Consumer<Vehicle> onVehicleClicked;
 
     // Параметры отображения
     private double scaleX = 1.0;
@@ -50,6 +53,10 @@ public class VehicleCanvasController {
         canvas.setOnMouseClicked(this::handleMouseClick);
 
         return canvas;
+    }
+
+    public void setOnVehicleClicked(Consumer<Vehicle> callback) {
+        this.onVehicleClicked = callback;
     }
 
     /**
@@ -270,7 +277,6 @@ public class VehicleCanvasController {
     private void handleMouseClick(MouseEvent event) {
         double clickX = event.getX();
         double clickY = event.getY();
-
         Vehicle closest = null;
         double minDist = Double.MAX_VALUE;
 
@@ -278,15 +284,19 @@ public class VehicleCanvasController {
             double vx = toPixelX(v.getCoordinates().getX());
             double vy = toPixelY(v.getCoordinates().getY());
             double dist = Math.sqrt(Math.pow(clickX - vx, 2) + Math.pow(clickY - vy, 2));
-
-            if (dist < 20 && dist < minDist) { // радиус попадания 20px
+            if (dist < 20 && dist < minDist) {
                 minDist = dist;
                 closest = v;
             }
         }
 
         if (closest != null) {
-            showVehicleInfo(closest);
+            // Если есть callback -> редактирование, иначе -> старый Alert
+            if (onVehicleClicked != null) {
+                onVehicleClicked.accept(closest);
+            } else {
+                showVehicleInfo(closest);
+            }
         }
     }
 

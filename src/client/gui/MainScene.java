@@ -1,9 +1,8 @@
 package client.gui;
 
 import client.logic.NetworkService;
-import common.CommandRequest;
-import common.CommandResponse;
 import common.Vehicle;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -13,6 +12,9 @@ import javafx.stage.Stage;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class MainScene {
     private final Stage stage;
@@ -24,8 +26,12 @@ public class MainScene {
     private VehicleTableController tableController;
     private VehicleCanvasController canvasController;
     private CommandDialogHandler commandHandler;
+
     private Label userLabel;
     private ComboBox<Locale> langComboBox;
+
+    // Фоновый планировщик для автообновления (требование 3 и 4)
+    private ScheduledExecutorService refreshScheduler;
 
     public MainScene(Stage stage, LocalizationManager localization, NetworkService networkService,
                      String currentUserLogin, String currentUserPassword) {
@@ -34,7 +40,6 @@ public class MainScene {
         this.networkService = networkService;
         this.currentUserLogin = currentUserLogin;
         this.currentUserPassword = currentUserPassword;
-
         this.commandHandler = new CommandDialogHandler(networkService, localization,
                 currentUserLogin, currentUserPassword);
     }
@@ -52,7 +57,38 @@ public class MainScene {
         HBox bottomPanel = createBottomPanel();
         root.setBottom(bottomPanel);
 
-        return new Scene(root, 1200, 800);
+        Scene scene = new Scene(root, 1200, 800);
+
+        // Требование 4: загрузка данных сразу при открытии окна
+        Platform.runLater(() -> commandHandler.executeShow());
+
+        // Требование 3: оповещение клиентов об изменениях (авто-поллинг каждые 5 сек)
+        startAutoRefresh();
+
+        return scene;
+    }
+
+    private void startAutoRefresh() {
+        refreshScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "AutoRefresh-" + currentUserLogin);
+            t.setDaemon(true);
+            return t;
+        });
+
+        refreshScheduler.scheduleAtFixedRate(() -> {
+            if (stage.isShowing()) {
+                Platform.runLater(() -> {
+                    // Тихий запрос данных без показа диалоговых окон
+                    commandHandler.executeShowSilent();
+                });
+            }
+        }, 5, 5, TimeUnit.SECONDS);
+    }
+
+    public void stopAutoRefresh() {
+        if (refreshScheduler != null && !refreshScheduler.isShutdown()) {
+            refreshScheduler.shutdownNow();
+        }
     }
 
     private HBox createTopPanel() {
@@ -67,7 +103,7 @@ public class MainScene {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button btnVisualize = new Button("🎨 Визуализация");
+        Button btnVisualize = new Button(localization.get("main.visual.title"));
         btnVisualize.setOnAction(e -> openVisualization());
 
         Label langLabel = new Label(localization.get("main.lang.label"));
@@ -103,14 +139,20 @@ public class MainScene {
             canvasController = new VehicleCanvasController(localization);
         }
 
-        // Берём текущие данные из таблицы
-        List<Vehicle> currentVehicles = tableController.getAllVehicles();
+        List<Vehicle> currentVehicles = tableController != null ? tableController.getAllVehicles() : List.of();
 
         Stage vizStage = new Stage();
-        vizStage.setTitle("Визуализация объектов");
+        vizStage.setTitle(localization.get("main.visual.title"));
 
         javafx.scene.canvas.Canvas canvas = canvasController.createCanvas(800, 600);
         canvasController.updateData(currentVehicles);
+
+        // Требование 2: редактирование прямо из окна визуализации
+        canvasController.setOnVehicleClicked(vehicle -> {
+            if (vehicle != null) {
+                Platform.runLater(() -> commandHandler.executeEdit(vehicle));
+            }
+        });
 
         StackPane pane = new StackPane(canvas);
         pane.setStyle("-fx-background-color: white;");
@@ -126,18 +168,25 @@ public class MainScene {
         vbox.setAlignment(Pos.TOP_CENTER);
         vbox.setStyle("-fx-background-color: #f5f5f5;");
 
-        // Создаём таблицу — КАК БЫЛО РАНЬШЕ
         tableController = new VehicleTableController(localization);
         VBox tablePane = tableController.createTablePane();
 
-        // Связываем с обработчиком команд
         if (commandHandler != null) {
             commandHandler.setTableController(tableController);
         }
 
+        // Требование 1: редактирование прямо из таблицы (двойной клик)
+        tableController.getTable().setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
+                if (selected != null) {
+                    commandHandler.executeEdit(selected);
+                }
+            }
+        });
+
         vbox.getChildren().add(tablePane);
         VBox.setVgrow(tablePane, Priority.ALWAYS);
-
         return vbox;
     }
 
@@ -177,12 +226,14 @@ public class MainScene {
         btnBalance.setOnAction(e -> commandHandler.executeShowBalance());
         btnDeposit.setOnAction(e -> commandHandler.executeDeposit());
         btnHelp.setOnAction(e -> commandHandler.executeHelp());
+
         btnExit.setOnAction(e -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle(localization.get("app.title"));
             alert.setHeaderText(null);
             alert.setContentText(localization.get("confirm.exit"));
             if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+                stopAutoRefresh();
                 if (networkService != null && networkService.isConnected()) {
                     networkService.disconnect();
                 }
@@ -196,7 +247,6 @@ public class MainScene {
                 btnFilterEngine, btnBuy, btnBalance, btnDeposit,
                 btnHelp, btnExit
         );
-
         return hbox;
     }
 
@@ -204,13 +254,11 @@ public class MainScene {
         userLabel.setText(localization.get("main.user.label") + " " + currentUserLogin);
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
 
-        // Обновляем тексты кнопок
         HBox bottomPanel = (HBox) ((BorderPane) stage.getScene().getRoot()).getBottom();
         if (bottomPanel != null) {
             int i = 0;
             for (javafx.scene.Node node : bottomPanel.getChildren()) {
-                if (node instanceof Button) {
-                    Button btn = (Button) node;
+                if (node instanceof Button btn) {
                     switch (i) {
                         case 0: btn.setText(localization.get("btn.show")); break;
                         case 1: btn.setText(localization.get("btn.add")); break;
@@ -233,13 +281,11 @@ public class MainScene {
             }
         }
 
-        // Обновляем таблицу
         if (tableController != null) {
             tableController.updateLocalization();
         }
     }
 
-    // Метод для обновления данных извне (если нужно)
     public void updateTableData(List<Vehicle> vehicles) {
         if (tableController != null) {
             tableController.updateData(vehicles);
