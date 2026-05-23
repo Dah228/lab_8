@@ -117,7 +117,7 @@ public class VehicleCanvasController {
     }
 
     private double toPixelY(double logicalY) {
-        // Инвертируем Y, потому что в Canvas ось Y направлена вниз, а в математике/БД обычно вверх
+        // Инвертируем Y
         return canvas.getHeight() - (logicalY * scaleY + offsetY);
     }
 
@@ -140,10 +140,7 @@ public class VehicleCanvasController {
      */
     private void drawAll() {
         if (gc == null) return;
-
-        // Очистка
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-
         // Рисуем сетку и оси
         drawGridAndAxes();
 
@@ -173,7 +170,7 @@ public class VehicleCanvasController {
             gc.strokeLine(0, y, w, y);
         }
 
-        // --- Оси X и Y ---
+        //  X и Y
         // Находим пиксельные координаты нуля (0,0) из логических координат
         double zeroX = toPixelX(0);
         double zeroY = toPixelY(0);
@@ -209,7 +206,7 @@ public class VehicleCanvasController {
     private void drawVehicle(Vehicle v) {
         double px = toPixelX(v.getCoordinates().getX());
         double py = toPixelY(v.getCoordinates().getY());
-        double size = 20; // Размер фигуры
+        double size = 20;
 
         Color color = getOwnerColor(v.getOwnerLogin());
         gc.setFill(color);
@@ -222,7 +219,7 @@ public class VehicleCanvasController {
             case HOVERBOARD -> drawHoverboard(px, py, size);
             case PLANE -> drawPlane(px, py, size);
             case SHIP -> drawShip(px, py, size);
-            default -> drawCircle(px, py, size); // fallback
+            default -> drawCircle(px, py, size);
         }
 
         // Подпись ID
@@ -231,8 +228,7 @@ public class VehicleCanvasController {
         gc.fillText(String.valueOf(v.getId()), px - 5, py + size + 15);
     }
 
-    // === Примитивы ===
-
+    // Примитивы
     private void drawCircle(double cx, double cy, double r) {
         gc.fillOval(cx - r, cy - r, 2 * r, 2 * r);
         gc.strokeOval(cx - r, cy - r, 2 * r, 2 * r);
@@ -291,7 +287,7 @@ public class VehicleCanvasController {
         }
 
         if (closest != null) {
-            // Если есть callback -> редактирование, иначе -> старый Alert
+            // Если есть callback редактирование, иначе старый Alert
             if (onVehicleClicked != null) {
                 onVehicleClicked.accept(closest);
             } else {

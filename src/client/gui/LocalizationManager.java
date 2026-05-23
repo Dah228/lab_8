@@ -56,7 +56,7 @@ public class LocalizationManager {
                 Map.entry("auth.error.register", "Ошибка регистрации"),
                 Map.entry("main.user.label", "Пользователь:"),
                 Map.entry("main.table.title", "Список объектов"),
-                Map.entry("main.visual.title", "Визуализация"),
+                Map.entry("main.visual.title", ">"),
                 Map.entry("main.lang.label", "Язык:"),
                 Map.entry("table.filter", "Фильтр"),
                 Map.entry("table.sort.asc", "По возрастанию"),
@@ -133,9 +133,7 @@ public class LocalizationManager {
                 Map.entry("table.refresh", "Обновить")
         ));
 
-        // =====================================================================
         // NORWEGIAN (no_NO)
-        // =====================================================================
         resources.put(NO, Map.ofEntries(
                 Map.entry("app.title", "Kjøretøybehandler"),
                 Map.entry("confirm.exit", "Er du sikker på at du vil avslutte?"),
@@ -335,7 +333,7 @@ public class LocalizationManager {
                 Map.entry("auth.error.register", "Registration error"),
                 Map.entry("main.user.label", "User:"),
                 Map.entry("main.table.title", "Objects List"),
-                Map.entry("main.visual.title", "Visualisation"),
+                Map.entry("main.visual.title", ">"),
                 Map.entry("main.lang.label", "Language:"),
                 Map.entry("table.filter", "Filter"),
                 Map.entry("table.sort.asc", "Ascending"),
@@ -418,7 +416,9 @@ public class LocalizationManager {
         numberFormat = NumberFormat.getNumberInstance(loc);
         currencyFormat = NumberFormat.getCurrencyInstance(loc);
         dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(loc);
-        dateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(loc);
+
+        dateTimeFormatter = DateTimeFormatter.ofPattern(getDateTimePattern()).withLocale(loc);
+
         timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(loc);
     }
 
@@ -492,6 +492,16 @@ public class LocalizationManager {
             case "lt_LT" -> "Lietuvių";
             case "en_GB" -> "English (UK)";
             default -> locale.getDisplayName(locale);
+        };
+    }
+
+    private String getDateTimePattern() {
+        return switch (currentLocale.get().toString()) {
+            case "ru_RU" -> "dd.MM.yyyy HH:mm";      // 23.05.2026 14:30
+            case "no_NO" -> "dd.MM.yyyy HH:mm";      // 23.05.2026 14:30
+            case "lt_LT" -> "yyyy-MM-dd HH:mm";      // 2026-05-23 14:30
+            case "en_GB" -> "dd/MM/yyyy HH:mm";      // 23/05/2026 14:30
+            default      -> "dd.MM.yyyy HH:mm";
         };
     }
 }

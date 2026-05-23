@@ -16,6 +16,14 @@
         </configuration>
       </plugin>
       <plugin>
+        <groupId>org.openjfx</groupId>
+        <artifactId>javafx-maven-plugin</artifactId>
+        <version>0.0.8</version>
+        <configuration>
+          <mainClass>client.gui.GuiApp</mainClass>
+        </configuration>
+      </plugin>
+      <plugin>
         <artifactId>maven-shade-plugin</artifactId>
         <version>3.5.1</version>
         <executions>
@@ -37,8 +45,9 @@
     </plugins>
   </build>
   <properties>
-    <maven.compiler.target>14</maven.compiler.target>
-    <maven.compiler.source>14</maven.compiler.source>
+    <maven.compiler.target>16</maven.compiler.target>
+    <maven.compiler.source>16</maven.compiler.source>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <javafx.version>21.0.2</javafx.version>
   </properties>
 </project>

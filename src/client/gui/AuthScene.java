@@ -23,7 +23,6 @@ public class AuthScene {
     private final NetworkService networkService;
     private final LocalizationManager localization;
 
-    // Поля ввода
     private TextField loginField;
     private PasswordField passwordField;
     private Button actionButton;
@@ -48,22 +47,20 @@ public class AuthScene {
         root.setAlignment(Pos.CENTER);
         root.setStyle("-fx-background-color: #f4f4f4;");
 
-        // Заголовок
         Label titleLabel = new Label(localization.get("app.title"));
         titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
 
-        // Переключатель режима (Вход / Регистрация)
         RadioButton rbLogin = new RadioButton(localization.get("auth.login.button"));
         RadioButton rbRegister = new RadioButton(localization.get("auth.register.button"));
         modeToggle = new ToggleGroup();
         rbLogin.setToggleGroup(modeToggle);
         rbRegister.setToggleGroup(modeToggle);
-        rbLogin.setSelected(true); // По умолчанию вход
+        rbLogin.setSelected(true);
 
         HBox modeBox = new HBox(10, rbLogin, rbRegister);
         modeBox.setAlignment(Pos.CENTER);
 
-        // Поля ввода
+
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
@@ -82,11 +79,9 @@ public class AuthScene {
         grid.add(passLabel, 0, 1);
         grid.add(passwordField, 1, 1);
 
-        // Кнопка действия
         actionButton = new Button(localization.get("auth.login.button"));
         actionButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-padding: 10 20;");
 
-        // Обработчик смены режима
         modeToggle.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal == rbLogin) {
                 actionButton.setText(localization.get("auth.login.button"));
@@ -95,15 +90,12 @@ public class AuthScene {
             }
         });
 
-        // Обработчик нажатия кнопки
         actionButton.setOnAction(e -> handleAction());
 
-        // Метка ошибки
         errorLabel = new Label();
         errorLabel.setStyle("-fx-text-fill: red; -fx-font-size: 12px;");
         errorLabel.setVisible(false);
 
-        // Сборка сцены
         root.getChildren().addAll(titleLabel, modeBox, grid, actionButton, errorLabel);
 
         return new Scene(root, 400, 300);
@@ -139,7 +131,6 @@ public class AuthScene {
                 Platform.runLater(() -> {
                     setControlsDisabled(false);
                     if (response != null && response.isSuccess()) {
-                        // Успех! Сохраняем данные и переходим дальше
                         System.out.println("Авторизация успешна: " + login);
                         if (onLoginSuccess != null) {
                             onLoginSuccess.run();
@@ -170,11 +161,8 @@ public class AuthScene {
     }
 
     private CommandResponse sendLoginRequest(String login, String password) throws Exception {
-        // Для проверки логина используем простую команду, например "info" или "show"
-        // Сервер проверит auth по login/password из запроса
         List<String> args = List.of("info");
         CommandRequest request = new CommandRequest("info", args, null, true, login, password);
-
         networkService.send(request);
         return networkService.receive();
     }

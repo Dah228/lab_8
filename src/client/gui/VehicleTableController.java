@@ -15,7 +15,6 @@ import java.text.DecimalFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -28,9 +27,9 @@ public class VehicleTableController {
     private TableView<Vehicle> tableView;
 
     // Исходные данные (полученные с сервера)
-    private ObservableList<Vehicle> allVehicles = FXCollections.observableArrayList();
+    private final ObservableList<Vehicle> allVehicles = FXCollections.observableArrayList();
     // Отфильтрованные данные (отображаемые в таблице)
-    private ObservableList<Vehicle> filteredVehicles = FXCollections.observableArrayList();
+    private final ObservableList<Vehicle> filteredVehicles = FXCollections.observableArrayList();
 
     // Элементы фильтров
     private TextField filterId;
@@ -42,7 +41,6 @@ public class VehicleTableController {
     private ComboBox<FuelType> filterFuel;
 
     // Форматтеры
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
     private static final DecimalFormat PRICE_FORMAT = new DecimalFormat("#,##0.00");
 
     public VehicleTableController(LocalizationManager localization) {
@@ -203,7 +201,7 @@ public class VehicleTableController {
 
         TableColumn<Vehicle, String> colDate = new TableColumn<>(localization.get("col.creation_date"));
         colDate.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
-                data.getValue().getCreationDate().toInstant().atZone(java.time.ZoneId.systemDefault()).format(DATE_FORMATTER)
+                localization.formatDateTime(data.getValue().getCreationDate())
         ));
         colDate.setPrefWidth(130);
 

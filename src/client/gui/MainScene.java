@@ -175,7 +175,7 @@ public class MainScene {
             commandHandler.setTableController(tableController);
         }
 
-        // Требование 1: редактирование прямо из таблицы (двойной клик)
+        //редактирование прямо из таблицы (двойной клик)
         tableController.getTable().setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
