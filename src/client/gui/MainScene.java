@@ -25,29 +25,26 @@ public class MainScene {
     private CommandDialogHandler commandHandler;
     private Label userLabel;
     private ComboBox<Locale> langComboBox;
-
-    // Фоновый планировщик для автообновления (требование 3 и 4)
     private ScheduledExecutorService refreshScheduler;
 
-    // Стили для розовой темы
-    private static final String BTN_BASE_STYLE = "-fx-background-color: linear-gradient(to bottom, #ffc0cb, #ff69b4); " +
-            "-fx-text-fill: white; " +
+    // Мягкая зелёная тема (Material 3 style)
+    private static final String BTN_BASE_STYLE = "-fx-background-color: linear-gradient(to bottom, #C8E6C9, #A5D6A7); " +
+            "-fx-text-fill: #2E7D32; " +
             "-fx-font-weight: bold; " +
             "-fx-background-radius: 8; " +
             "-fx-border-radius: 8; " +
-            "-fx-border-color: #ff1493; " +
+            "-fx-border-color: #81C784; " +
             "-fx-border-width: 1; " +
-            "-fx-effect: dropshadow(gaussian, rgba(255,105,180,0.4), 5, 0, 0, 2); " +
+            "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.3), 5, 0, 0, 2); " +
             "-fx-cursor: hand;";
-
-    private static final String BTN_HOVER_STYLE = "-fx-background-color: linear-gradient(to bottom, #ff69b4, #ff1493); " +
-            "-fx-text-fill: white; " +
+    private static final String BTN_HOVER_STYLE = "-fx-background-color: linear-gradient(to bottom, #A5D6A7, #81C784); " +
+            "-fx-text-fill: #1B5E20; " +
             "-fx-font-weight: bold; " +
             "-fx-background-radius: 8; " +
             "-fx-border-radius: 8; " +
-            "-fx-border-color: #c71585; " +
+            "-fx-border-color: #66BB6A; " +
             "-fx-border-width: 1; " +
-            "-fx-effect: dropshadow(gaussian, rgba(255,20,147,0.6), 8, 0, 0, 3); " +
+            "-fx-effect: dropshadow(gaussian, rgba(102,187,106,0.5), 8, 0, 0, 3); " +
             "-fx-cursor: hand;";
 
     public MainScene(Stage stage, LocalizationManager localization, NetworkService networkService,
@@ -76,10 +73,7 @@ public class MainScene {
 
         Scene scene = new Scene(root, 1200, 800);
 
-        // Требование 4: загрузка данных сразу при открытии окна
         Platform.runLater(() -> commandHandler.executeShow());
-
-        // Требование 3: оповещение клиентов об изменениях (авто-поллинг каждые 5 сек)
         startAutoRefresh();
 
         return scene;
@@ -94,7 +88,6 @@ public class MainScene {
         refreshScheduler.scheduleAtFixedRate(() -> {
             if (stage.isShowing()) {
                 Platform.runLater(() -> {
-                    // Тихий запрос данных без показа диалоговых окон
                     commandHandler.executeShowSilent();
                 });
             }
@@ -111,14 +104,13 @@ public class MainScene {
         HBox hbox = new HBox(15);
         hbox.setPadding(new Insets(10));
         hbox.setAlignment(Pos.CENTER_LEFT);
-        // Розовый градиент для верхней панели
-        hbox.setStyle("-fx-background-color: linear-gradient(to bottom, #ffb6c1, #ff69b4); " +
-                "-fx-border-color: #ff1493; -fx-border-width: 0 0 2 0; " +
-                "-fx-effect: dropshadow(gaussian, rgba(255,105,180,0.3), 10, 0, 0, 2);");
+        hbox.setStyle("-fx-background-color: linear-gradient(to bottom, #E8F5E9, #C8E6C9); " +
+                "-fx-border-color: #81C784; -fx-border-width: 0 0 2 0; " +
+                "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.2), 10, 0, 0, 2);");
 
         userLabel = new Label(localization.get("main.user.label") + " " + currentUserLogin);
         userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; " +
-                "-fx-text-fill: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);");
+                "-fx-text-fill: #2E7D32; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 3, 0, 0, 1);");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -130,7 +122,7 @@ public class MainScene {
         btnVisualize.setOnAction(e -> openVisualization());
 
         Label langLabel = new Label(localization.get("main.lang.label"));
-        langLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+        langLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
 
         langComboBox = new ComboBox<>();
         langComboBox.getItems().setAll(localization.getAvailableLocales());
@@ -164,12 +156,11 @@ public class MainScene {
             canvasController = new VehicleCanvasController(localization);
         }
         List<Vehicle> currentVehicles = tableController != null ? tableController.getAllVehicles() : List.of();
+
         Stage vizStage = new Stage();
         vizStage.setTitle(localization.get("main.visual.title"));
         javafx.scene.canvas.Canvas canvas = canvasController.createCanvas(800, 600);
         canvasController.updateData(currentVehicles);
-
-        // Требование 2: редактирование прямо из окна визуализации
         canvasController.setOnVehicleClicked(vehicle -> {
             if (vehicle != null) {
                 Platform.runLater(() -> commandHandler.executeEdit(vehicle));
@@ -177,7 +168,7 @@ public class MainScene {
         });
 
         StackPane pane = new StackPane(canvas);
-        pane.setStyle("-fx-background-color: E6F2FF;");
+        pane.setStyle("-fx-background-color: #F1F8E9;");
         Scene scene = new Scene(pane, 1000, 600);
         vizStage.setScene(scene);
         vizStage.show();
@@ -187,9 +178,8 @@ public class MainScene {
         VBox vbox = new VBox(15);
         vbox.setPadding(new Insets(10));
         vbox.setAlignment(Pos.TOP_CENTER);
-        // Нежно-розовый фон
-        vbox.setStyle("-fx-background-color: linear-gradient(to bottom, #fff0f5, #ffe4e8); " +
-                "-fx-border-color: #ffb6c1; -fx-border-width: 1;");
+        vbox.setStyle("-fx-background-color: linear-gradient(to bottom, #F8FDF9, #E8F5E9); " +
+                "-fx-border-color: #C8E6C9; -fx-border-width: 1;");
 
         tableController = new VehicleTableController(localization);
         VBox tablePane = tableController.createTablePane();
@@ -217,64 +207,56 @@ public class MainScene {
         HBox hbox = new HBox(10);
         hbox.setPadding(new Insets(10));
         hbox.setAlignment(Pos.CENTER);
-        // Розовая нижняя панель
-        hbox.setStyle("-fx-background-color: linear-gradient(to bottom, #ffb6c1, #ff69b4); " +
-                "-fx-border-color: #ff1493; -fx-border-width: 2 0 0 0; " +
-                "-fx-effect: dropshadow(gaussian, rgba(255,20,147,0.4), 8, 0, 0, -2);");
 
-        Button btnShow = new Button(localization.get("btn.show"));
+        hbox.setStyle("-fx-background-color: linear-gradient(to bottom, #E8F5E9, #C8E6C9); " +
+                "-fx-border-color: #81C784; -fx-border-width: 2 0 0 0; " +
+                "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.3), 8, 0, 0, -2);");
+
         Button btnAdd = new Button(localization.get("btn.add"));
-        Button btnUpdate = new Button(localization.get("btn.update"));
         Button btnRemove = new Button(localization.get("btn.remove"));
-        Button btnClear = new Button(localization.get("btn.clear"));
-        Button btnInfo = new Button(localization.get("btn.info"));
-        Button btnSort = new Button(localization.get("btn.sort"));
-        Button btnPrintDesc = new Button(localization.get("btn.print_desc"));
         Button btnShuffle = new Button(localization.get("btn.shuffle"));
-        Button btnFilterEngine = new Button(localization.get("btn.filter_engine"));
         Button btnBuy = new Button(localization.get("btn.buy"));
         Button btnBalance = new Button(localization.get("btn.balance"));
-        Button btnDeposit = new Button(localization.get("btn.deposit"));
-        Button btnHelp = new Button(localization.get("btn.help"));
         Button btnExit = new Button(localization.get("btn.exit"));
 
-        // Применяем стиль ко всем кнопкам
-        List<Button> buttons = List.of(btnShow, btnAdd, btnUpdate, btnRemove, btnClear,
-                btnInfo, btnSort, btnPrintDesc, btnShuffle,
-                btnFilterEngine, btnBuy, btnBalance, btnDeposit,
-                btnHelp, btnExit);
+        List<Button> buttons = List.of(btnAdd, btnRemove, btnShuffle, btnBuy, btnBalance, btnExit);
 
         for (Button btn : buttons) {
             btn.setStyle(BTN_BASE_STYLE);
             btn.setOnMouseEntered(e -> btn.setStyle(BTN_HOVER_STYLE));
             btn.setOnMouseExited(e -> btn.setStyle(BTN_BASE_STYLE));
+            HBox.setHgrow(btn, Priority.ALWAYS);
+            btn.setMaxWidth(Double.MAX_VALUE);
         }
 
-        btnShow.setOnAction(e -> commandHandler.executeShow());
         btnAdd.setOnAction(e -> commandHandler.executeAdd());
-        btnUpdate.setOnAction(e -> commandHandler.executeUpdate());
-        btnRemove.setOnAction(e -> commandHandler.executeRemoveById());
-        btnClear.setOnAction(e -> commandHandler.executeClear());
-        btnInfo.setOnAction(e -> commandHandler.executeInfo());
-        btnSort.setOnAction(e -> commandHandler.executeSort());
-        btnPrintDesc.setOnAction(e -> commandHandler.executePrintDescending());
+
+        // === ИЗМЕНЕНИЕ ЗДЕСЬ: Удаляем выделенный элемент ===
+        btnRemove.setOnAction(e -> {
+            Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                commandHandler.executeRemoveById(selected.getId());
+            } else {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.setTitle(localization.get("app.title"));
+                alert.setHeaderText(null);
+                alert.setContentText("Выберите элемент в таблице для удаления!");
+                alert.showAndWait();
+            }
+        });
+
         btnShuffle.setOnAction(e -> commandHandler.executeShuffle());
-        btnFilterEngine.setOnAction(e -> commandHandler.executeFilterByEnginePower());
         btnBuy.setOnAction(e -> commandHandler.executeBuy());
         btnBalance.setOnAction(e -> commandHandler.executeShowBalance());
-        btnDeposit.setOnAction(e -> commandHandler.executeDeposit());
-        btnHelp.setOnAction(e -> commandHandler.executeHelp());
         btnExit.setOnAction(e -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle(localization.get("app.title"));
             alert.setHeaderText(null);
             alert.setContentText(localization.get("confirm.exit"));
-            // Стилизация алерта подтверждения
             DialogPane dialogPane = alert.getDialogPane();
-            dialogPane.setStyle("-fx-background-color: #fff0f5;");
+            dialogPane.setStyle("-fx-background-color: #F1F8E9;");
             dialogPane.lookupButton(ButtonType.OK).setStyle(BTN_BASE_STYLE);
             dialogPane.lookupButton(ButtonType.CANCEL).setStyle(BTN_BASE_STYLE);
-
             if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
                 stopAutoRefresh();
                 if (networkService != null && networkService.isConnected()) {
@@ -284,12 +266,7 @@ public class MainScene {
             }
         });
 
-        hbox.getChildren().addAll(
-                btnShow, btnAdd, btnUpdate, btnRemove, btnClear,
-                btnInfo, btnSort, btnPrintDesc, btnShuffle,
-                btnFilterEngine, btnBuy, btnBalance, btnDeposit,
-                btnHelp, btnExit
-        );
+        hbox.getChildren().addAll(btnAdd, btnRemove, btnShuffle, btnBuy, btnBalance, btnExit);
         return hbox;
     }
 
@@ -303,21 +280,12 @@ public class MainScene {
             for (javafx.scene.Node node : bottomPanel.getChildren()) {
                 if (node instanceof Button btn) {
                     switch (i) {
-                        case 0: btn.setText(localization.get("btn.show")); break;
-                        case 1: btn.setText(localization.get("btn.add")); break;
-                        case 2: btn.setText(localization.get("btn.update")); break;
-                        case 3: btn.setText(localization.get("btn.remove")); break;
-                        case 4: btn.setText(localization.get("btn.clear")); break;
-                        case 5: btn.setText(localization.get("btn.info")); break;
-                        case 6: btn.setText(localization.get("btn.sort")); break;
-                        case 7: btn.setText(localization.get("btn.print_desc")); break;
-                        case 8: btn.setText(localization.get("btn.shuffle")); break;
-                        case 9: btn.setText(localization.get("btn.filter_engine")); break;
-                        case 10: btn.setText(localization.get("btn.buy")); break;
-                        case 11: btn.setText(localization.get("btn.balance")); break;
-                        case 12: btn.setText(localization.get("btn.deposit")); break;
-                        case 13: btn.setText(localization.get("btn.help")); break;
-                        case 14: btn.setText(localization.get("btn.exit")); break;
+                        case 0: btn.setText(localization.get("btn.add")); break;
+                        case 1: btn.setText(localization.get("btn.remove")); break;
+                        case 2: btn.setText(localization.get("btn.shuffle")); break;
+                        case 3: btn.setText(localization.get("btn.buy")); break;
+                        case 4: btn.setText(localization.get("btn.balance")); break;
+                        case 5: btn.setText(localization.get("btn.exit")); break;
                     }
                     i++;
                 }

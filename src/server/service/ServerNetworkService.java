@@ -8,6 +8,7 @@ import server.commands.CommandsList;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -144,13 +145,16 @@ public class ServerNetworkService {
                     if (bytesRead == 0) return null; // Данные не готовы, вернёмся при следующем OP_READ
                 }
                 data.sizeBuffer.flip();
+                data.sizeBuffer.order(ByteOrder.BIG_ENDIAN);
                 data.expectedSize = data.sizeBuffer.getInt();
                 data.sizeBuffer.clear();
 
                 if (data.expectedSize <= 0 || data.expectedSize > data.maxpack) {
                     System.out.println("Некорректный размер сообщения: " + data.expectedSize);
-                    removeClient(clientChannel); return null;
+                    removeClient(clientChannel);
+                    return null;
                 }
+
                 data.dataBuffer = ByteBuffer.allocate(data.expectedSize);
                 data.readingSize = false;
             }

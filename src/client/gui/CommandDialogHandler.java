@@ -1,4 +1,5 @@
 package client.gui;
+
 import client.logic.NetworkService;
 import common.*;
 import javafx.application.Platform;
@@ -15,21 +16,18 @@ public class CommandDialogHandler {
     private final String password;
     private VehicleTableController tableController;
 
-    // Стили для розовой темы
-    private static final String DIALOG_STYLE = "-fx-background-color: linear-gradient(to bottom, #fff0f5, #ffe4e8); " +
-            "-fx-border-color: #ff69b4; -fx-border-width: 2;";
-
+    private static final String DIALOG_STYLE = "-fx-background-color: linear-gradient(to bottom, #F1F8E9, #E8F5E9); " +
+            "-fx-border-color: #A5D6A7; -fx-border-width: 2;";
     private static final String HEADER_LABEL_STYLE = "-fx-font-size: 18px; -fx-font-weight: bold; " +
-            "-fx-text-fill: #ff1493;";
-
-    private static final String BTN_PINK_STYLE = "-fx-background-color: linear-gradient(to bottom, #ffc0cb, #ff69b4); " +
-            "-fx-text-fill: white; " +
+            "-fx-text-fill: #2E7D32;";
+    private static final String BTN_GREEN_STYLE = "-fx-background-color: linear-gradient(to bottom, #C8E6C9, #A5D6A7); " +
+            "-fx-text-fill: #1B5E20; " +
             "-fx-font-weight: bold; " +
             "-fx-background-radius: 5; " +
             "-fx-border-radius: 5; " +
-            "-fx-border-color: #ff1493; " +
+            "-fx-border-color: #81C784; " +
             "-fx-border-width: 1; " +
-            "-fx-effect: dropshadow(gaussian, rgba(255,105,180,0.4), 3, 0, 0, 1); " +
+            "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.3), 3, 0, 0, 1); " +
             "-fx-cursor: hand;";
 
     public CommandDialogHandler(NetworkService networkService, LocalizationManager localization,
@@ -44,27 +42,31 @@ public class CommandDialogHandler {
         this.tableController = tableController;
     }
 
-    // ==================== ПУБЛИЧНЫЕ МЕТОДЫ КОМАНД ====================
-    public void executeAdd() {
-        Vehicle vehicle = showVehicleDialog(null);
-        if (vehicle != null) {
-            sendCommand("add", List.of("add"), vehicle);
-        }
+    public void executeRemoveById(Long id) {
+        if (id == null) return;
+        sendCommand("remove_by_id", List.of("remove_by_id", String.valueOf(id)), null);
     }
 
-    public void executeRemoveById() {
+    public void executeRemoveByIdManual() {
         TextInputDialog dialog = new TextInputDialog();
         styleDialog(dialog, localization.get("dialog.remove_by_id.title"));
         dialog.setHeaderText(localization.get("dialog.remove_by_id.title"));
         dialog.setContentText(localization.get("dialog.remove_by_id.prompt"));
         dialog.showAndWait().ifPresent(id -> {
             try {
-                Long.parseLong(id); // валидация
+                Long.parseLong(id);
                 sendCommand("remove_by_id", List.of("remove_by_id", id), null);
             } catch (NumberFormatException e) {
                 showError(localization.get("dialog.error.invalid_id"));
             }
         });
+    }
+
+    public void executeAdd() {
+        Vehicle vehicle = showVehicleDialog(null);
+        if (vehicle != null) {
+            sendCommand("add", List.of("add"), vehicle);
+        }
     }
 
     public void executeClear() {
@@ -235,12 +237,6 @@ public class CommandDialogHandler {
         });
     }
 
-    // ==================== ВНУТРЕННЯЯ ЛОГИКА ====================
-    /**
-     * Отправляет команду на сервер и обрабатывает ответ:
-     * - если в data есть List<Vehicle> → обновляет таблицу
-     * - если есть текстовое сообщение → показывает в прокручиваемом окне
-     */
     private void sendCommand(String commandName, List<String> args, Vehicle vehicle) {
         new Thread(() -> {
             try {
@@ -250,7 +246,6 @@ public class CommandDialogHandler {
                 Platform.runLater(() -> {
                     if (response != null) {
                         if (response.isSuccess()) {
-                            // Для команды show ТОЛЬКО обновляем таблицу (без диалога)
                             if ("show".equals(commandName)) {
                                 String message = response.getMessage();
                                 if (message != null && !message.trim().isEmpty()) {
@@ -258,10 +253,8 @@ public class CommandDialogHandler {
                                     if (tableController != null && !vehicles.isEmpty()) {
                                         tableController.updateData(vehicles);
                                     }
-                                    // УБРАЛИ showScrollableInfo(message);
                                 }
                             } else {
-                                // Для остальных команд - как было
                                 Object data = response.getData();
                                 if (data instanceof List) {
                                     List<?> dataList = (List<?>) data;
@@ -297,7 +290,6 @@ public class CommandDialogHandler {
         }).start();
     }
 
-    /** Прокручиваемое окно для текстовых результатов */
     private void showScrollableInfo(String message) {
         Dialog<Void> dialog = new Dialog<>();
         styleDialog(dialog, localization.get("dialog.result.title"));
@@ -305,22 +297,18 @@ public class CommandDialogHandler {
         dialog.setHeaderText(localization.get("dialog.result.title"));
         dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
         dialog.setResizable(true);
-
         TextArea textArea = new TextArea(message);
         textArea.setEditable(false);
         textArea.setWrapText(true);
-        textArea.setStyle("-fx-font-size: 13px; -fx-background-color: transparent; -fx-control-inner-background: #fff0f5;");
-
+        textArea.setStyle("-fx-font-size: 13px; -fx-background-color: transparent; -fx-control-inner-background: #F1F8E9;");
         ScrollPane scrollPane = new ScrollPane(textArea);
         scrollPane.setFitToWidth(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setPrefSize(600, 350);
-
         dialog.getDialogPane().setContent(scrollPane);
         dialog.showAndWait();
     }
 
-    /** Окно ошибки (компактное, без скролла) */
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         styleDialog(alert, localization.get("app.title"));
@@ -330,28 +318,24 @@ public class CommandDialogHandler {
         alert.showAndWait();
     }
 
-    /** Диалог добавления/редактирования Vehicle */
-    /** Диалог добавления/редактирования Vehicle */
     private Vehicle showVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
         styleDialog(dialog, existing == null ? localization.get("dialog.add_vehicle") : localization.get("dialog.edit_vehicle"));
         dialog.setTitle(localization.get("app.title"));
         dialog.setHeaderText(existing == null ? localization.get("dialog.add_vehicle") : localization.get("dialog.edit_vehicle"));
-
         ButtonType saveButtonType = new ButtonType(localization.get("dialog.save"), ButtonBar.ButtonData.OK_DONE);
         ButtonType cancelButtonType = new ButtonType(localization.get("dialog.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
 
-        // Стилизация кнопок диалога
-        dialog.getDialogPane().lookupButton(saveButtonType).setStyle(BTN_PINK_STYLE);
-        dialog.getDialogPane().lookupButton(cancelButtonType).setStyle(BTN_PINK_STYLE);
+        dialog.getDialogPane().lookupButton(saveButtonType).setStyle(BTN_GREEN_STYLE);
+        dialog.getDialogPane().lookupButton(cancelButtonType).setStyle(BTN_GREEN_STYLE);
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
 
-        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1; -fx-prompt-text-fill: #ff69b4;";
-        String labelStyle = "-fx-text-fill: #ff1493; -fx-font-weight: bold;";
+        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9; -fx-prompt-text-fill: #66BB6A;";
+        String labelStyle = "-fx-text-fill: #2E7D32; -fx-font-weight: bold;";
 
         TextField nameField = new TextField(existing != null ? existing.getName() : "");
         nameField.setPromptText(localization.get("dialog.prompt.name"));
@@ -377,20 +361,16 @@ public class CommandDialogHandler {
         priceField.setPromptText(localization.get("dialog.prompt.price"));
         priceField.setStyle(fieldStyle);
 
-        // === НОВОЕ: DatePicker для даты создания ===
         DatePicker datePicker = new DatePicker();
         datePicker.setPromptText(localization.get("dialog.prompt.creation_date"));
         datePicker.setStyle(fieldStyle);
         if (existing != null && existing.getCreationDate() != null) {
-            // Конвертируем Date в LocalDate
             datePicker.setValue(existing.getCreationDate().toInstant()
                     .atZone(java.time.ZoneId.systemDefault())
                     .toLocalDate());
         } else {
-            // По умолчанию - текущая дата
             datePicker.setValue(java.time.LocalDate.now());
         }
-        // ==========================================
 
         ComboBox<VehicleType> typeCombo = new ComboBox<>();
         typeCombo.getItems().addAll(VehicleType.values());
@@ -413,7 +393,7 @@ public class CommandDialogHandler {
         grid.add(new Label(localization.get("dialog.label.distance")), 0, 4);
         grid.add(distanceField, 1, 4);
         grid.add(new Label(localization.get("dialog.label.creation_date")), 0, 5);
-        grid.add(datePicker, 1, 5);  // === ДОБАВЛЯЕМ DATE PICKER ===
+        grid.add(datePicker, 1, 5);
         grid.add(new Label(localization.get("dialog.label.type")), 0, 6);
         grid.add(typeCombo, 1, 6);
         grid.add(new Label(localization.get("dialog.label.fuel")), 0, 7);
@@ -421,7 +401,6 @@ public class CommandDialogHandler {
         grid.add(new Label(localization.get("dialog.label.price")), 0, 8);
         grid.add(priceField, 1, 8);
 
-        // Применяем стиль к лейблам
         for (javafx.scene.Node node : grid.getChildren()) {
             if (node instanceof Label) {
                 node.setStyle(labelStyle);
@@ -438,7 +417,6 @@ public class CommandDialogHandler {
                     v.setCoordinates(Integer.parseInt(xField.getText()), Float.parseFloat(yField.getText()));
                     v.setEnginePower(Float.parseFloat(powerField.getText()));
                     v.setDistanceTravelled(Float.parseFloat(distanceField.getText()));
-                    // === НОВОЕ: Установка даты из DatePicker ===
                     if (datePicker.getValue() != null) {
                         java.time.LocalDate localDate = datePicker.getValue();
                         java.time.LocalDateTime localDateTime = localDate.atStartOfDay();
@@ -447,7 +425,6 @@ public class CommandDialogHandler {
                     } else if (existing == null) {
                         v.setCreationDate();
                     }
-                    // ================================================
                     v.setType(typeCombo.getValue());
                     v.setFuelType(fuelCombo.getValue());
                     v.setPrice(Double.parseDouble(priceField.getText()));
@@ -459,6 +436,7 @@ public class CommandDialogHandler {
             }
             return null;
         });
+
         return dialog.showAndWait().orElse(null);
     }
 
@@ -466,24 +444,19 @@ public class CommandDialogHandler {
         sendCommand("show", List.of("show"), null);
     }
 
-    /** Тихий вызов show (без диалоговых окон) для автообновления */
     public void executeShowSilent() {
         sendCommand("show", List.of("show"), null);
     }
 
-    /** Редактирование существующего объекта (вызывается из таблицы или канваса) */
     public void executeEdit(Vehicle existingVehicle) {
         if (existingVehicle == null) return;
         Vehicle vehicleToSave = showVehicleDialog(existingVehicle);
         if (vehicleToSave != null) {
-            vehicleToSave.setId(existingVehicle.getId()); // сохраняем оригинальный ID
+            vehicleToSave.setId(existingVehicle.getId());
             sendCommand("update", List.of("update", String.valueOf(existingVehicle.getId())), vehicleToSave);
         }
     }
 
-    /**
-     * вспомогательный метод для стилизации диалогов
-     */
     private void styleDialog(Dialog<?> dialog, String title) {
         dialog.getDialogPane().setStyle(DIALOG_STYLE);
     }

@@ -6,29 +6,20 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Callback;
 import java.text.DecimalFormat;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Контроллер таблицы транспортных средств.
- * Реализует отображение, фильтрацию и сортировку через Streams API.
- */
 public class VehicleTableController {
     private final LocalizationManager localization;
     private TableView<Vehicle> tableView;
-
-    // Исходные данные (полученные с сервера)
     private final ObservableList<Vehicle> allVehicles = FXCollections.observableArrayList();
-    // Отфильтрованные данные (отображаемые в таблице)
     private final ObservableList<Vehicle> filteredVehicles = FXCollections.observableArrayList();
-
-    // Элементы фильтров
     private TextField filterId;
     private TextField filterName;
     private TextField filterOwner;
@@ -36,46 +27,38 @@ public class VehicleTableController {
     private TextField filterMaxPrice;
     private ComboBox<VehicleType> filterType;
     private ComboBox<FuelType> filterFuel;
-
-    // Форматтеры
     private static final DecimalFormat PRICE_FORMAT = new DecimalFormat("#,##0.00");
 
     public VehicleTableController(LocalizationManager localization) {
         this.localization = localization;
     }
 
-    /**
-     * Создает VBox с панелью фильтров и таблицей.
-     */
     public VBox createTablePane(){
         VBox root = new VBox(10);
         root.setPadding(new Insets(10));
-        root.setStyle("-fx-background-color: white; " +
+        root.setStyle("-fx-background-color: #FFFFFF; " +
                 "-fx-border-radius: 10; " +
                 "-fx-background-radius: 10; " +
-                "-fx-effect: dropshadow(gaussian, rgba(255,182,193,0.4), 10, 0, 0, 2);");
+                "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.25), 10, 0, 0, 2);");
 
-        // 1. Панель фильтров
         HBox filterPanel = createFilterPanel();
 
-        // 2. Таблица
         tableView = new TableView<>();
         tableView.setItems(filteredVehicles);
+        tableView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
 
-        // Стилизация таблицы
         tableView.setStyle("-fx-background-color: white; " +
-                "-fx-control-inner-background: #fff0f5; " +
-                "-fx-table-cell-border-color: #ffb6c1;");
+                "-fx-control-inner-background: #F1F8E9; " +
+                "-fx-table-cell-border-color: #C8E6C9;");
 
-        // Чередование цветов строк (Зебра)
         tableView.setRowFactory(tv -> {
             TableRow<Vehicle> row = new TableRow<>();
             row.indexProperty().addListener((obs, oldIndex, newIndex) -> {
                 if (!row.isEmpty()) {
                     if ((int)newIndex % 2 == 0){
-                        row.setStyle("-fx-background-color: #fff0f5;");
+                        row.setStyle("-fx-background-color: #F1F8E9;");
                     } else {
-                        row.setStyle("-fx-background-color: white;");
+                        row.setStyle("-fx-background-color: #FFFFFF;");
                     }
                 }
             });
@@ -83,7 +66,6 @@ public class VehicleTableController {
         });
 
         setupColumns();
-
         root.getChildren().addAll(filterPanel, tableView);
         VBox.setVgrow(tableView, javafx.scene.layout.Priority.ALWAYS);
         return root;
@@ -94,13 +76,10 @@ public class VehicleTableController {
         hbox.setPadding(new Insets(5));
         hbox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
-        // Стиль для лейбла фильтра
         Label filterLabel = new Label(localization.get("table.filter"));
-        filterLabel.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
+        filterLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
 
-        // Текстовые фильтры
-        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1; -fx-prompt-text-fill: #ff69b4;";
-
+        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9; -fx-prompt-text-fill: #66BB6A;";
         filterId = new TextField();
         filterId.setPromptText(localization.get("table.column.id"));
         filterId.setPrefWidth(60);
@@ -116,7 +95,6 @@ public class VehicleTableController {
         filterOwner.setPrefWidth(100);
         filterOwner.setStyle(fieldStyle);
 
-        // Числовые фильтры
         filterMinPrice = new TextField();
         filterMinPrice.setPromptText(localization.get("filter.min_price"));
         filterMinPrice.setPrefWidth(70);
@@ -127,14 +105,13 @@ public class VehicleTableController {
         filterMaxPrice.setPrefWidth(70);
         filterMaxPrice.setStyle(fieldStyle);
 
-        // Выпадающие списки
         filterType = new ComboBox<>();
         filterType.getItems().add(null);
         filterType.getItems().addAll(VehicleType.values());
         filterType.setPromptText(localization.get("table.column.type"));
         setupFilterTypeLocalization();
         filterType.setValue(null);
-        filterType.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1;");
+        filterType.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9;");
 
         filterFuel = new ComboBox<>();
         filterFuel.getItems().add(null);
@@ -142,9 +119,8 @@ public class VehicleTableController {
         filterFuel.setPromptText(localization.get("table.column.fuel"));
         setupFilterFuelLocalization();
         filterFuel.setValue(null);
-        filterFuel.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1;");
+        filterFuel.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9;");
 
-        // Привязка событий изменения фильтров
         Callback<Void, Void> updateFilter = v -> { applyFilters(); return null; };
         filterId.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterName.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
@@ -163,9 +139,6 @@ public class VehicleTableController {
         return hbox;
     }
 
-    /**
-     * Настраивает локализацию для ComboBox типов транспортных средств
-     */
     private void setupFilterTypeLocalization() {
         filterType.setCellFactory(cb -> new ListCell<>() {
             @Override
@@ -191,9 +164,6 @@ public class VehicleTableController {
         });
     }
 
-    /**
-     * Настраивает локализацию для ComboBox типов топлива
-     */
     private void setupFilterFuelLocalization() {
         filterFuel.setCellFactory(cb -> new ListCell<>() {
             @Override
@@ -220,8 +190,8 @@ public class VehicleTableController {
     }
 
     private void setupColumns() {
-        String headerStyle = "-fx-background-color: linear-gradient(to bottom, #ffb6c1, #ff69b4); " +
-                "-fx-text-fill: white; -fx-font-weight: bold;";
+        String headerStyle = "-fx-background-color: linear-gradient(to bottom, #C8E6C9, #A5D6A7); " +
+                "-fx-text-fill: #1B5E20; -fx-font-weight: bold;";
 
         TableColumn<Vehicle, Number> colId = new TableColumn<>(localization.get("col.id"));
         colId.setStyle(headerStyle);
@@ -292,17 +262,13 @@ public class VehicleTableController {
     }
 
     public void updateLocalization() {
-        // Обновляем заголовки столбцов
         tableView.getColumns().clear();
         setupColumns();
 
-        // Обновляем фильтры
         HBox filterPanel = (HBox) ((VBox) tableView.getParent()).getChildren().get(0);
         filterPanel.getChildren().clear();
-
         Label filterLabel = new Label(localization.get("table.filter") + ":");
-        filterLabel.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
-
+        filterLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
         filterPanel.getChildren().addAll(
                 filterLabel,
                 filterId, filterName, filterOwner,
@@ -310,7 +276,6 @@ public class VehicleTableController {
                 filterType, filterFuel
         );
 
-        // Обновляем prompt text
         filterId.setPromptText(localization.get("filter.id"));
         filterName.setPromptText(localization.get("filter.name"));
         filterOwner.setPromptText(localization.get("filter.owner"));
@@ -319,15 +284,10 @@ public class VehicleTableController {
         filterType.setPromptText(localization.get("filter.type"));
         filterFuel.setPromptText(localization.get("filter.fuel"));
 
-        // Обновляем локализацию ComboBox'ов
         setupFilterTypeLocalization();
         setupFilterFuelLocalization();
     }
 
-    /**
-     * Применяет фильтры и сортировку используя STREAMS API.
-     * Это ключевое требование ТЗ.
-     */
     private void applyFilters() {
         String idStr = filterId.getText().trim();
         String nameStr = filterName.getText().trim().toLowerCase();
@@ -337,59 +297,63 @@ public class VehicleTableController {
         VehicleType typeVal = filterType.getValue();
         FuelType fuelVal = filterFuel.getValue();
 
-        // STREAMS API CHAIN
         List<Vehicle> result = allVehicles.stream()
                 .filter(v -> {
-                    // Фильтр по ID
                     if (!idStr.isEmpty()) {
-                        try {
-                            if (v.getId() != Long.parseLong(idStr)) return false;
-                        } catch (NumberFormatException e) { return false; }
+                        try { if (v.getId() != Long.parseLong(idStr)) return false; } catch (NumberFormatException e) { return false; }
                     }
-                    // Фильтр по Имени (частичное совпадение)
                     if (!nameStr.isEmpty() && !v.getName().toLowerCase().contains(nameStr)) return false;
-                    // Фильтр по Владельцу
                     if (!ownerStr.isEmpty() && (v.getOwnerLogin() == null || !v.getOwnerLogin().toLowerCase().contains(ownerStr))) return false;
-                    // Фильтр по Типу
                     if (typeVal != null && v.getType() != typeVal) return false;
-                    // Фильтр по Топливу
                     if (fuelVal != null && v.getFuelType() != fuelVal) return false;
-                    // Фильтр по Цене (Диапазон)
                     if (!minPriceStr.isEmpty()) {
-                        try {
-                            if (v.getPrice() < Double.parseDouble(minPriceStr)) return false;
-                        } catch (NumberFormatException e) { return false; }
+                        try { if (v.getPrice() < Double.parseDouble(minPriceStr)) return false; } catch (NumberFormatException e) { return false; }
                     }
                     if (!maxPriceStr.isEmpty()) {
-                        try {
-                            if (v.getPrice() > Double.parseDouble(maxPriceStr)) return false;
-                        } catch (NumberFormatException e) { return false; }
+                        try { if (v.getPrice() > Double.parseDouble(maxPriceStr)) return false; } catch (NumberFormatException e) { return false; }
                     }
                     return true;
                 })
-                .sorted((v1, v2) -> {
-                    // Сортировка по умолчанию: по ID возрастанию
-                    return Long.compare(v1.getId(), v2.getId());
-                })
+                .sorted((v1, v2) -> Long.compare(v1.getId(), v2.getId()))
                 .collect(Collectors.toList());
 
-        // Обновляем ObservableList таблицы
         filteredVehicles.setAll(result);
     }
 
     /**
      * Обновляет исходные данные извне (после получения ответа от сервера).
+     * Сохраняет выделение строки, чтобы оно не сбрасывалось при автообновлении.
      */
     public void updateData(List<Vehicle> vehicles) {
+        // 1. Запоминаем ID выбранного элемента ДО замены данных
+        Long selectedId = null;
+        Vehicle currentSelection = tableView.getSelectionModel().getSelectedItem();
+        if (currentSelection != null) {
+            selectedId = currentSelection.getId();
+        }
+
         if (vehicles == null) {
             allVehicles.clear();
             filteredVehicles.clear();
+            tableView.getSelectionModel().clearSelection();
             return;
         }
-        // Заменяем содержимое исходного списка
+
+        // 2. Обновляем данные
         allVehicles.setAll(vehicles);
-        // Переприменяем фильтры
         applyFilters();
+
+        // 3. Восстанавливаем выделение по сохранённому ID (если элемент ещё есть в таблице)
+        if (selectedId != null) {
+            final Long finalSelectedId = selectedId; // Делаем final для использования в lambda
+            Vehicle toSelect = filteredVehicles.stream()
+                    .filter(v -> v.getId() == finalSelectedId) // Используем == для примитивов
+                    .findFirst()
+                    .orElse(null);
+            if (toSelect != null) {
+                tableView.getSelectionModel().select(toSelect);
+            }
+        }
     }
 
     public List<Vehicle> getAllVehicles() {

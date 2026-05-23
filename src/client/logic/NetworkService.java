@@ -7,6 +7,7 @@ import common.Serializer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.SocketChannel;
 
 public class NetworkService {
@@ -36,21 +37,18 @@ public class NetworkService {
     public boolean send(CommandRequest request) {
         try {
             byte[] data = Serializer.serialize(request);
-
             // Отправляем размер данных (4 байта) + сами данные
             ByteBuffer sizeBuffer = ByteBuffer.allocate(4);
+            sizeBuffer.order(ByteOrder.BIG_ENDIAN); // ← ДОБАВИТЬ
             sizeBuffer.putInt(data.length);
             sizeBuffer.flip();
-
             while (sizeBuffer.hasRemaining()) {
                 channel.write(sizeBuffer);
             }
-
             ByteBuffer buffer = ByteBuffer.wrap(data);
             while (buffer.hasRemaining()) {
                 channel.write(buffer);
             }
-
             return true;
         } catch (IOException e) {
             System.out.println("Ошибка отправки: " + e.getMessage());

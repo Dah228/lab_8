@@ -11,7 +11,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.text.Font;
 import javafx.util.Duration;
-import java.util.HashMap;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -186,8 +186,8 @@ public class VehicleCanvasController {
         double w = canvas.getWidth();
         double h = canvas.getHeight();
 
-        // --- Сетка ---
-        gc.setStroke(Color.rgb(230, 230, 250)); // Лавандовый для сетки
+        // Сетка
+        gc.setStroke(Color.rgb(230, 230, 250));
         gc.setLineWidth(0.5);
 
         // Вертикальные линии сетки
