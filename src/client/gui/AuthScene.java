@@ -20,7 +20,6 @@ import java.util.List;
  */
 public class AuthScene {
 
-    private final Stage stage;
     private final NetworkService networkService;
     private final LocalizationManager localization;
 
@@ -30,13 +29,11 @@ public class AuthScene {
     private Button actionButton;
     private ToggleGroup modeToggle;
     private Label errorLabel;
-    private Label userDisplayLabel; // Для отображения текущего пользователя после входа
 
     // Callback для перехода на главную сцену
     private Runnable onLoginSuccess;
 
     public AuthScene(Stage stage, NetworkService networkService, LocalizationManager localization) {
-        this.stage = stage;
         this.networkService = networkService;
         this.localization = localization;
     }

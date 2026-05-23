@@ -64,12 +64,12 @@ public class VehicleTableController {
         tableView.setItems(filteredVehicles);
         setupColumns();
 
-        // УБРАЛИ кнопку обновления
         root.getChildren().addAll(filterPanel, tableView);
         VBox.setVgrow(tableView, javafx.scene.layout.Priority.ALWAYS);
 
         return root;
     }
+
     private HBox createFilterPanel() {
         HBox hbox = new HBox(10);
         hbox.setPadding(new Insets(5));
@@ -99,52 +99,14 @@ public class VehicleTableController {
         filterType.getItems().add(null);
         filterType.getItems().addAll(VehicleType.values());
         filterType.setPromptText(localization.get("table.column.type"));
-        filterType.setCellFactory(cb -> new ListCell<>() {
-            @Override protected void updateItem(VehicleType item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(localization.get("table.filter.all_types"));
-                } else {
-                    setText(item.toString());
-                }
-            }
-        });
-        filterType.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(VehicleType item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(localization.get("table.filter.all_types"));
-                } else {
-                    setText(item.toString());
-                }
-            }
-        });
+        setupFilterTypeLocalization();
         filterType.setValue(null);
 
         filterFuel = new ComboBox<>();
         filterFuel.getItems().add(null);
         filterFuel.getItems().addAll(FuelType.values());
         filterFuel.setPromptText(localization.get("table.column.fuel"));
-        filterFuel.setCellFactory(cb -> new ListCell<>() {
-            @Override protected void updateItem(FuelType item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(localization.get("table.filter.all_fuels"));
-                } else {
-                    setText(item.toString());
-                }
-            }
-        });
-        filterFuel.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(FuelType item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(localization.get("table.filter.all_fuels"));
-                } else {
-                    setText(item.toString());
-                }
-            }
-        });
+        setupFilterFuelLocalization();
         filterFuel.setValue(null);
 
         // Привязка событий изменения фильтров
@@ -164,6 +126,64 @@ public class VehicleTableController {
                 filterType, filterFuel
         );
         return hbox;
+    }
+
+    /**
+     * Настраивает локализацию для ComboBox типов транспортных средств
+     */
+    private void setupFilterTypeLocalization() {
+        filterType.setCellFactory(cb -> new ListCell<>() {
+            @Override
+            protected void updateItem(VehicleType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(localization.get("table.filter.all_types"));
+                } else {
+                    setText(item.toString());
+                }
+            }
+        });
+
+        filterType.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(VehicleType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(localization.get("table.filter.all_types"));
+                } else {
+                    setText(item.toString());
+                }
+            }
+        });
+    }
+
+    /**
+     * Настраивает локализацию для ComboBox типов топлива
+     */
+    private void setupFilterFuelLocalization() {
+        filterFuel.setCellFactory(cb -> new ListCell<>() {
+            @Override
+            protected void updateItem(FuelType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(localization.get("table.filter.all_fuels"));
+                } else {
+                    setText(item.toString());
+                }
+            }
+        });
+
+        filterFuel.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(FuelType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(localization.get("table.filter.all_fuels"));
+                } else {
+                    setText(item.toString());
+                }
+            }
+        });
     }
 
     private void setupColumns() {
@@ -210,7 +230,8 @@ public class VehicleTableController {
         TableColumn<Vehicle, Double> colPrice = new TableColumn<>(localization.get("col.price"));
         colPrice.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getPrice()));
         colPrice.setCellFactory(tc -> new TableCell<>() {
-            @Override protected void updateItem(Double price, boolean empty) {
+            @Override
+            protected void updateItem(Double price, boolean empty) {
                 super.updateItem(price, empty);
                 if (empty || price == null) {
                     setText(null);
@@ -247,6 +268,10 @@ public class VehicleTableController {
         filterMaxPrice.setPromptText(localization.get("filter.max_price"));
         filterType.setPromptText(localization.get("filter.type"));
         filterFuel.setPromptText(localization.get("filter.fuel"));
+
+        // Обновляем локализацию ComboBox'ов
+        setupFilterTypeLocalization();
+        setupFilterFuelLocalization();
     }
 
     /**
@@ -299,7 +324,6 @@ public class VehicleTableController {
                 })
                 .sorted((v1, v2) -> {
                     // Сортировка по умолчанию: по ID возрастанию
-                    // Можно доработать под клик по заголовку колонки, но для базового функционала достаточно ID
                     return Long.compare(v1.getId(), v2.getId());
                 })
                 .collect(Collectors.toList());
@@ -324,35 +348,10 @@ public class VehicleTableController {
         applyFilters();
     }
 
-    /**
-     * Заглушка для запроса данных с сервера.
-     * В Этапе 6 мы подключим это к реальной сети.
-     */
-    public void requestShowFromServer() {
-        System.out.println("Запрос данных с сервера (заглушка)...");
-        // Здесь будет вызов networkService.send(new CommandRequest("show", ...))
-        // А пока просто добавим тестовые данные для проверки UI
-        testFillData();
-    }
-
-    private void testFillData() {
-        // Тестовые данные для проверки работы таблицы
-        Vehicle v1 = new Vehicle();
-        v1.setId(1); v1.setName("Test Car"); v1.setOwnerLogin("user1");
-        v1.setCoordinates(10, 20); v1.setPrice(1000.0); v1.setType(common.VehicleType.BOAT);
-        v1.setFuelType(common.FuelType.GASOLINE); v1.setEnginePower(150f); v1.setDistanceTravelled(5000f);
-
-        Vehicle v2 = new Vehicle();
-        v2.setId(2); v2.setName("Fast Plane"); v2.setOwnerLogin("user2");
-        v2.setCoordinates(100, 200); v2.setPrice(50000.0); v2.setType(common.VehicleType.PLANE);
-        v2.setFuelType(common.FuelType.KEROSENE); v2.setEnginePower(5000f); v2.setDistanceTravelled(100000f);
-
-        updateData(List.of(v1, v2));
-    }
 
 
     public List<Vehicle> getAllVehicles() {
-        return new ArrayList<>(allVehicles); // возвращаем копию, чтобы не ломать фильтры
+        return new ArrayList<>(allVehicles);
     }
 
     public TableView<Vehicle> getTable() {
