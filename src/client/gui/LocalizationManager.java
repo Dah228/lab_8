@@ -175,6 +175,7 @@ public class LocalizationManager {
                 Map.entry("dialog.result.title", "Результат выполнения"),
                 Map.entry("dialog.error.unknown", "Произошла неизвестная ошибка"),
                 Map.entry("dialog.error.invalid_data", "Некорректные данные: ")
+
         ));
 
         // =====================================================================
@@ -406,6 +407,7 @@ public class LocalizationManager {
                 Map.entry("filter.all_fuels", "Visi kuro tipai"),
                 Map.entry("table.refresh", "Atnaujinti"),
 
+
                 // === NEW DIALOG KEYS ===
                 Map.entry("dialog.add_vehicle", "Pridėti transporto priemonę"),
                 Map.entry("dialog.edit_vehicle", "Redaguoti transporto priemonę"),
@@ -468,6 +470,7 @@ public class LocalizationManager {
                 Map.entry("main.user.label", "User:"),
                 Map.entry("main.table.title", "Objects List"),
                 Map.entry("main.visual.title", ">"),
+                Map.entry("dialog.cancel", "Cancel"),
                 Map.entry("main.lang.label", "Language:"),
                 Map.entry("table.filter", "Filter"),
                 Map.entry("table.sort.asc", "Ascending"),
@@ -487,7 +490,6 @@ public class LocalizationManager {
                 Map.entry("vehicle.delete", "Delete"),
                 Map.entry("vehicle.buy", "Buy"),
                 Map.entry("dialog.save", "Save"),
-                Map.entry("dialog.cancel", "Cancel"),
                 Map.entry("error.network", "Network error"),
                 Map.entry("error.server", "Server error"),
                 Map.entry("success.saved", "Saved"),

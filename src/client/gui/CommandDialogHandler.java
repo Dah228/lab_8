@@ -309,8 +309,8 @@ public class CommandDialogHandler {
         dialog.setHeaderText(existing == null ? localization.get("dialog.add_vehicle") : localization.get("dialog.edit_vehicle"));
 
         ButtonType saveButtonType = new ButtonType(localization.get("dialog.save"), ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
-
+        ButtonType cancelButtonType = new ButtonType(localization.get("dialog.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
