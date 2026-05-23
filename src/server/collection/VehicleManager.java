@@ -17,22 +17,26 @@ public class VehicleManager implements IVehicleManager {
         this.userDao = userDao;
     }
 
+    // ИСПРАВЛЕНО: загружаем свежие данные из БД
     public ArrayList<Vehicle> showCollection() {
-        return collection.getVehicles();
+        List<Vehicle> dbVehicles = dao.loadAll();
+        return new ArrayList<>(dbVehicles);
     }
 
     public HashMap<String, String> getInfo() {
         HashMap<String, String> paramList = new HashMap<>();
-        paramList.put("Размер коллекции : ", String.valueOf(collection.size()));
-        paramList.put("Тип коллекции : ", collection.getVehicles().getClass().getName());
+// Используем showCollection() для актуальных данных
+        ArrayList<Vehicle> currentVehicles = showCollection();
+        paramList.put("Размер коллекции : ", String.valueOf(currentVehicles.size()));
+        paramList.put("Тип коллекции : ", currentVehicles.getClass().getName());
         paramList.put("Дата инициализации : ", String.valueOf(collection.getInitTime()));
         float summa = 0;
-        for (Vehicle v : collection.getVehicles()) {
+        for (Vehicle v : currentVehicles) {
             summa += v.getEnginePower();
         }
         paramList.put("Общая мощность двигателей : ", String.valueOf(summa));
-        if (!collection.isEmpty()) {
-            paramList.put("Средняя мощность двигателя : ", String.valueOf(summa / collection.size()));
+        if (!currentVehicles.isEmpty()) {
+            paramList.put("Средняя мощность двигателя : ", String.valueOf(summa / currentVehicles.size()));
         } else {
             paramList.put("Средняя мощность двигателя", "0 (коллекция пуста)");
         }
@@ -41,7 +45,7 @@ public class VehicleManager implements IVehicleManager {
 
     public ArrayList<Vehicle> filterByEnginePower(Float power) {
         ArrayList<Vehicle> filtered = new ArrayList<>();
-        for (Vehicle v : collection.getVehicles()) {
+        for (Vehicle v : showCollection()) {
             if (v.getEnginePower() >= power) {
                 filtered.add(v);
             }
@@ -51,7 +55,7 @@ public class VehicleManager implements IVehicleManager {
 
     public ArrayList<Vehicle> filterLessThanType(VehicleType type) {
         ArrayList<Vehicle> filtered = new ArrayList<>();
-        for (Vehicle v : collection.getVehicles()) {
+        for (Vehicle v : showCollection()) {
             if (v.getType() != null && v.getType().compareTo(type) < 0) {
                 filtered.add(v);
             }
@@ -60,19 +64,19 @@ public class VehicleManager implements IVehicleManager {
     }
 
     public ArrayList<Vehicle> sortByID() {
-        ArrayList<Vehicle> vehicles = collection.getVehicles();
+        ArrayList<Vehicle> vehicles = showCollection();
         vehicles.sort(Comparator.comparingLong(Vehicle::getId));
         return vehicles;
     }
 
     public ArrayList<Vehicle> sortByIDDescending() {
-        ArrayList<Vehicle> vehicles = collection.getVehicles();
+        ArrayList<Vehicle> vehicles = showCollection();
         vehicles.sort(Comparator.comparingLong(Vehicle::getId).reversed());
         return vehicles;
     }
 
     public ArrayList<Vehicle> shuffle() {
-        ArrayList<Vehicle> vehicles = collection.getVehicles();
+        ArrayList<Vehicle> vehicles = showCollection();
         Collections.shuffle(vehicles);
         return vehicles;
     }
@@ -80,7 +84,7 @@ public class VehicleManager implements IVehicleManager {
     public Map<Comparable<?>, Long> groupByParam(List<String> args) {
         ValidateParams validator = new ValidateParams(args);
         GroupingField field = validator.getGroupingField();
-        return collection.getVehicles().stream()
+        return showCollection().stream()
                 .collect(Collectors.groupingBy(field.extractor(), Collectors.counting()));
     }
 
@@ -95,6 +99,7 @@ public class VehicleManager implements IVehicleManager {
     @Override
     public boolean buyVehicle(long id, String buyerLogin) {
         if (dao.buyVehicle(id, buyerLogin)) {
+// Обновляем в памяти
             Vehicle v = collection.getVehicleByID(id);
             if (v != null) {
                 v.setOwnerLogin(buyerLogin);
@@ -111,7 +116,12 @@ public class VehicleManager implements IVehicleManager {
 
     public boolean updateElementByID(long id, Vehicle vehicle, String ownerLogin) {
         if (dao.update(id, vehicle, ownerLogin)) {
-            collection.replaceVehicle(id, vehicle);
+// Обновляем в памяти
+            Vehicle existingVehicle = collection.getVehicleByID(id);
+            if (existingVehicle != null) {
+                collection.rmEl(existingVehicle);
+            }
+            collection.add(vehicle);
             return true;
         }
         return false;
@@ -127,7 +137,7 @@ public class VehicleManager implements IVehicleManager {
     }
 
     public boolean addIfMax(Vehicle veh) {
-        Optional<Vehicle> max = collection.getVehicles().stream()
+        Optional<Vehicle> max = showCollection().stream()
                 .max(Comparator.comparingDouble(Vehicle::getDistanceTravelled));
         if (max.isEmpty() || veh.getDistanceTravelled() > max.get().getDistanceTravelled()) {
             return addElement(veh);
@@ -150,6 +160,7 @@ public class VehicleManager implements IVehicleManager {
     public boolean setPrice(long id, double price, String ownerLogin) {
         if (price < 0) return false;
         if (userDao.updatePrice(id, price, ownerLogin)) {
+// Обновляем в памяти
             Vehicle v = collection.getVehicleByID(id);
             if (v != null) {
                 v.setPrice(price);

@@ -1,11 +1,9 @@
 package client.gui;
-
 import client.logic.NetworkService;
 import common.*;
 import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,7 +27,6 @@ public class CommandDialogHandler {
     }
 
     // ==================== ПУБЛИЧНЫЕ МЕТОДЫ КОМАНД ====================
-
     public void executeAdd() {
         Vehicle vehicle = showVehicleDialog(null);
         if (vehicle != null) {
@@ -212,7 +209,6 @@ public class CommandDialogHandler {
     }
 
     // ==================== ВНУТРЕННЯЯ ЛОГИКА ====================
-
     /**
      * Отправляет команду на сервер и обрабатывает ответ:
      * - если в data есть List<Vehicle> → обновляет таблицу
@@ -224,7 +220,6 @@ public class CommandDialogHandler {
                 CommandRequest request = new CommandRequest(commandName, args, vehicle, true, login, password);
                 networkService.send(request);
                 CommandResponse response = networkService.receive();
-
                 Platform.runLater(() -> {
                     if (response != null) {
                         if (response.isSuccess()) {
@@ -251,10 +246,18 @@ public class CommandDialogHandler {
                                         tableController.updateData(vehicles);
                                     }
                                 }
-
                                 String message = response.getMessage();
                                 if (message != null && !message.trim().isEmpty()) {
                                     showScrollableInfo(message);
+                                }
+
+                                if ("update".equals(commandName) ||
+                                        "add".equals(commandName) ||
+                                        "remove_by_id".equals(commandName) ||
+                                        "clear".equals(commandName) ||
+                                        "buy".equals(commandName) ||
+                                        "set_price".equals(commandName)) {
+                                    executeShowSilent();
                                 }
                             }
                         } else {
@@ -267,6 +270,7 @@ public class CommandDialogHandler {
             }
         }).start();
     }
+
     /** Прокручиваемое окно для текстовых результатов */
     private void showScrollableInfo(String message) {
         Dialog<Void> dialog = new Dialog<>();
