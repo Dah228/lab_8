@@ -3,7 +3,6 @@ package client.gui;
 import client.logic.*;
 import common.CommandResponse;
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;

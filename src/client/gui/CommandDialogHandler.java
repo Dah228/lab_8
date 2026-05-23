@@ -37,14 +37,14 @@ public class CommandDialogHandler {
     public void executeRemoveById() {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle(localization.get("app.title"));
-        dialog.setHeaderText("Удаление по ID");
-        dialog.setContentText("Введите ID:");
+        dialog.setHeaderText(localization.get("dialog.remove_by_id.title"));
+        dialog.setContentText(localization.get("dialog.remove_by_id.prompt"));
         dialog.showAndWait().ifPresent(id -> {
             try {
                 Long.parseLong(id); // валидация
                 sendCommand("remove_by_id", List.of("remove_by_id", id), null);
             } catch (NumberFormatException e) {
-                showError("Некорректный ID");
+                showError(localization.get("dialog.error.invalid_id"));
             }
         });
     }
@@ -52,8 +52,8 @@ public class CommandDialogHandler {
     public void executeClear() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle(localization.get("app.title"));
-        alert.setHeaderText("Очистка коллекции");
-        alert.setContentText("Вы уверены, что хотите удалить все свои объекты?");
+        alert.setHeaderText(localization.get("dialog.clear.title"));
+        alert.setContentText(localization.get("dialog.clear.confirm"));
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 sendCommand("clear", List.of("clear"), null);
@@ -66,15 +66,15 @@ public class CommandDialogHandler {
         if (vehicle != null) {
             TextInputDialog dialog = new TextInputDialog();
             dialog.setTitle(localization.get("app.title"));
-            dialog.setHeaderText("Обновление элемента");
-            dialog.setContentText("Введите ID:");
+            dialog.setHeaderText(localization.get("dialog.update.title"));
+            dialog.setContentText(localization.get("dialog.update.prompt"));
             dialog.showAndWait().ifPresent(id -> {
                 try {
                     long idLong = Long.parseLong(id);
                     vehicle.setId(idLong);
                     sendCommand("update", List.of("update", id), vehicle);
                 } catch (NumberFormatException e) {
-                    showError("Некорректный ID");
+                    showError(localization.get("dialog.error.invalid_id"));
                 }
             });
         }
@@ -89,15 +89,15 @@ public class CommandDialogHandler {
     public void executeFilterByEnginePower() {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle(localization.get("app.title"));
-        dialog.setHeaderText("Фильтр по мощности двигателя");
-        dialog.setContentText("Введите минимальную мощность:");
+        dialog.setHeaderText(localization.get("dialog.filter.power.title"));
+        dialog.setContentText(localization.get("dialog.filter.power.prompt"));
         dialog.showAndWait().ifPresent(power -> {
             try {
                 Float.parseFloat(power);
                 sendCommand("filter_greater_than_engine_power",
                         List.of("filter_greater_than_engine_power", power), null);
             } catch (NumberFormatException e) {
-                showError("Некорректное значение");
+                showError(localization.get("dialog.error.invalid_value"));
             }
         });
     }
@@ -108,7 +108,7 @@ public class CommandDialogHandler {
         comboBox.setValue(VehicleType.BOAT);
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle(localization.get("app.title"));
-        alert.setHeaderText("Фильтр по типу (меньше)");
+        alert.setHeaderText(localization.get("dialog.filter.type.title"));
         alert.getDialogPane().setContent(comboBox);
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
@@ -125,7 +125,7 @@ public class CommandDialogHandler {
         comboBox.setValue("TYPE");
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle(localization.get("app.title"));
-        alert.setHeaderText("Группировка по полю");
+        alert.setHeaderText(localization.get("dialog.group_by.title"));
         alert.getDialogPane().setContent(comboBox);
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
@@ -145,14 +145,14 @@ public class CommandDialogHandler {
     public void executeBuy() {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle(localization.get("app.title"));
-        dialog.setHeaderText("Покупка ТС");
-        dialog.setContentText("Введите ID транспортного средства:");
+        dialog.setHeaderText(localization.get("dialog.buy.title"));
+        dialog.setContentText(localization.get("dialog.buy.prompt"));
         dialog.showAndWait().ifPresent(id -> {
             try {
                 Long.parseLong(id);
                 sendCommand("buy", List.of("buy", id), null);
             } catch (NumberFormatException e) {
-                showError("Некорректный ID");
+                showError(localization.get("dialog.error.invalid_id"));
             }
         });
     }
@@ -162,18 +162,18 @@ public class CommandDialogHandler {
     public void executeDeposit() {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle(localization.get("app.title"));
-        dialog.setHeaderText("Пополнение баланса");
-        dialog.setContentText("Введите сумму:");
+        dialog.setHeaderText(localization.get("dialog.deposit.title"));
+        dialog.setContentText(localization.get("dialog.deposit.prompt"));
         dialog.showAndWait().ifPresent(amount -> {
             try {
                 double amountDouble = Double.parseDouble(amount);
                 if (amountDouble > 0) {
                     sendCommand("deposit", List.of("deposit", amount), null);
                 } else {
-                    showError("Сумма должна быть положительной");
+                    showError(localization.get("dialog.error.positive_amount"));
                 }
             } catch (NumberFormatException e) {
-                showError("Некорректная сумма");
+                showError(localization.get("dialog.error.invalid_amount"));
             }
         });
     }
@@ -181,29 +181,29 @@ public class CommandDialogHandler {
     public void executeSetPrice() {
         TextInputDialog idDialog = new TextInputDialog();
         idDialog.setTitle(localization.get("app.title"));
-        idDialog.setHeaderText("Установка цены");
-        idDialog.setContentText("Введите ID:");
+        idDialog.setHeaderText(localization.get("dialog.set_price.title_id"));
+        idDialog.setContentText(localization.get("dialog.set_price.prompt_id"));
         idDialog.showAndWait().ifPresent(id -> {
             try {
                 Long.parseLong(id);
                 TextInputDialog priceDialog = new TextInputDialog();
                 priceDialog.setTitle(localization.get("app.title"));
-                priceDialog.setHeaderText("Установка цены");
-                priceDialog.setContentText("Введите цену:");
+                priceDialog.setHeaderText(localization.get("dialog.set_price.title_id"));
+                priceDialog.setContentText(localization.get("dialog.set_price.prompt_price"));
                 priceDialog.showAndWait().ifPresent(price -> {
                     try {
                         double priceDouble = Double.parseDouble(price);
                         if (priceDouble >= 0) {
                             sendCommand("set_price", List.of("set_price", id, price), null);
                         } else {
-                            showError("Цена не может быть отрицательной");
+                            showError(localization.get("dialog.error.negative_price"));
                         }
                     } catch (NumberFormatException e) {
-                        showError("Некорректная цена");
+                        showError(localization.get("dialog.error.invalid_price"));
                     }
                 });
             } catch (NumberFormatException e) {
-                showError("Некорректный ID");
+                showError(localization.get("dialog.error.invalid_id"));
             }
         });
     }
@@ -275,7 +275,7 @@ public class CommandDialogHandler {
     private void showScrollableInfo(String message) {
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle(localization.get("app.title"));
-        dialog.setHeaderText("Результат выполнения");
+        dialog.setHeaderText(localization.get("dialog.result.title"));
         dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
         dialog.setResizable(true);
 
@@ -298,7 +298,7 @@ public class CommandDialogHandler {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(localization.get("app.title"));
         alert.setHeaderText(null);
-        alert.setContentText(message != null ? message : "Произошла неизвестная ошибка");
+        alert.setContentText(message != null ? message : localization.get("dialog.error.unknown"));
         alert.showAndWait();
     }
 
@@ -306,7 +306,7 @@ public class CommandDialogHandler {
     private Vehicle showVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
         dialog.setTitle(localization.get("app.title"));
-        dialog.setHeaderText(existing == null ? "Добавление ТС" : "Редактирование ТС");
+        dialog.setHeaderText(existing == null ? localization.get("dialog.add_vehicle") : localization.get("dialog.edit_vehicle"));
 
         ButtonType saveButtonType = new ButtonType(localization.get("dialog.save"), ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
@@ -316,17 +316,17 @@ public class CommandDialogHandler {
         grid.setVgap(10);
 
         TextField nameField = new TextField(existing != null ? existing.getName() : "");
-        nameField.setPromptText("Название");
+        nameField.setPromptText(localization.get("dialog.prompt.name"));
         TextField xField = new TextField(existing != null ? String.valueOf(existing.getCoordinates().getX()) : "0");
-        xField.setPromptText("X");
+        xField.setPromptText(localization.get("dialog.prompt.x"));
         TextField yField = new TextField(existing != null ? String.valueOf(existing.getCoordinates().getY()) : "0");
-        yField.setPromptText("Y");
+        yField.setPromptText(localization.get("dialog.prompt.y"));
         TextField powerField = new TextField(existing != null ? String.valueOf(existing.getEnginePower()) : "0");
-        powerField.setPromptText("Мощность");
+        powerField.setPromptText(localization.get("dialog.prompt.power"));
         TextField distanceField = new TextField(existing != null ? String.valueOf(existing.getDistanceTravelled()) : "0");
-        distanceField.setPromptText("Дистанция");
+        distanceField.setPromptText(localization.get("dialog.prompt.distance"));
         TextField priceField = new TextField(existing != null ? String.valueOf(existing.getPrice()) : "0");
-        priceField.setPromptText("Цена");
+        priceField.setPromptText(localization.get("dialog.prompt.price"));
 
         ComboBox<VehicleType> typeCombo = new ComboBox<>();
         typeCombo.getItems().addAll(VehicleType.values());
@@ -336,14 +336,14 @@ public class CommandDialogHandler {
         fuelCombo.getItems().addAll(FuelType.values());
         fuelCombo.setValue(existing != null && existing.getFuelType() != null ? existing.getFuelType() : FuelType.GASOLINE);
 
-        grid.add(new Label("Название:"), 0, 0); grid.add(nameField, 1, 0);
-        grid.add(new Label("X:"), 0, 1); grid.add(xField, 1, 1);
-        grid.add(new Label("Y:"), 0, 2); grid.add(yField, 1, 2);
-        grid.add(new Label("Мощность:"), 0, 3); grid.add(powerField, 1, 3);
-        grid.add(new Label("Дистанция:"), 0, 4); grid.add(distanceField, 1, 4);
-        grid.add(new Label("Тип:"), 0, 5); grid.add(typeCombo, 1, 5);
-        grid.add(new Label("Топливо:"), 0, 6); grid.add(fuelCombo, 1, 6);
-        grid.add(new Label("Цена:"), 0, 7); grid.add(priceField, 1, 7);
+        grid.add(new Label(localization.get("dialog.label.name")), 0, 0); grid.add(nameField, 1, 0);
+        grid.add(new Label(localization.get("dialog.label.x")), 0, 1); grid.add(xField, 1, 1);
+        grid.add(new Label(localization.get("dialog.label.y")), 0, 2); grid.add(yField, 1, 2);
+        grid.add(new Label(localization.get("dialog.label.power")), 0, 3); grid.add(powerField, 1, 3);
+        grid.add(new Label(localization.get("dialog.label.distance")), 0, 4); grid.add(distanceField, 1, 4);
+        grid.add(new Label(localization.get("dialog.label.type")), 0, 5); grid.add(typeCombo, 1, 5);
+        grid.add(new Label(localization.get("dialog.label.fuel")), 0, 6); grid.add(fuelCombo, 1, 6);
+        grid.add(new Label(localization.get("dialog.label.price")), 0, 7); grid.add(priceField, 1, 7);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -361,7 +361,7 @@ public class CommandDialogHandler {
                     if (existing == null) v.setCreationDate();
                     return v;
                 } catch (NumberFormatException e) {
-                    showError("Некорректные данные: " + e.getMessage());
+                    showError(localization.get("dialog.error.invalid_data") + e.getMessage());
                     return null;
                 }
             }
