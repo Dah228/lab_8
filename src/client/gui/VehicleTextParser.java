@@ -5,7 +5,10 @@ import common.FuelType;
 import common.Vehicle;
 import common.VehicleType;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,6 +59,19 @@ public class VehicleTextParser {
                 vehicle.setCoordinates(x, y);
             }
 
+            // Creation date - ДОБАВЛЕНО
+            Pattern datePattern = Pattern.compile("Creation date:\\s*(.+)");
+            Matcher dateMatcher = datePattern.matcher(block);
+            if (dateMatcher.find()) {
+                String dateStr = dateMatcher.group(1).trim();
+                if (!dateStr.isEmpty() && !dateStr.equals("null")) {
+                    Date creationDate = parseDate(dateStr);
+                    if (creationDate != null) {
+                        vehicle.setCreationDateHand(creationDate);
+                    }
+                }
+            }
+
             // Engine power
             Pattern powerPattern = Pattern.compile("Engine power:\\s*([\\d.]+)");
             Matcher powerMatcher = powerPattern.matcher(block);
@@ -95,7 +111,7 @@ public class VehicleTextParser {
                 vehicle.setPrice(Double.parseDouble(priceMatcher.group(1)));
             }
 
-            // --- ДОБАВИЛИ ПАРСИНГ ВЛАДЕЛЬЦА ---
+            // Owner
             Pattern ownerPattern = Pattern.compile("Owner:\\s*(.+)");
             Matcher ownerMatcher = ownerPattern.matcher(block);
             if (ownerMatcher.find()) {
@@ -104,7 +120,6 @@ public class VehicleTextParser {
                     vehicle.setOwnerLogin(owner);
                 }
             }
-            // ----------------------------------
 
             if (vehicle.getId() > 0 && vehicle.getName() != null) {
                 return vehicle;
@@ -112,7 +127,42 @@ public class VehicleTextParser {
 
         } catch (Exception e) {
             System.err.println("Ошибка парсинга vehicle: " + e.getMessage());
+            e.printStackTrace();
         }
+        return null;
+    }
+
+    /**
+     * Парсит дату из строки. Поддерживает несколько форматов:
+     * - "2026-05-22" (из БД)
+     * - "2026-05-22 14:30:00" (с временем)
+     * - "Fri May 23 13:05:00 MSK 2026" (стандартный Java формат)
+     */
+    private static Date parseDate(String dateStr) {
+        if (dateStr == null || dateStr.trim().isEmpty()) {
+            return null;
+        }
+
+        // Пробуем разные форматы
+        String[] formats = {
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd",
+                "EEE MMM dd HH:mm:ss zzz yyyy",
+                "dd.MM.yyyy HH:mm",
+                "dd.MM.yyyy"
+        };
+
+        for (String format : formats) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat(format);
+                sdf.setLenient(false);
+                return sdf.parse(dateStr);
+            } catch (ParseException e) {
+                // Пробуем следующий формат
+            }
+        }
+
+        System.err.println("Не удалось распарсить дату: " + dateStr);
         return null;
     }
 }

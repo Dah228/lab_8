@@ -677,11 +677,11 @@ public class LocalizationManager {
 
     private String getDateTimePattern() {
         return switch (currentLocale.get().toString()) {
-            case "ru_RU" -> "dd.MM.yyyy HH:mm";      // 23.05.2026 14:30
-            case "no_NO" -> "dd.MM.yyyy HH:mm";      // 23.05.2026 14:30
-            case "lt_LT" -> "yyyy-MM-dd HH:mm";      // 2026-05-23 14:30
-            case "en_GB" -> "dd/MM/yyyy HH:mm";      // 23/05/2026 14:30
-            default      -> "dd.MM.yyyy HH:mm";
+            case "ru_RU" -> "dd.MM.yyyy";      // 23.05.2026
+            case "no_NO" -> "dd.MM.yyyy";      // 23.05.2026
+            case "lt_LT" -> "yyyy-MM-dd";      // 2026-05-23
+            case "en_GB" -> "dd/MM/yyyy";      // 23/05/2026
+            default      -> "dd.MM.yyyy";
         };
     }
 }
