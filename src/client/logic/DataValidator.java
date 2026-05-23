@@ -8,7 +8,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.NoSuchElementException;
 
 public class DataValidator {
@@ -111,10 +114,45 @@ public class DataValidator {
         );
     }
 
+    // === НОВЫЙ МЕТОД: ввод даты ===
+    public Date readValidDate(String prompt, Boolean isLaud) {
+        return readValidatedInput(
+                prompt, isLaud,
+                s -> {
+                    if (s == null || s.trim().isEmpty()) {
+                        // Если пользователь ввёл пустую строку — генерируем случайную дату
+                        return generateRandomDate();
+                    }
+                    // Пробуем распарсить в нескольких форматах
+                    String[] formats = {"yyyy-MM-dd", "dd.MM.yyyy", "dd/MM/yyyy"};
+                    for (String fmt : formats) {
+                        try {
+                            SimpleDateFormat sdf = new SimpleDateFormat(fmt);
+                            sdf.setLenient(false);
+                            return sdf.parse(s.trim());
+                        } catch (ParseException ignored) {}
+                    }
+                    throw new IllegalArgumentException("Неверный формат даты");
+                },
+                "Ошибка: введите дату в формате гггг-мм-дд, дд.мм.гггг или дд/мм/гггг (или пустую строку для авто-генерации)"
+        );
+    }
+
+    // Вспомогательный метод для генерации случайной даты (как в Vehicle.setCreationDate)
+    private Date generateRandomDate() {
+        long fiveYearsInMillis = 5L * 365 * 24 * 60 * 60 * 1000;
+        long randomMillis = System.currentTimeMillis() - (long) (Math.random() * fiveYearsInMillis);
+        return new Date(randomMillis);
+    }
+
     public Vehicle parseVehicle(Boolean isLaud) {
         Vehicle veh = new Vehicle();
         veh.setName(readValidName("Введите имя: ", isLaud));
-        veh.setCreationDate();
+
+        // === ИЗМЕНЕНО: теперь читаем дату от пользователя ===
+        Date creationDate = readValidDate("Введите дату создания (гггг-мм-дд) или нажмите Enter для авто-генерации: ", isLaud);
+        veh.setCreationDate(creationDate);
+
         veh.setCoordinates(
                 readValidInteger("Введите X (целое число): ", isLaud),
                 readValidFloat("Введите Y (> -668): ", -668F, isLaud)

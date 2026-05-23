@@ -4,6 +4,8 @@ import common.*;
 import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
+
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -303,6 +305,7 @@ public class CommandDialogHandler {
     }
 
     /** Диалог добавления/редактирования Vehicle */
+    /** Диалог добавления/редактирования Vehicle */
     private Vehicle showVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
         dialog.setTitle(localization.get("app.title"));
@@ -311,22 +314,42 @@ public class CommandDialogHandler {
         ButtonType saveButtonType = new ButtonType(localization.get("dialog.save"), ButtonBar.ButtonData.OK_DONE);
         ButtonType cancelButtonType = new ButtonType(localization.get("dialog.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
+
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
 
         TextField nameField = new TextField(existing != null ? existing.getName() : "");
         nameField.setPromptText(localization.get("dialog.prompt.name"));
+
         TextField xField = new TextField(existing != null ? String.valueOf(existing.getCoordinates().getX()) : "0");
         xField.setPromptText(localization.get("dialog.prompt.x"));
+
         TextField yField = new TextField(existing != null ? String.valueOf(existing.getCoordinates().getY()) : "0");
         yField.setPromptText(localization.get("dialog.prompt.y"));
+
         TextField powerField = new TextField(existing != null ? String.valueOf(existing.getEnginePower()) : "0");
         powerField.setPromptText(localization.get("dialog.prompt.power"));
+
         TextField distanceField = new TextField(existing != null ? String.valueOf(existing.getDistanceTravelled()) : "0");
         distanceField.setPromptText(localization.get("dialog.prompt.distance"));
+
         TextField priceField = new TextField(existing != null ? String.valueOf(existing.getPrice()) : "0");
         priceField.setPromptText(localization.get("dialog.prompt.price"));
+
+        // === НОВОЕ: DatePicker для даты создания ===
+        DatePicker datePicker = new DatePicker();
+        datePicker.setPromptText(localization.get("dialog.prompt.creation_date"));
+        if (existing != null && existing.getCreationDate() != null) {
+            // Конвертируем Date в LocalDate
+            datePicker.setValue(existing.getCreationDate().toInstant()
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalDate());
+        } else {
+            // По умолчанию - текущая дата
+            datePicker.setValue(java.time.LocalDate.now());
+        }
+        // ==========================================
 
         ComboBox<VehicleType> typeCombo = new ComboBox<>();
         typeCombo.getItems().addAll(VehicleType.values());
@@ -336,14 +359,24 @@ public class CommandDialogHandler {
         fuelCombo.getItems().addAll(FuelType.values());
         fuelCombo.setValue(existing != null && existing.getFuelType() != null ? existing.getFuelType() : FuelType.GASOLINE);
 
-        grid.add(new Label(localization.get("dialog.label.name")), 0, 0); grid.add(nameField, 1, 0);
-        grid.add(new Label(localization.get("dialog.label.x")), 0, 1); grid.add(xField, 1, 1);
-        grid.add(new Label(localization.get("dialog.label.y")), 0, 2); grid.add(yField, 1, 2);
-        grid.add(new Label(localization.get("dialog.label.power")), 0, 3); grid.add(powerField, 1, 3);
-        grid.add(new Label(localization.get("dialog.label.distance")), 0, 4); grid.add(distanceField, 1, 4);
-        grid.add(new Label(localization.get("dialog.label.type")), 0, 5); grid.add(typeCombo, 1, 5);
-        grid.add(new Label(localization.get("dialog.label.fuel")), 0, 6); grid.add(fuelCombo, 1, 6);
-        grid.add(new Label(localization.get("dialog.label.price")), 0, 7); grid.add(priceField, 1, 7);
+        grid.add(new Label(localization.get("dialog.label.name")), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label(localization.get("dialog.label.x")), 0, 1);
+        grid.add(xField, 1, 1);
+        grid.add(new Label(localization.get("dialog.label.y")), 0, 2);
+        grid.add(yField, 1, 2);
+        grid.add(new Label(localization.get("dialog.label.power")), 0, 3);
+        grid.add(powerField, 1, 3);
+        grid.add(new Label(localization.get("dialog.label.distance")), 0, 4);
+        grid.add(distanceField, 1, 4);
+        grid.add(new Label(localization.get("dialog.label.creation_date")), 0, 5);
+        grid.add(datePicker, 1, 5);  // === ДОБАВЛЯЕМ DATE PICKER ===
+        grid.add(new Label(localization.get("dialog.label.type")), 0, 6);
+        grid.add(typeCombo, 1, 6);
+        grid.add(new Label(localization.get("dialog.label.fuel")), 0, 7);
+        grid.add(fuelCombo, 1, 7);
+        grid.add(new Label(localization.get("dialog.label.price")), 0, 8);
+        grid.add(priceField, 1, 8);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -355,10 +388,22 @@ public class CommandDialogHandler {
                     v.setCoordinates(Integer.parseInt(xField.getText()), Float.parseFloat(yField.getText()));
                     v.setEnginePower(Float.parseFloat(powerField.getText()));
                     v.setDistanceTravelled(Float.parseFloat(distanceField.getText()));
+
+                    // === НОВОЕ: Установка даты из DatePicker ===
+                    if (datePicker.getValue() != null) {
+                        java.time.LocalDate localDate = datePicker.getValue();
+                        java.time.LocalDateTime localDateTime = localDate.atStartOfDay();
+                        Date creationDate = Date.from(localDateTime.atZone(java.time.ZoneId.systemDefault()).toInstant());
+                        v.setCreationDate(creationDate);
+                    } else if (existing == null) {
+                        v.setCreationDate();
+                    }
+                    // ================================================
+
                     v.setType(typeCombo.getValue());
                     v.setFuelType(fuelCombo.getValue());
                     v.setPrice(Double.parseDouble(priceField.getText()));
-                    if (existing == null) v.setCreationDate();
+
                     return v;
                 } catch (NumberFormatException e) {
                     showError(localization.get("dialog.error.invalid_data") + e.getMessage());
@@ -370,6 +415,7 @@ public class CommandDialogHandler {
 
         return dialog.showAndWait().orElse(null);
     }
+
 
     public void executeShow() {
         sendCommand("show", List.of("show"), null);

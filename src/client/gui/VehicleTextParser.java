@@ -67,7 +67,7 @@ public class VehicleTextParser {
                 if (!dateStr.isEmpty() && !dateStr.equals("null")) {
                     Date creationDate = parseDate(dateStr);
                     if (creationDate != null) {
-                        vehicle.setCreationDateHand(creationDate);
+                        vehicle.setCreationDate(creationDate);
                     }
                 }
             }

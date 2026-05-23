@@ -52,7 +52,7 @@ public class Parser {
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
                     sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
                     Date parsedDate = sdf.parse(dateStr);
-                    v.setCreationDateHand(parsedDate);
+                    v.setCreationDate(parsedDate);
                 } catch (ParseException ec) {
                     v.setCreationDate(); // Если дата неверная, ставим текущую
                 }

@@ -13,9 +13,15 @@ public class Vehicle implements Serializable {
     private FuelType fuelType;
     private String ownerLogin;
     private double price;
+    private static final long serialVersionUID = 1L;
 
     public Vehicle() {
         this.creationDate = new Date();
+    }
+
+    // Конструктор с возможностью задать дату
+    public Vehicle(Date creationDate) {
+        this.creationDate = creationDate != null ? creationDate : new Date();
     }
 
     public long getId() { return id; }
@@ -40,14 +46,19 @@ public class Vehicle implements Serializable {
     public void setCoordinatesObject(Coordinates coordinates) {
         this.coordinates = coordinates;
     }
+
+    // Генерация случайной даты (как было)
     public void setCreationDate() {
         long fiveYearsInMillis = 5L * 365 * 24 * 60 * 60 * 1000;
         long randomMillis = System.currentTimeMillis() - (long) (Math.random() * fiveYearsInMillis);
         this.creationDate = new Date(randomMillis);
     }
-    public void setCreationDateHand(Date date) {
-        this.creationDate = date;
+
+    // Установка конкретной даты
+    public void setCreationDate(Date date) {
+        this.creationDate = date != null ? date : new Date();
     }
+
     public void setEnginePower(Float power) {
         if (power > 0) {
             this.enginePower = power;
@@ -60,4 +71,6 @@ public class Vehicle implements Serializable {
     public void setFuelType(FuelType fuel) { this.fuelType = fuel; }
     public void setOwnerLogin(String ownerLogin) { this.ownerLogin = ownerLogin; }
     public void setPrice(double price) { this.price = price; }
+
+
 }

@@ -191,7 +191,7 @@ public class VehicleDao {
         Coordinates coords = new Coordinates();
         coords.setCoord(rs.getInt("x"), rs.getFloat("y"));
         v.setCoordinatesObject(coords);
-        v.setCreationDateHand(rs.getDate("creation_date"));
+        v.setCreationDate(rs.getDate("creation_date"));
         v.setEnginePower(rs.getFloat("engine_power"));
         v.setDistanceTravelled(rs.getFloat("distance_travelled"));
         String typeStr = rs.getString("type");

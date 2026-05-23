@@ -174,6 +174,8 @@ public class LocalizationManager {
                 Map.entry("dialog.error.invalid_price", "Некорректная цена"),
                 Map.entry("dialog.result.title", "Результат выполнения"),
                 Map.entry("dialog.error.unknown", "Произошла неизвестная ошибка"),
+                Map.entry("dialog.label.creation_date", "Дата создания:"),
+                Map.entry("dialog.prompt.creation_date", "Дата создания"),
                 Map.entry("dialog.error.invalid_data", "Некорректные данные: ")
 
         ));
@@ -187,6 +189,8 @@ public class LocalizationManager {
                 Map.entry("auth.login", "Brukernavn"),
                 Map.entry("auth.password", "Passord"),
                 Map.entry("auth.register", "Registrer"),
+                Map.entry("dialog.label.creation_date", "Opprettelsesdato:"),
+                Map.entry("dialog.prompt.creation_date", "Opprettelsesdato"),
                 Map.entry("auth.login.button", "Logg inn"),
                 Map.entry("auth.register.button", "Registrer deg"),
                 Map.entry("auth.error.empty", "Brukernavn og passord kan ikke være tomme"),
@@ -294,6 +298,7 @@ public class LocalizationManager {
                 Map.entry("dialog.clear.confirm", "Er du sikker på at du vil slette alle objektene dine?"),
                 Map.entry("dialog.update.title", "Oppdater element"),
                 Map.entry("dialog.update.prompt", "Skriv inn ID:"),
+
                 Map.entry("dialog.filter.power.title", "Filtrer etter motoreffekt"),
                 Map.entry("dialog.filter.power.prompt", "Skriv inn minimum effekt:"),
                 Map.entry("dialog.error.invalid_value", "Ugyldig verdi"),
@@ -449,6 +454,8 @@ public class LocalizationManager {
                 Map.entry("dialog.error.negative_price", "Kaina negali būti neigiama"),
                 Map.entry("dialog.error.invalid_price", "Neteisinga kaina"),
                 Map.entry("dialog.result.title", "Rezultatas"),
+                Map.entry("dialog.label.creation_date", "Sukūrimo data:"),
+                Map.entry("dialog.prompt.creation_date", "Sukūrimo data"),
                 Map.entry("dialog.error.unknown", "Įvyko nežinoma klaida"),
                 Map.entry("dialog.error.invalid_data", "Neteisingi duomenys: ")
         ));
@@ -460,6 +467,8 @@ public class LocalizationManager {
                 Map.entry("app.title", "Vehicle Manager"),
                 Map.entry("confirm.exit", "Are you sure you want to exit?"),
                 Map.entry("auth.login", "Username"),
+                Map.entry("dialog.label.creation_date", "Creation date:"),
+                Map.entry("dialog.prompt.creation_date", "Creation date"),
                 Map.entry("auth.password", "Password"),
                 Map.entry("auth.register", "Register"),
                 Map.entry("auth.login.button", "Sign In"),

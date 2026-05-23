@@ -584,6 +584,8 @@ public class LocalizationManager {
                 Map.entry("dialog.error.invalid_price", "Некорректная цена"),
                 Map.entry("dialog.result.title", "Результат выполнения"),
                 Map.entry("dialog.error.unknown", "Произошла неизвестная ошибка"),
+                Map.entry("dialog.label.creation_date", "Дата создания:"),
+                Map.entry("dialog.prompt.creation_date", "Дата создания"),
                 Map.entry("dialog.error.invalid_data", "Некорректные данные: ")
 
         ));
@@ -597,6 +599,8 @@ public class LocalizationManager {
                 Map.entry("auth.login", "Brukernavn"),
                 Map.entry("auth.password", "Passord"),
                 Map.entry("auth.register", "Registrer"),
+                Map.entry("dialog.label.creation_date", "Opprettelsesdato:"),
+                Map.entry("dialog.prompt.creation_date", "Opprettelsesdato"),
                 Map.entry("auth.login.button", "Logg inn"),
                 Map.entry("auth.register.button", "Registrer deg"),
                 Map.entry("auth.error.empty", "Brukernavn og passord kan ikke være tomme"),
@@ -704,6 +708,7 @@ public class LocalizationManager {
                 Map.entry("dialog.clear.confirm", "Er du sikker på at du vil slette alle objektene dine?"),
                 Map.entry("dialog.update.title", "Oppdater element"),
                 Map.entry("dialog.update.prompt", "Skriv inn ID:"),
+
                 Map.entry("dialog.filter.power.title", "Filtrer etter motoreffekt"),
                 Map.entry("dialog.filter.power.prompt", "Skriv inn minimum effekt:"),
                 Map.entry("dialog.error.invalid_value", "Ugyldig verdi"),
@@ -859,6 +864,8 @@ public class LocalizationManager {
                 Map.entry("dialog.error.negative_price", "Kaina negali būti neigiama"),
                 Map.entry("dialog.error.invalid_price", "Neteisinga kaina"),
                 Map.entry("dialog.result.title", "Rezultatas"),
+                Map.entry("dialog.label.creation_date", "Sukūrimo data:"),
+                Map.entry("dialog.prompt.creation_date", "Sukūrimo data"),
                 Map.entry("dialog.error.unknown", "Įvyko nežinoma klaida"),
                 Map.entry("dialog.error.invalid_data", "Neteisingi duomenys: ")
         ));
@@ -870,6 +877,8 @@ public class LocalizationManager {
                 Map.entry("app.title", "Vehicle Manager"),
                 Map.entry("confirm.exit", "Are you sure you want to exit?"),
                 Map.entry("auth.login", "Username"),
+                Map.entry("dialog.label.creation_date", "Creation date:"),
+                Map.entry("dialog.prompt.creation_date", "Creation date"),
                 Map.entry("auth.password", "Password"),
                 Map.entry("auth.register", "Register"),
                 Map.entry("auth.login.button", "Sign In"),
@@ -1087,11 +1096,11 @@ public class LocalizationManager {
 
     private String getDateTimePattern() {
         return switch (currentLocale.get().toString()) {
-            case "ru_RU" -> "dd.MM.yyyy HH:mm";      // 23.05.2026 14:30
-            case "no_NO" -> "dd.MM.yyyy HH:mm";      // 23.05.2026 14:30
-            case "lt_LT" -> "yyyy-MM-dd HH:mm";      // 2026-05-23 14:30
-            case "en_GB" -> "dd/MM/yyyy HH:mm";      // 23/05/2026 14:30
-            default      -> "dd.MM.yyyy HH:mm";
+            case "ru_RU" -> "dd.MM.yyyy";      // 23.05.2026
+            case "no_NO" -> "dd.MM.yyyy";      // 23.05.2026
+            case "lt_LT" -> "yyyy-MM-dd";      // 2026-05-23
+            case "en_GB" -> "dd/MM/yyyy";      // 23/05/2026
+            default      -> "dd.MM.yyyy";
         };
     }
 }=== FILE: ./src/client/gui/VehicleTableController.java ===
@@ -1459,6 +1468,8 @@ import common.*;
 import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
+
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -1758,6 +1769,7 @@ public class CommandDialogHandler {
     }
 
     /** Диалог добавления/редактирования Vehicle */
+    /** Диалог добавления/редактирования Vehicle */
     private Vehicle showVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
         dialog.setTitle(localization.get("app.title"));
@@ -1766,22 +1778,42 @@ public class CommandDialogHandler {
         ButtonType saveButtonType = new ButtonType(localization.get("dialog.save"), ButtonBar.ButtonData.OK_DONE);
         ButtonType cancelButtonType = new ButtonType(localization.get("dialog.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
+
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
 
         TextField nameField = new TextField(existing != null ? existing.getName() : "");
         nameField.setPromptText(localization.get("dialog.prompt.name"));
+
         TextField xField = new TextField(existing != null ? String.valueOf(existing.getCoordinates().getX()) : "0");
         xField.setPromptText(localization.get("dialog.prompt.x"));
+
         TextField yField = new TextField(existing != null ? String.valueOf(existing.getCoordinates().getY()) : "0");
         yField.setPromptText(localization.get("dialog.prompt.y"));
+
         TextField powerField = new TextField(existing != null ? String.valueOf(existing.getEnginePower()) : "0");
         powerField.setPromptText(localization.get("dialog.prompt.power"));
+
         TextField distanceField = new TextField(existing != null ? String.valueOf(existing.getDistanceTravelled()) : "0");
         distanceField.setPromptText(localization.get("dialog.prompt.distance"));
+
         TextField priceField = new TextField(existing != null ? String.valueOf(existing.getPrice()) : "0");
         priceField.setPromptText(localization.get("dialog.prompt.price"));
+
+        // === НОВОЕ: DatePicker для даты создания ===
+        DatePicker datePicker = new DatePicker();
+        datePicker.setPromptText(localization.get("dialog.prompt.creation_date"));
+        if (existing != null && existing.getCreationDate() != null) {
+            // Конвертируем Date в LocalDate
+            datePicker.setValue(existing.getCreationDate().toInstant()
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalDate());
+        } else {
+            // По умолчанию - текущая дата
+            datePicker.setValue(java.time.LocalDate.now());
+        }
+        // ==========================================
 
         ComboBox<VehicleType> typeCombo = new ComboBox<>();
         typeCombo.getItems().addAll(VehicleType.values());
@@ -1791,14 +1823,24 @@ public class CommandDialogHandler {
         fuelCombo.getItems().addAll(FuelType.values());
         fuelCombo.setValue(existing != null && existing.getFuelType() != null ? existing.getFuelType() : FuelType.GASOLINE);
 
-        grid.add(new Label(localization.get("dialog.label.name")), 0, 0); grid.add(nameField, 1, 0);
-        grid.add(new Label(localization.get("dialog.label.x")), 0, 1); grid.add(xField, 1, 1);
-        grid.add(new Label(localization.get("dialog.label.y")), 0, 2); grid.add(yField, 1, 2);
-        grid.add(new Label(localization.get("dialog.label.power")), 0, 3); grid.add(powerField, 1, 3);
-        grid.add(new Label(localization.get("dialog.label.distance")), 0, 4); grid.add(distanceField, 1, 4);
-        grid.add(new Label(localization.get("dialog.label.type")), 0, 5); grid.add(typeCombo, 1, 5);
-        grid.add(new Label(localization.get("dialog.label.fuel")), 0, 6); grid.add(fuelCombo, 1, 6);
-        grid.add(new Label(localization.get("dialog.label.price")), 0, 7); grid.add(priceField, 1, 7);
+        grid.add(new Label(localization.get("dialog.label.name")), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label(localization.get("dialog.label.x")), 0, 1);
+        grid.add(xField, 1, 1);
+        grid.add(new Label(localization.get("dialog.label.y")), 0, 2);
+        grid.add(yField, 1, 2);
+        grid.add(new Label(localization.get("dialog.label.power")), 0, 3);
+        grid.add(powerField, 1, 3);
+        grid.add(new Label(localization.get("dialog.label.distance")), 0, 4);
+        grid.add(distanceField, 1, 4);
+        grid.add(new Label(localization.get("dialog.label.creation_date")), 0, 5);
+        grid.add(datePicker, 1, 5);  // === ДОБАВЛЯЕМ DATE PICKER ===
+        grid.add(new Label(localization.get("dialog.label.type")), 0, 6);
+        grid.add(typeCombo, 1, 6);
+        grid.add(new Label(localization.get("dialog.label.fuel")), 0, 7);
+        grid.add(fuelCombo, 1, 7);
+        grid.add(new Label(localization.get("dialog.label.price")), 0, 8);
+        grid.add(priceField, 1, 8);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -1810,10 +1852,22 @@ public class CommandDialogHandler {
                     v.setCoordinates(Integer.parseInt(xField.getText()), Float.parseFloat(yField.getText()));
                     v.setEnginePower(Float.parseFloat(powerField.getText()));
                     v.setDistanceTravelled(Float.parseFloat(distanceField.getText()));
+
+                    // === НОВОЕ: Установка даты из DatePicker ===
+                    if (datePicker.getValue() != null) {
+                        java.time.LocalDate localDate = datePicker.getValue();
+                        java.time.LocalDateTime localDateTime = localDate.atStartOfDay();
+                        Date creationDate = Date.from(localDateTime.atZone(java.time.ZoneId.systemDefault()).toInstant());
+                        v.setCreationDate(creationDate);
+                    } else if (existing == null) {
+                        v.setCreationDate();
+                    }
+                    // ================================================
+
                     v.setType(typeCombo.getValue());
                     v.setFuelType(fuelCombo.getValue());
                     v.setPrice(Double.parseDouble(priceField.getText()));
-                    if (existing == null) v.setCreationDate();
+
                     return v;
                 } catch (NumberFormatException e) {
                     showError(localization.get("dialog.error.invalid_data") + e.getMessage());
@@ -1825,6 +1879,7 @@ public class CommandDialogHandler {
 
         return dialog.showAndWait().orElse(null);
     }
+
 
     public void executeShow() {
         sendCommand("show", List.of("show"), null);
@@ -2046,7 +2101,10 @@ import common.FuelType;
 import common.Vehicle;
 import common.VehicleType;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -2097,6 +2155,19 @@ public class VehicleTextParser {
                 vehicle.setCoordinates(x, y);
             }
 
+            // Creation date - ДОБАВЛЕНО
+            Pattern datePattern = Pattern.compile("Creation date:\\s*(.+)");
+            Matcher dateMatcher = datePattern.matcher(block);
+            if (dateMatcher.find()) {
+                String dateStr = dateMatcher.group(1).trim();
+                if (!dateStr.isEmpty() && !dateStr.equals("null")) {
+                    Date creationDate = parseDate(dateStr);
+                    if (creationDate != null) {
+                        vehicle.setCreationDate(creationDate);
+                    }
+                }
+            }
+
             // Engine power
             Pattern powerPattern = Pattern.compile("Engine power:\\s*([\\d.]+)");
             Matcher powerMatcher = powerPattern.matcher(block);
@@ -2136,7 +2207,7 @@ public class VehicleTextParser {
                 vehicle.setPrice(Double.parseDouble(priceMatcher.group(1)));
             }
 
-            // --- ДОБАВИЛИ ПАРСИНГ ВЛАДЕЛЬЦА ---
+            // Owner
             Pattern ownerPattern = Pattern.compile("Owner:\\s*(.+)");
             Matcher ownerMatcher = ownerPattern.matcher(block);
             if (ownerMatcher.find()) {
@@ -2145,7 +2216,6 @@ public class VehicleTextParser {
                     vehicle.setOwnerLogin(owner);
                 }
             }
-            // ----------------------------------
 
             if (vehicle.getId() > 0 && vehicle.getName() != null) {
                 return vehicle;
@@ -2153,7 +2223,42 @@ public class VehicleTextParser {
 
         } catch (Exception e) {
             System.err.println("Ошибка парсинга vehicle: " + e.getMessage());
+            e.printStackTrace();
         }
+        return null;
+    }
+
+    /**
+     * Парсит дату из строки. Поддерживает несколько форматов:
+     * - "2026-05-22" (из БД)
+     * - "2026-05-22 14:30:00" (с временем)
+     * - "Fri May 23 13:05:00 MSK 2026" (стандартный Java формат)
+     */
+    private static Date parseDate(String dateStr) {
+        if (dateStr == null || dateStr.trim().isEmpty()) {
+            return null;
+        }
+
+        // Пробуем разные форматы
+        String[] formats = {
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd",
+                "EEE MMM dd HH:mm:ss zzz yyyy",
+                "dd.MM.yyyy HH:mm",
+                "dd.MM.yyyy"
+        };
+
+        for (String format : formats) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat(format);
+                sdf.setLenient(false);
+                return sdf.parse(dateStr);
+            } catch (ParseException e) {
+                // Пробуем следующий формат
+            }
+        }
+
+        System.err.println("Не удалось распарсить дату: " + dateStr);
         return null;
     }
 }=== FILE: ./src/client/gui/VehicleCanvasController.java ===
@@ -2737,7 +2842,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.NoSuchElementException;
 
 public class DataValidator {
@@ -2840,10 +2948,45 @@ public class DataValidator {
         );
     }
 
+    // === НОВЫЙ МЕТОД: ввод даты ===
+    public Date readValidDate(String prompt, Boolean isLaud) {
+        return readValidatedInput(
+                prompt, isLaud,
+                s -> {
+                    if (s == null || s.trim().isEmpty()) {
+                        // Если пользователь ввёл пустую строку — генерируем случайную дату
+                        return generateRandomDate();
+                    }
+                    // Пробуем распарсить в нескольких форматах
+                    String[] formats = {"yyyy-MM-dd", "dd.MM.yyyy", "dd/MM/yyyy"};
+                    for (String fmt : formats) {
+                        try {
+                            SimpleDateFormat sdf = new SimpleDateFormat(fmt);
+                            sdf.setLenient(false);
+                            return sdf.parse(s.trim());
+                        } catch (ParseException ignored) {}
+                    }
+                    throw new IllegalArgumentException("Неверный формат даты");
+                },
+                "Ошибка: введите дату в формате гггг-мм-дд, дд.мм.гггг или дд/мм/гггг (или пустую строку для авто-генерации)"
+        );
+    }
+
+    // Вспомогательный метод для генерации случайной даты (как в Vehicle.setCreationDate)
+    private Date generateRandomDate() {
+        long fiveYearsInMillis = 5L * 365 * 24 * 60 * 60 * 1000;
+        long randomMillis = System.currentTimeMillis() - (long) (Math.random() * fiveYearsInMillis);
+        return new Date(randomMillis);
+    }
+
     public Vehicle parseVehicle(Boolean isLaud) {
         Vehicle veh = new Vehicle();
         veh.setName(readValidName("Введите имя: ", isLaud));
-        veh.setCreationDate();
+
+        // === ИЗМЕНЕНО: теперь читаем дату от пользователя ===
+        Date creationDate = readValidDate("Введите дату создания (гггг-мм-дд) или нажмите Enter для авто-генерации: ", isLaud);
+        veh.setCreationDate(creationDate);
+
         veh.setCoordinates(
                 readValidInteger("Введите X (целое число): ", isLaud),
                 readValidFloat("Введите Y (> -668): ", -668F, isLaud)
@@ -3380,7 +3523,7 @@ public class VehicleDao {
         Coordinates coords = new Coordinates();
         coords.setCoord(rs.getInt("x"), rs.getFloat("y"));
         v.setCoordinatesObject(coords);
-        v.setCreationDateHand(rs.getDate("creation_date"));
+        v.setCreationDate(rs.getDate("creation_date"));
         v.setEnginePower(rs.getFloat("engine_power"));
         v.setDistanceTravelled(rs.getFloat("distance_travelled"));
         String typeStr = rs.getString("type");
@@ -5031,7 +5174,7 @@ public class Parser {
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
                     sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
                     Date parsedDate = sdf.parse(dateStr);
-                    v.setCreationDateHand(parsedDate);
+                    v.setCreationDate(parsedDate);
                 } catch (ParseException ec) {
                     v.setCreationDate(); // Если дата неверная, ставим текущую
                 }
@@ -5508,6 +5651,11 @@ public class Vehicle implements Serializable {
         this.creationDate = new Date();
     }
 
+    // Конструктор с возможностью задать дату
+    public Vehicle(Date creationDate) {
+        this.creationDate = creationDate != null ? creationDate : new Date();
+    }
+
     public long getId() { return id; }
     public String getName() { return name; }
     public Coordinates getCoordinates() { return coordinates; }
@@ -5530,14 +5678,19 @@ public class Vehicle implements Serializable {
     public void setCoordinatesObject(Coordinates coordinates) {
         this.coordinates = coordinates;
     }
+
+    // Генерация случайной даты (как было)
     public void setCreationDate() {
         long fiveYearsInMillis = 5L * 365 * 24 * 60 * 60 * 1000;
         long randomMillis = System.currentTimeMillis() - (long) (Math.random() * fiveYearsInMillis);
         this.creationDate = new Date(randomMillis);
     }
-    public void setCreationDateHand(Date date) {
-        this.creationDate = date;
+
+    // Установка конкретной даты
+    public void setCreationDate(Date date) {
+        this.creationDate = date != null ? date : new Date();
     }
+
     public void setEnginePower(Float power) {
         if (power > 0) {
             this.enginePower = power;
@@ -5550,6 +5703,8 @@ public class Vehicle implements Serializable {
     public void setFuelType(FuelType fuel) { this.fuelType = fuel; }
     public void setOwnerLogin(String ownerLogin) { this.ownerLogin = ownerLogin; }
     public void setPrice(double price) { this.price = price; }
+
+
 }=== FILE: ./src/common/CommandResponse.java ===
 package common;
 import java.io.Serializable;
