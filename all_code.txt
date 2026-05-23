@@ -1,14 +1,21 @@
 === FILE: ./src/client/gui/MainScene.java ===
 package client.gui;
+
 import client.logic.NetworkService;
 import common.Vehicle;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.util.Duration;
+
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
@@ -24,29 +31,33 @@ public class MainScene {
     private VehicleTableController tableController;
     private VehicleCanvasController canvasController;
     private CommandDialogHandler commandHandler;
+
+    // Элементы верхней панели
     private Label userLabel;
+    private Button balanceButton;
     private ComboBox<Locale> langComboBox;
+
     private ScheduledExecutorService refreshScheduler;
 
-    // Мягкая зелёная тема (Material 3 style)
-    private static final String BTN_BASE_STYLE = "-fx-background-color: linear-gradient(to bottom, #C8E6C9, #A5D6A7); " +
-            "-fx-text-fill: #2E7D32; " +
-            "-fx-font-weight: bold; " +
-            "-fx-background-radius: 8; " +
-            "-fx-border-radius: 8; " +
-            "-fx-border-color: #81C784; " +
-            "-fx-border-width: 1; " +
-            "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.3), 5, 0, 0, 2); " +
-            "-fx-cursor: hand;";
-    private static final String BTN_HOVER_STYLE = "-fx-background-color: linear-gradient(to bottom, #A5D6A7, #81C784); " +
-            "-fx-text-fill: #1B5E20; " +
-            "-fx-font-weight: bold; " +
-            "-fx-background-radius: 8; " +
-            "-fx-border-radius: 8; " +
-            "-fx-border-color: #66BB6A; " +
-            "-fx-border-width: 1; " +
-            "-fx-effect: dropshadow(gaussian, rgba(102,187,106,0.5), 8, 0, 0, 3); " +
-            "-fx-cursor: hand;";
+    // Стили
+    private static final String BG_COLOR = "-fx-background-color: #F4F6F8;";
+    private static final String CARD_STYLE = "-fx-background-color: white; " +
+            "-fx-background-radius: 12; " +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 12, 0, 0, 2);";
+    private static final String BTN_PRIMARY = "-fx-background-color: #2979FF; " +
+            "-fx-text-fill: white; -fx-font-weight: bold; " +
+            "-fx-background-radius: 8; -fx-cursor: hand;";
+    private static final String BTN_PRIMARY_HOVER = "-fx-background-color: #1565C0;";
+    private static final String BTN_SECONDARY = "-fx-background-color: white; " +
+            "-fx-text-fill: #424242; " +
+            "-fx-border-color: #E0E0E0; -fx-border-radius: 8; " +
+            "-fx-background-radius: 8; -fx-cursor: hand;";
+    private static final String BTN_SECONDARY_HOVER = "-fx-background-color: #FAFAFA; -fx-border-color: #BDBDBD;";
+    private static final String BTN_DANGER = "-fx-background-color: white; " +
+            "-fx-text-fill: #D32F2F; " +
+            "-fx-border-color: #EF9A9A; -fx-border-radius: 8; " +
+            "-fx-background-radius: 8; -fx-cursor: hand;";
+    private static final String BTN_DANGER_HOVER = "-fx-background-color: #FFEBEE; -fx-border-color: #D32F2F;";
 
     public MainScene(Stage stage, LocalizationManager localization, NetworkService networkService,
                      String currentUserLogin, String currentUserPassword) {
@@ -61,18 +72,24 @@ public class MainScene {
 
     public Scene createScene() {
         BorderPane root = new BorderPane();
-        root.setPadding(new Insets(10));
+        root.setStyle(BG_COLOR);
+        root.setPadding(new Insets(15));
 
         HBox topPanel = createTopPanel();
         root.setTop(topPanel);
 
-        VBox centerBox = createCenterBox();
-        root.setCenter(centerBox);
+        SplitPane centerSplit = createCenterSplit();
+        centerSplit.setDividerPositions(0.65);
+        root.setCenter(centerSplit);
 
         HBox bottomPanel = createBottomPanel();
         root.setBottom(bottomPanel);
+        BorderPane.setMargin(bottomPanel, new Insets(15, 0, 0, 0));
 
-        Scene scene = new Scene(root, 1200, 800);
+        Scene scene = new Scene(root, 1300, 850);
+
+        KeyCombination exitKey = new KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN);
+        scene.getAccelerators().put(exitKey, () -> handleExit());
 
         Platform.runLater(() -> commandHandler.executeShow());
         startAutoRefresh();
@@ -90,6 +107,7 @@ public class MainScene {
             if (stage.isShowing()) {
                 Platform.runLater(() -> {
                     commandHandler.executeShowSilent();
+                    updateVisualization();
                 });
             }
         }, 5, 5, TimeUnit.SECONDS);
@@ -102,28 +120,73 @@ public class MainScene {
     }
 
     private HBox createTopPanel() {
-        HBox hbox = new HBox(15);
-        hbox.setPadding(new Insets(10));
+        HBox hbox = new HBox(20);
+        hbox.setPadding(new Insets(12, 20, 12, 20));
         hbox.setAlignment(Pos.CENTER_LEFT);
-        hbox.setStyle("-fx-background-color: linear-gradient(to bottom, #E8F5E9, #C8E6C9); " +
-                "-fx-border-color: #81C784; -fx-border-width: 0 0 2 0; " +
-                "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.2), 10, 0, 0, 2);");
+        hbox.setStyle(CARD_STYLE);
 
         userLabel = new Label(localization.get("main.user.label") + " " + currentUserLogin);
-        userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; " +
-                "-fx-text-fill: #2E7D32; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 3, 0, 0, 1);");
+        userLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2979FF;");
+
+        // Кнопка баланса сверху
+        balanceButton = new Button(localization.get("btn.balance"));
+        balanceButton.setStyle(BTN_SECONDARY);
+        balanceButton.setOnMouseEntered(e -> balanceButton.setStyle(BTN_SECONDARY_HOVER));
+        balanceButton.setOnMouseExited(e -> balanceButton.setStyle(BTN_SECONDARY));
+
+        balanceButton.setOnAction(e -> {
+            String originalText = balanceButton.getText();
+            balanceButton.setText("...");
+            balanceButton.setDisable(true);
+
+            new Thread(() -> {
+                try {
+                    common.CommandRequest req = new common.CommandRequest(
+                            "show_balance",
+                            java.util.List.of("show_balance"),
+                            null,
+                            true,
+                            currentUserLogin,
+                            currentUserPassword
+                    );
+                    networkService.send(req);
+                    common.CommandResponse resp = networkService.receive();
+
+                    Platform.runLater(() -> {
+                        if (resp != null && resp.isSuccess()) {
+                            String msg = resp.getMessage();
+                            String balanceStr = msg.replace("Ваш баланс: ", "").trim();
+                            balanceButton.setText(balanceStr + " ₽");
+                        } else {
+                            balanceButton.setText("Ошибка");
+                        }
+
+                        PauseTransition pause = new PauseTransition(Duration.seconds(3));
+                        pause.setOnFinished(event -> {
+                            balanceButton.setText(originalText);
+                            balanceButton.setDisable(false);
+                        });
+                        pause.play();
+                    });
+                } catch (Exception ex) {
+                    Platform.runLater(() -> {
+                        balanceButton.setText("Ошибка сети");
+                        PauseTransition pause = new PauseTransition(Duration.seconds(3));
+                        pause.setOnFinished(event -> {
+                            balanceButton.setText(originalText);
+                            balanceButton.setDisable(false);
+                        });
+                        pause.play();
+                    });
+                }
+            }).start();
+        });
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button btnVisualize = new Button(localization.get("main.visual.title"));
-        btnVisualize.setStyle(BTN_BASE_STYLE);
-        btnVisualize.setOnMouseEntered(e -> btnVisualize.setStyle(BTN_HOVER_STYLE));
-        btnVisualize.setOnMouseExited(e -> btnVisualize.setStyle(BTN_BASE_STYLE));
-        btnVisualize.setOnAction(e -> openVisualization());
-
         Label langLabel = new Label(localization.get("main.lang.label"));
-        langLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
+        langLabel.setStyle("-fx-text-fill: #757575; -fx-font-weight: 500;");
 
         langComboBox = new ComboBox<>();
         langComboBox.getItems().setAll(localization.getAvailableLocales());
@@ -140,6 +203,7 @@ public class MainScene {
             }
         });
         langComboBox.setValue(localization.getCurrentLocale());
+        langComboBox.setStyle("-fx-background-color: white; -fx-border-color: #E0E0E0; -fx-border-radius: 6; -fx-background-radius: 6;");
         langComboBox.setOnAction(e -> {
             Locale selected = langComboBox.getValue();
             if (selected != null) {
@@ -148,159 +212,168 @@ public class MainScene {
             }
         });
 
-        hbox.getChildren().addAll(userLabel, spacer, btnVisualize, langLabel, langComboBox);
+        hbox.getChildren().addAll(userLabel, balanceButton, spacer, langLabel, langComboBox);
         return hbox;
     }
 
-    private void openVisualization() {
-        if (canvasController == null) {
-            canvasController = new VehicleCanvasController(localization);
-        }
-        List<Vehicle> currentVehicles = tableController != null ? tableController.getAllVehicles() : List.of();
+    private SplitPane createCenterSplit() {
+        SplitPane splitPane = new SplitPane();
+        splitPane.setOrientation(javafx.geometry.Orientation.HORIZONTAL);
+        splitPane.setStyle("-fx-background-color: transparent;");
 
-        Stage vizStage = new Stage();
-        vizStage.setTitle(localization.get("main.visual.title"));
-        javafx.scene.canvas.Canvas canvas = canvasController.createCanvas(800, 600);
-        canvasController.updateData(currentVehicles);
-        canvasController.setOnVehicleClicked(vehicle -> {
-            if (vehicle != null) {
-                Platform.runLater(() -> commandHandler.executeEdit(vehicle));
-            }
-        });
-
-        StackPane pane = new StackPane(canvas);
-        pane.setStyle("-fx-background-color: #F1F8E9;");
-        Scene scene = new Scene(pane, 1000, 600);
-        vizStage.setScene(scene);
-        vizStage.show();
-    }
-
-    private VBox createCenterBox() {
-        VBox vbox = new VBox(15);
-        vbox.setPadding(new Insets(10));
-        vbox.setAlignment(Pos.TOP_CENTER);
-        vbox.setStyle("-fx-background-color: linear-gradient(to bottom, #F8FDF9, #E8F5E9); " +
-                "-fx-border-color: #C8E6C9; -fx-border-width: 1;");
-
+        // ЛЕВАЯ ЧАСТЬ: Таблица
         tableController = new VehicleTableController(localization);
-        VBox tablePane = tableController.createTablePane();
+        VBox tableContainer = tableController.createTablePane();
+        tableContainer.setStyle(CARD_STYLE + "-fx-padding: 15;");
+        if (commandHandler != null) commandHandler.setTableController(tableController);
 
-        if (commandHandler != null) {
-            commandHandler.setTableController(tableController);
-        }
-
-        //редактирование прямо из таблицы (двойной клик)
         tableController.getTable().setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
-                if (selected != null) {
-                    commandHandler.executeEdit(selected);
-                }
+                if (selected != null) commandHandler.executeEdit(selected);
             }
         });
 
-        vbox.getChildren().add(tablePane);
-        VBox.setVgrow(tablePane, Priority.ALWAYS);
-        return vbox;
+        // ПРАВАЯ ЧАСТЬ: Визуализация
+        if (canvasController == null) {
+            canvasController = new VehicleCanvasController(localization);
+        }
+        javafx.scene.canvas.Canvas canvas = canvasController.createCanvas(600, 600);
+
+        canvasController.setOnVehicleClicked(vehicle -> {
+            if (vehicle != null) {
+                Platform.runLater(() -> {
+                    tableController.getTable().getSelectionModel().select(vehicle);
+                    commandHandler.executeEdit(vehicle);
+                });
+            }
+        });
+
+        VBox canvasContainer = new VBox(10);
+        canvasContainer.setStyle(CARD_STYLE + "-fx-padding: 15;");
+        Label visualTitle = new Label("Визуализация координат");
+        visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #424242;");
+
+        Pane canvasPane = new Pane(canvas);
+        canvas.widthProperty().bind(canvasPane.widthProperty());
+        canvas.heightProperty().bind(canvasPane.heightProperty());
+
+        canvasContainer.getChildren().addAll(visualTitle, canvasPane);
+        VBox.setVgrow(canvasPane, Priority.ALWAYS);
+
+        splitPane.getItems().addAll(tableContainer, canvasContainer);
+        return splitPane;
     }
 
     private HBox createBottomPanel() {
-        HBox hbox = new HBox(10);
-        hbox.setPadding(new Insets(10));
+        HBox hbox = new HBox(15);
+        hbox.setPadding(new Insets(5));
         hbox.setAlignment(Pos.CENTER);
+        hbox.setStyle("-fx-background-color: transparent;");
 
-        hbox.setStyle("-fx-background-color: linear-gradient(to bottom, #E8F5E9, #C8E6C9); " +
-                "-fx-border-color: #81C784; -fx-border-width: 2 0 0 0; " +
-                "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.3), 8, 0, 0, -2);");
+        Button btnAdd = createStyledButton(localization.get("btn.add"), true);
+        Button btnRemove = createStyledButton(localization.get("btn.remove"), false);
+        Button btnShuffle = createStyledButton(localization.get("btn.shuffle"), false);
+        Button btnBuy = createStyledButton(localization.get("btn.buy"), false);
+        Button btnClear = createStyledButton("Очистить", "danger");
 
-        Button btnAdd = new Button(localization.get("btn.add"));
-        Button btnRemove = new Button(localization.get("btn.remove"));
-        Button btnShuffle = new Button(localization.get("btn.shuffle"));
-        Button btnBuy = new Button(localization.get("btn.buy"));
-        Button btnBalance = new Button(localization.get("btn.balance"));
-        Button btnExit = new Button(localization.get("btn.exit"));
-
-        List<Button> buttons = List.of(btnAdd, btnRemove, btnShuffle, btnBuy, btnBalance, btnExit);
-
+        List<Button> buttons = List.of(btnAdd, btnRemove, btnShuffle, btnBuy, btnClear);
         for (Button btn : buttons) {
-            btn.setStyle(BTN_BASE_STYLE);
-            btn.setOnMouseEntered(e -> btn.setStyle(BTN_HOVER_STYLE));
-            btn.setOnMouseExited(e -> btn.setStyle(BTN_BASE_STYLE));
             HBox.setHgrow(btn, Priority.ALWAYS);
             btn.setMaxWidth(Double.MAX_VALUE);
+            btn.setPrefHeight(45);
+            btn.setFont(javafx.scene.text.Font.font(14));
         }
 
         btnAdd.setOnAction(e -> commandHandler.executeAdd());
-
-        // === ИЗМЕНЕНИЕ ЗДЕСЬ: Удаляем выделенный элемент ===
         btnRemove.setOnAction(e -> {
             Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
             if (selected != null) {
                 commandHandler.executeRemoveById(selected.getId());
             } else {
-                Alert alert = new Alert(Alert.AlertType.WARNING);
-                alert.setTitle(localization.get("app.title"));
-                alert.setHeaderText(null);
-                alert.setContentText("Выберите элемент в таблице для удаления!");
-                alert.showAndWait();
+                showWarning("Выберите элемент в таблице для удаления!");
             }
         });
 
-        btnShuffle.setOnAction(e -> commandHandler.executeShuffle());
-        btnBuy.setOnAction(e -> commandHandler.executeBuy());
-        btnBalance.setOnAction(e -> commandHandler.executeShowBalance());
-        btnExit.setOnAction(e -> {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle(localization.get("app.title"));
-            alert.setHeaderText(null);
-            alert.setContentText(localization.get("confirm.exit"));
-            DialogPane dialogPane = alert.getDialogPane();
-            dialogPane.setStyle("-fx-background-color: #F1F8E9;");
-            dialogPane.lookupButton(ButtonType.OK).setStyle(BTN_BASE_STYLE);
-            dialogPane.lookupButton(ButtonType.CANCEL).setStyle(BTN_BASE_STYLE);
-            if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-                stopAutoRefresh();
-                if (networkService != null && networkService.isConnected()) {
-                    networkService.disconnect();
-                }
-                stage.close();
+        // ИЗМЕНЕНИЕ 1: Перемешивание без алерта
+        btnShuffle.setOnAction(e -> {
+            // Просто отправляем команду, которая обновит таблицу
+            commandHandler.executeShuffle();
+        });
+
+        btnBuy.setOnAction(e -> {
+            Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                commandHandler.executeBuy(selected.getId());
+            } else {
+                showWarning("Выберите элемент в таблице для покупки!");
             }
         });
 
-        hbox.getChildren().addAll(btnAdd, btnRemove, btnShuffle, btnBuy, btnBalance, btnExit);
+        btnClear.setOnAction(e -> commandHandler.executeClear());
+
+        hbox.getChildren().addAll(buttons);
         return hbox;
+    }
+
+    private Button createStyledButton(String text, boolean isPrimary) {
+        Button btn = new Button(text);
+        if (isPrimary) {
+            btn.setStyle(BTN_PRIMARY);
+            btn.setOnMouseEntered(e -> btn.setStyle(BTN_PRIMARY_HOVER));
+            btn.setOnMouseExited(e -> btn.setStyle(BTN_PRIMARY));
+        } else {
+            btn.setStyle(BTN_SECONDARY);
+            btn.setOnMouseEntered(e -> btn.setStyle(BTN_SECONDARY_HOVER));
+            btn.setOnMouseExited(e -> btn.setStyle(BTN_SECONDARY));
+        }
+        return btn;
+    }
+
+    private Button createStyledButton(String text, String type) {
+        Button btn = new Button(text);
+        btn.setStyle(BTN_DANGER);
+        btn.setOnMouseEntered(e -> btn.setStyle(BTN_DANGER_HOVER));
+        btn.setOnMouseExited(e -> btn.setStyle(BTN_DANGER));
+        return btn;
+    }
+
+    private void handleExit() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(localization.get("app.title"));
+        alert.setHeaderText(null);
+        alert.setContentText(localization.get("confirm.exit"));
+        alert.getDialogPane().setStyle("-fx-background-color: white;");
+        if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+            stopAutoRefresh();
+            if (networkService != null && networkService.isConnected()) networkService.disconnect();
+            stage.close();
+        }
+    }
+
+    private void showWarning(String msg) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Внимание");
+        alert.setHeaderText(null);
+        alert.setContentText(msg);
+        alert.getDialogPane().setStyle("-fx-background-color: white;");
+        alert.showAndWait();
     }
 
     private void updateUITexts() {
         userLabel.setText(localization.get("main.user.label") + " " + currentUserLogin);
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
-
-        HBox bottomPanel = (HBox) ((BorderPane) stage.getScene().getRoot()).getBottom();
-        if (bottomPanel != null) {
-            int i = 0;
-            for (javafx.scene.Node node : bottomPanel.getChildren()) {
-                if (node instanceof Button btn) {
-                    switch (i) {
-                        case 0: btn.setText(localization.get("btn.add")); break;
-                        case 1: btn.setText(localization.get("btn.remove")); break;
-                        case 2: btn.setText(localization.get("btn.shuffle")); break;
-                        case 3: btn.setText(localization.get("btn.buy")); break;
-                        case 4: btn.setText(localization.get("btn.balance")); break;
-                        case 5: btn.setText(localization.get("btn.exit")); break;
-                    }
-                    i++;
-                }
+        if (tableController != null) tableController.updateLocalization();
+        if (balanceButton != null) {
+            if (!balanceButton.getText().contains("₽") && !balanceButton.getText().equals("...") && !balanceButton.getText().equals("Ошибка")) {
+                balanceButton.setText(localization.get("btn.balance"));
             }
-        }
-
-        if (tableController != null) {
-            tableController.updateLocalization();
         }
     }
 
-    public void updateTableData(List<Vehicle> vehicles) {
-        if (tableController != null) {
-            tableController.updateData(vehicles);
+    public void updateVisualization() {
+        if (tableController != null && canvasController != null) {
+            canvasController.updateData(tableController.getAllVehicles());
         }
     }
 }=== FILE: ./src/client/gui/GuiApp.java ===
@@ -1116,6 +1189,7 @@ public class LocalizationManager {
     }
 }=== FILE: ./src/client/gui/VehicleTableController.java ===
 package client.gui;
+
 import common.Vehicle;
 import common.VehicleType;
 import common.FuelType;
@@ -1127,6 +1201,9 @@ import javafx.scene.control.SelectionMode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Callback;
+import javafx.animation.ScaleTransition;
+import javafx.util.Duration;
+
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -1137,6 +1214,7 @@ public class VehicleTableController {
     private TableView<Vehicle> tableView;
     private final ObservableList<Vehicle> allVehicles = FXCollections.observableArrayList();
     private final ObservableList<Vehicle> filteredVehicles = FXCollections.observableArrayList();
+
     private TextField filterId;
     private TextField filterName;
     private TextField filterOwner;
@@ -1144,6 +1222,7 @@ public class VehicleTableController {
     private TextField filterMaxPrice;
     private ComboBox<VehicleType> filterType;
     private ComboBox<FuelType> filterFuel;
+
     private static final DecimalFormat PRICE_FORMAT = new DecimalFormat("#,##0.00");
 
     public VehicleTableController(LocalizationManager localization) {
@@ -1151,12 +1230,8 @@ public class VehicleTableController {
     }
 
     public VBox createTablePane(){
-        VBox root = new VBox(10);
-        root.setPadding(new Insets(10));
-        root.setStyle("-fx-background-color: #FFFFFF; " +
-                "-fx-border-radius: 10; " +
-                "-fx-background-radius: 10; " +
-                "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.25), 10, 0, 0, 2);");
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(0));
 
         HBox filterPanel = createFilterPanel();
 
@@ -1164,21 +1239,58 @@ public class VehicleTableController {
         tableView.setItems(filteredVehicles);
         tableView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
 
-        tableView.setStyle("-fx-background-color: white; " +
-                "-fx-control-inner-background: #F1F8E9; " +
-                "-fx-table-cell-border-color: #C8E6C9;");
+        tableView.setStyle("-fx-background-color: transparent; " +
+                "-fx-control-inner-background: white; " +
+                "-fx-table-cell-border-color: #F0F0F0;");
 
+        // ИЗМЕНЕНИЕ 3: Кастомная фабрика строк для выделения
         tableView.setRowFactory(tv -> {
             TableRow<Vehicle> row = new TableRow<>();
-            row.indexProperty().addListener((obs, oldIndex, newIndex) -> {
-                if (!row.isEmpty()) {
-                    if ((int)newIndex % 2 == 0){
-                        row.setStyle("-fx-background-color: #F1F8E9;");
-                    } else {
-                        row.setStyle("-fx-background-color: #FFFFFF;");
+
+            // Слушатель изменения свойства selected
+            row.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
+                if (isNowSelected) {
+                    // Выделенная строка: синий фон, белый текст, легкая тень
+                    row.setStyle("-fx-background-color: #2979FF; " +
+                            "-fx-text-fill: white; " +
+                            "-fx-font-weight: bold; " +
+                            "-fx-effect: dropshadow(gaussian, rgba(41,121,255,0.4), 10, 0, 0, 0);");
+
+                    // Попытка увеличить масштаб (может влиять на соседей, поэтому осторожно)
+                    // Более безопасный вариант - просто изменить стиль выше.
+                    // Если нужно именно увеличение, раскомментируй ниже, но это может ломать верстку таблицы
+                    // row.setScaleX(1.02);
+                    // row.setScaleY(1.02);
+
+                } else {
+                    // Обычная строка: чередование цветов
+                    if (!row.isEmpty()) {
+                        if ((int)row.getIndex() % 2 == 0){
+                            row.setStyle("-fx-background-color: #FAFAFA;");
+                        } else {
+                            row.setStyle("-fx-background-color: white;");
+                        }
+                        // row.setScaleX(1.0);
+                        // row.setScaleY(1.0);
                     }
                 }
             });
+
+            // Hover эффект
+            row.hoverProperty().addListener((obs, wasHovered, isNowHovered) -> {
+                if (!row.isSelected() && !row.isEmpty()) {
+                    if (isNowHovered) {
+                        row.setStyle("-fx-background-color: #E3F2FD;");
+                    } else {
+                        if ((int)row.getIndex() % 2 == 0){
+                            row.setStyle("-fx-background-color: #FAFAFA;");
+                        } else {
+                            row.setStyle("-fx-background-color: white;");
+                        }
+                    }
+                }
+            });
+
             return row;
         });
 
@@ -1189,56 +1301,64 @@ public class VehicleTableController {
     }
 
     private HBox createFilterPanel() {
-        HBox hbox = new HBox(10);
-        hbox.setPadding(new Insets(5));
+        HBox hbox = new HBox(12);
+        hbox.setPadding(new Insets(0, 0, 15, 0));
         hbox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
-        Label filterLabel = new Label(localization.get("table.filter"));
-        filterLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
+        Label filterLabel = new Label("Фильтры:");
+        filterLabel.setStyle("-fx-text-fill: #757575; -fx-font-weight: 500;");
 
-        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9; -fx-prompt-text-fill: #66BB6A;";
+        String fieldStyle = "-fx-background-color: white; " +
+                "-fx-background-radius: 6; " +
+                "-fx-border-color: #E0E0E0; " +
+                "-fx-border-radius: 6; " +
+                "-fx-border-width: 1; " +
+                "-fx-prompt-text-fill: #9E9E9E; " +
+                "-fx-padding: 5 8;";
+
         filterId = new TextField();
-        filterId.setPromptText(localization.get("table.column.id"));
-        filterId.setPrefWidth(60);
+        filterId.setPromptText("ID");
+        filterId.setPrefWidth(50);
         filterId.setStyle(fieldStyle);
 
         filterName = new TextField();
-        filterName.setPromptText(localization.get("table.column.name"));
+        filterName.setPromptText("Имя");
         filterName.setPrefWidth(100);
         filterName.setStyle(fieldStyle);
 
         filterOwner = new TextField();
-        filterOwner.setPromptText(localization.get("table.column.owner"));
+        filterOwner.setPromptText("Владелец");
         filterOwner.setPrefWidth(100);
         filterOwner.setStyle(fieldStyle);
 
         filterMinPrice = new TextField();
-        filterMinPrice.setPromptText(localization.get("filter.min_price"));
+        filterMinPrice.setPromptText("Цена от");
         filterMinPrice.setPrefWidth(70);
         filterMinPrice.setStyle(fieldStyle);
 
         filterMaxPrice = new TextField();
-        filterMaxPrice.setPromptText(localization.get("filter.max_price"));
+        filterMaxPrice.setPromptText("Цена до");
         filterMaxPrice.setPrefWidth(70);
         filterMaxPrice.setStyle(fieldStyle);
 
         filterType = new ComboBox<>();
         filterType.getItems().add(null);
         filterType.getItems().addAll(VehicleType.values());
-        filterType.setPromptText(localization.get("table.column.type"));
-        setupFilterTypeLocalization();
+        filterType.setPromptText("Тип");
         filterType.setValue(null);
-        filterType.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9;");
+        filterType.setStyle("-fx-background-color: white; -fx-border-color: #E0E0E0; -fx-border-radius: 6; -fx-background-radius: 6;");
+        setupFilterTypeLocalization();
 
         filterFuel = new ComboBox<>();
         filterFuel.getItems().add(null);
         filterFuel.getItems().addAll(FuelType.values());
-        filterFuel.setPromptText(localization.get("table.column.fuel"));
-        setupFilterFuelLocalization();
+        filterFuel.setPromptText("Топливо");
         filterFuel.setValue(null);
-        filterFuel.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9;");
+        filterFuel.setStyle("-fx-background-color: white; -fx-border-color: #E0E0E0; -fx-border-radius: 6; -fx-background-radius: 6;");
+        setupFilterFuelLocalization();
 
         Callback<Void, Void> updateFilter = v -> { applyFilters(); return null; };
+
         filterId.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterName.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterOwner.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
@@ -1261,22 +1381,16 @@ public class VehicleTableController {
             @Override
             protected void updateItem(VehicleType item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(localization.get("table.filter.all_types"));
-                } else {
-                    setText(item.toString());
-                }
+                if (empty || item == null) setText(localization.get("table.filter.all_types"));
+                else setText(item.toString());
             }
         });
         filterType.setButtonCell(new ListCell<>() {
             @Override
             protected void updateItem(VehicleType item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(localization.get("table.filter.all_types"));
-                } else {
-                    setText(item.toString());
-                }
+                if (empty || item == null) setText(localization.get("table.filter.all_types"));
+                else setText(item.toString());
             }
         });
     }
@@ -1286,29 +1400,26 @@ public class VehicleTableController {
             @Override
             protected void updateItem(FuelType item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(localization.get("table.filter.all_fuels"));
-                } else {
-                    setText(item.toString());
-                }
+                if (empty || item == null) setText(localization.get("table.filter.all_fuels"));
+                else setText(item.toString());
             }
         });
         filterFuel.setButtonCell(new ListCell<>() {
             @Override
             protected void updateItem(FuelType item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(localization.get("table.filter.all_fuels"));
-                } else {
-                    setText(item.toString());
-                }
+                if (empty || item == null) setText(localization.get("table.filter.all_fuels"));
+                else setText(item.toString());
             }
         });
     }
 
     private void setupColumns() {
-        String headerStyle = "-fx-background-color: linear-gradient(to bottom, #C8E6C9, #A5D6A7); " +
-                "-fx-text-fill: #1B5E20; -fx-font-weight: bold;";
+        String headerStyle = "-fx-background-color: #FAFAFA; " +
+                "-fx-text-fill: #424242; " +
+                "-fx-font-weight: bold; " +
+                "-fx-border-width: 0 0 1 0; " +
+                "-fx-border-color: #E0E0E0;";
 
         TableColumn<Vehicle, Number> colId = new TableColumn<>(localization.get("col.id"));
         colId.setStyle(headerStyle);
@@ -1318,7 +1429,7 @@ public class VehicleTableController {
         TableColumn<Vehicle, String> colName = new TableColumn<>(localization.get("col.name"));
         colName.setStyle(headerStyle);
         colName.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getName()));
-        colName.setPrefWidth(150);
+        colName.setPrefWidth(120);
 
         TableColumn<Vehicle, String> colCoords = new TableColumn<>(localization.get("col.coords"));
         colCoords.setStyle(headerStyle);
@@ -1332,32 +1443,32 @@ public class VehicleTableController {
         colDate.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
                 localization.formatDateTime(data.getValue().getCreationDate())
         ));
-        colDate.setPrefWidth(130);
+        colDate.setPrefWidth(110);
 
         TableColumn<Vehicle, Float> colPower = new TableColumn<>(localization.get("col.engine_power"));
         colPower.setStyle(headerStyle);
         colPower.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getEnginePower()));
-        colPower.setPrefWidth(80);
+        colPower.setPrefWidth(70);
 
         TableColumn<Vehicle, Float> colDist = new TableColumn<>(localization.get("col.distance"));
         colDist.setStyle(headerStyle);
         colDist.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getDistanceTravelled()));
-        colDist.setPrefWidth(80);
+        colDist.setPrefWidth(70);
 
         TableColumn<Vehicle, VehicleType> colType = new TableColumn<>(localization.get("col.type"));
         colType.setStyle(headerStyle);
         colType.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getType()));
-        colType.setPrefWidth(100);
+        colType.setPrefWidth(90);
 
         TableColumn<Vehicle, FuelType> colFuel = new TableColumn<>(localization.get("col.fuel"));
         colFuel.setStyle(headerStyle);
         colFuel.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getFuelType()));
-        colFuel.setPrefWidth(100);
+        colFuel.setPrefWidth(90);
 
         TableColumn<Vehicle, String> colOwner = new TableColumn<>(localization.get("col.owner"));
         colOwner.setStyle(headerStyle);
         colOwner.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getOwnerLogin()));
-        colOwner.setPrefWidth(100);
+        colOwner.setPrefWidth(90);
 
         TableColumn<Vehicle, Double> colPrice = new TableColumn<>(localization.get("col.price"));
         colPrice.setStyle(headerStyle);
@@ -1366,11 +1477,8 @@ public class VehicleTableController {
             @Override
             protected void updateItem(Double price, boolean empty) {
                 super.updateItem(price, empty);
-                if (empty || price == null) {
-                    setText(null);
-                } else {
-                    setText(PRICE_FORMAT.format(price));
-                }
+                if (empty || price == null) setText(null);
+                else setText(PRICE_FORMAT.format(price));
             }
         });
         colPrice.setPrefWidth(90);
@@ -1381,28 +1489,6 @@ public class VehicleTableController {
     public void updateLocalization() {
         tableView.getColumns().clear();
         setupColumns();
-
-        HBox filterPanel = (HBox) ((VBox) tableView.getParent()).getChildren().get(0);
-        filterPanel.getChildren().clear();
-        Label filterLabel = new Label(localization.get("table.filter") + ":");
-        filterLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
-        filterPanel.getChildren().addAll(
-                filterLabel,
-                filterId, filterName, filterOwner,
-                filterMinPrice, filterMaxPrice,
-                filterType, filterFuel
-        );
-
-        filterId.setPromptText(localization.get("filter.id"));
-        filterName.setPromptText(localization.get("filter.name"));
-        filterOwner.setPromptText(localization.get("filter.owner"));
-        filterMinPrice.setPromptText(localization.get("filter.min_price"));
-        filterMaxPrice.setPromptText(localization.get("filter.max_price"));
-        filterType.setPromptText(localization.get("filter.type"));
-        filterFuel.setPromptText(localization.get("filter.fuel"));
-
-        setupFilterTypeLocalization();
-        setupFilterFuelLocalization();
     }
 
     private void applyFilters() {
@@ -1437,12 +1523,7 @@ public class VehicleTableController {
         filteredVehicles.setAll(result);
     }
 
-    /**
-     * Обновляет исходные данные извне (после получения ответа от сервера).
-     * Сохраняет выделение строки, чтобы оно не сбрасывалось при автообновлении.
-     */
     public void updateData(List<Vehicle> vehicles) {
-        // 1. Запоминаем ID выбранного элемента ДО замены данных
         Long selectedId = null;
         Vehicle currentSelection = tableView.getSelectionModel().getSelectedItem();
         if (currentSelection != null) {
@@ -1456,15 +1537,13 @@ public class VehicleTableController {
             return;
         }
 
-        // 2. Обновляем данные
         allVehicles.setAll(vehicles);
         applyFilters();
 
-        // 3. Восстанавливаем выделение по сохранённому ID (если элемент ещё есть в таблице)
         if (selectedId != null) {
-            final Long finalSelectedId = selectedId; // Делаем final для использования в lambda
+            final Long finalSelectedId = selectedId;
             Vehicle toSelect = filteredVehicles.stream()
-                    .filter(v -> v.getId() == finalSelectedId) // Используем == для примитивов
+                    .filter(v -> v.getId() == finalSelectedId)
                     .findFirst()
                     .orElse(null);
             if (toSelect != null) {
@@ -1486,8 +1565,14 @@ package client.gui;
 import client.logic.NetworkService;
 import common.*;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -1499,18 +1584,33 @@ public class CommandDialogHandler {
     private final String password;
     private VehicleTableController tableController;
 
-    private static final String DIALOG_STYLE = "-fx-background-color: linear-gradient(to bottom, #F1F8E9, #E8F5E9); " +
-            "-fx-border-color: #A5D6A7; -fx-border-width: 2;";
-    private static final String HEADER_LABEL_STYLE = "-fx-font-size: 18px; -fx-font-weight: bold; " +
-            "-fx-text-fill: #2E7D32;";
-    private static final String BTN_GREEN_STYLE = "-fx-background-color: linear-gradient(to bottom, #C8E6C9, #A5D6A7); " +
-            "-fx-text-fill: #1B5E20; " +
+    // Современные стили для диалога
+    private static final String DIALOG_BG = "-fx-background-color: #FFFFFF; " +
+            "-fx-background-radius: 15; " +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 20, 0, 0, 5);";
+
+    private static final String INPUT_FIELD_STYLE = "-fx-background-color: #F5F5F5; " +
+            "-fx-background-radius: 8; " +
+            "-fx-border-color: transparent; " +
+            "-fx-padding: 10; " +
+            "-fx-font-size: 14px;";
+
+    private static final String LABEL_STYLE = "-fx-text-fill: #555555; " +
             "-fx-font-weight: bold; " +
-            "-fx-background-radius: 5; " +
-            "-fx-border-radius: 5; " +
-            "-fx-border-color: #81C784; " +
-            "-fx-border-width: 1; " +
-            "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.3), 3, 0, 0, 1); " +
+            "-fx-font-size: 14px;";
+
+    private static final String BTN_SAVE_STYLE = "-fx-background-color: #4CAF50; " +
+            "-fx-text-fill: white; " +
+            "-fx-font-weight: bold; " +
+            "-fx-background-radius: 8; " +
+            "-fx-padding: 10 20; " +
+            "-fx-cursor: hand;";
+
+    private static final String BTN_CANCEL_STYLE = "-fx-background-color: #EEEEEE; " +
+            "-fx-text-fill: #333333; " +
+            "-fx-font-weight: bold; " +
+            "-fx-background-radius: 8; " +
+            "-fx-padding: 10 20; " +
             "-fx-cursor: hand;";
 
     public CommandDialogHandler(NetworkService networkService, LocalizationManager localization,
@@ -1525,28 +1625,18 @@ public class CommandDialogHandler {
         this.tableController = tableController;
     }
 
+    public void executeBuy(Long id) {
+        if (id == null) return;
+        sendCommand("buy", List.of("buy", String.valueOf(id)), null);
+    }
+
     public void executeRemoveById(Long id) {
         if (id == null) return;
         sendCommand("remove_by_id", List.of("remove_by_id", String.valueOf(id)), null);
     }
 
-    public void executeRemoveByIdManual() {
-        TextInputDialog dialog = new TextInputDialog();
-        styleDialog(dialog, localization.get("dialog.remove_by_id.title"));
-        dialog.setHeaderText(localization.get("dialog.remove_by_id.title"));
-        dialog.setContentText(localization.get("dialog.remove_by_id.prompt"));
-        dialog.showAndWait().ifPresent(id -> {
-            try {
-                Long.parseLong(id);
-                sendCommand("remove_by_id", List.of("remove_by_id", id), null);
-            } catch (NumberFormatException e) {
-                showError(localization.get("dialog.error.invalid_id"));
-            }
-        });
-    }
-
     public void executeAdd() {
-        Vehicle vehicle = showVehicleDialog(null);
+        Vehicle vehicle = showModernVehicleDialog(null);
         if (vehicle != null) {
             sendCommand("add", List.of("add"), vehicle);
         }
@@ -1554,10 +1644,10 @@ public class CommandDialogHandler {
 
     public void executeClear() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        styleDialog(alert, localization.get("dialog.clear.title"));
-        alert.setTitle(localization.get("app.title"));
-        alert.setHeaderText(localization.get("dialog.clear.title"));
-        alert.setContentText(localization.get("dialog.clear.confirm"));
+        alert.setTitle("Подтверждение");
+        alert.setHeaderText(null);
+        alert.setContentText("Вы уверены, что хотите удалить ВСЕ свои объекты?");
+        alert.getDialogPane().setStyle(DIALOG_BG);
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 sendCommand("clear", List.of("clear"), null);
@@ -1566,20 +1656,17 @@ public class CommandDialogHandler {
     }
 
     public void executeUpdate() {
-        Vehicle vehicle = showVehicleDialog(null);
+        Vehicle vehicle = showModernVehicleDialog(null);
         if (vehicle != null) {
             TextInputDialog dialog = new TextInputDialog();
-            styleDialog(dialog, localization.get("dialog.update.title"));
-            dialog.setTitle(localization.get("app.title"));
-            dialog.setHeaderText(localization.get("dialog.update.title"));
-            dialog.setContentText(localization.get("dialog.update.prompt"));
+            dialog.setHeaderText("Введите ID для обновления");
             dialog.showAndWait().ifPresent(id -> {
                 try {
                     long idLong = Long.parseLong(id);
                     vehicle.setId(idLong);
                     sendCommand("update", List.of("update", id), vehicle);
                 } catch (NumberFormatException e) {
-                    showError(localization.get("dialog.error.invalid_id"));
+                    showError("Некорректный ID");
                 }
             });
         }
@@ -1593,17 +1680,13 @@ public class CommandDialogHandler {
 
     public void executeFilterByEnginePower() {
         TextInputDialog dialog = new TextInputDialog();
-        styleDialog(dialog, localization.get("dialog.filter.power.title"));
-        dialog.setTitle(localization.get("app.title"));
-        dialog.setHeaderText(localization.get("dialog.filter.power.title"));
-        dialog.setContentText(localization.get("dialog.filter.power.prompt"));
+        dialog.setHeaderText("Фильтр по мощности (минимум)");
         dialog.showAndWait().ifPresent(power -> {
             try {
                 Float.parseFloat(power);
-                sendCommand("filter_greater_than_engine_power",
-                        List.of("filter_greater_than_engine_power", power), null);
+                sendCommand("filter_greater_than_engine_power", List.of("filter_greater_than_engine_power", power), null);
             } catch (NumberFormatException e) {
-                showError(localization.get("dialog.error.invalid_value"));
+                showError("Некорректное число");
             }
         });
     }
@@ -1613,15 +1696,12 @@ public class CommandDialogHandler {
         comboBox.getItems().addAll(VehicleType.values());
         comboBox.setValue(VehicleType.BOAT);
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        styleDialog(alert, localization.get("dialog.filter.type.title"));
-        alert.setTitle(localization.get("app.title"));
-        alert.setHeaderText(localization.get("dialog.filter.type.title"));
+        alert.setHeaderText("Фильтр по типу (меньше чем)");
         alert.getDialogPane().setContent(comboBox);
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 VehicleType type = comboBox.getValue();
-                sendCommand("filter_less_than_type",
-                        List.of("filter_less_than_type", type.name()), null);
+                sendCommand("filter_less_than_type", List.of("filter_less_than_type", type.name()), null);
             }
         });
     }
@@ -1631,9 +1711,7 @@ public class CommandDialogHandler {
         comboBox.getItems().addAll("TYPE", "FUELTYPE", "COORDINATES");
         comboBox.setValue("TYPE");
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        styleDialog(alert, localization.get("dialog.group_by.title"));
-        alert.setTitle(localization.get("app.title"));
-        alert.setHeaderText(localization.get("dialog.group_by.title"));
+        alert.setHeaderText("Группировка по полю");
         alert.getDialogPane().setContent(comboBox);
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
@@ -1644,78 +1722,53 @@ public class CommandDialogHandler {
     }
 
     public void executeAddIfMax() {
-        Vehicle vehicle = showVehicleDialog(null);
+        Vehicle vehicle = showModernVehicleDialog(null);
         if (vehicle != null) {
             sendCommand("add_if_max", List.of("add_if_max"), vehicle);
         }
-    }
-
-    public void executeBuy() {
-        TextInputDialog dialog = new TextInputDialog();
-        styleDialog(dialog, localization.get("dialog.buy.title"));
-        dialog.setTitle(localization.get("app.title"));
-        dialog.setHeaderText(localization.get("dialog.buy.title"));
-        dialog.setContentText(localization.get("dialog.buy.prompt"));
-        dialog.showAndWait().ifPresent(id -> {
-            try {
-                Long.parseLong(id);
-                sendCommand("buy", List.of("buy", id), null);
-            } catch (NumberFormatException e) {
-                showError(localization.get("dialog.error.invalid_id"));
-            }
-        });
     }
 
     public void executeShowBalance() { sendCommand("show_balance", List.of("show_balance"), null); }
 
     public void executeDeposit() {
         TextInputDialog dialog = new TextInputDialog();
-        styleDialog(dialog, localization.get("dialog.deposit.title"));
-        dialog.setTitle(localization.get("app.title"));
-        dialog.setHeaderText(localization.get("dialog.deposit.title"));
-        dialog.setContentText(localization.get("dialog.deposit.prompt"));
+        dialog.setHeaderText("Пополнение баланса");
         dialog.showAndWait().ifPresent(amount -> {
             try {
                 double amountDouble = Double.parseDouble(amount);
                 if (amountDouble > 0) {
                     sendCommand("deposit", List.of("deposit", amount), null);
                 } else {
-                    showError(localization.get("dialog.error.positive_amount"));
+                    showError("Сумма должна быть > 0");
                 }
             } catch (NumberFormatException e) {
-                showError(localization.get("dialog.error.invalid_amount"));
+                showError("Некорректная сумма");
             }
         });
     }
 
     public void executeSetPrice() {
         TextInputDialog idDialog = new TextInputDialog();
-        styleDialog(idDialog, localization.get("dialog.set_price.title_id"));
-        idDialog.setTitle(localization.get("app.title"));
-        idDialog.setHeaderText(localization.get("dialog.set_price.title_id"));
-        idDialog.setContentText(localization.get("dialog.set_price.prompt_id"));
+        idDialog.setHeaderText("Установка цены: Введите ID");
         idDialog.showAndWait().ifPresent(id -> {
             try {
                 Long.parseLong(id);
                 TextInputDialog priceDialog = new TextInputDialog();
-                styleDialog(priceDialog, localization.get("dialog.set_price.title_id"));
-                priceDialog.setTitle(localization.get("app.title"));
-                priceDialog.setHeaderText(localization.get("dialog.set_price.title_id"));
-                priceDialog.setContentText(localization.get("dialog.set_price.prompt_price"));
+                priceDialog.setHeaderText("Введите новую цену");
                 priceDialog.showAndWait().ifPresent(price -> {
                     try {
                         double priceDouble = Double.parseDouble(price);
                         if (priceDouble >= 0) {
                             sendCommand("set_price", List.of("set_price", id, price), null);
                         } else {
-                            showError(localization.get("dialog.error.negative_price"));
+                            showError("Цена не может быть отрицательной");
                         }
                     } catch (NumberFormatException e) {
-                        showError(localization.get("dialog.error.invalid_price"));
+                        showError("Некорректная цена");
                     }
                 });
             } catch (NumberFormatException e) {
-                showError(localization.get("dialog.error.invalid_id"));
+                showError("Некорректный ID");
             }
         });
     }
@@ -1729,7 +1782,7 @@ public class CommandDialogHandler {
                 Platform.runLater(() -> {
                     if (response != null) {
                         if (response.isSuccess()) {
-                            if ("show".equals(commandName)) {
+                            if ("show".equals(commandName) || "shuffle".equals(commandName)) {
                                 String message = response.getMessage();
                                 if (message != null && !message.trim().isEmpty()) {
                                     List<Vehicle> vehicles = VehicleTextParser.parseVehicleList(message);
@@ -1753,12 +1806,9 @@ public class CommandDialogHandler {
                                 if (message != null && !message.trim().isEmpty()) {
                                     showScrollableInfo(message);
                                 }
-                                if ("update".equals(commandName) ||
-                                        "add".equals(commandName) ||
-                                        "remove_by_id".equals(commandName) ||
-                                        "clear".equals(commandName) ||
-                                        "buy".equals(commandName) ||
-                                        "set_price".equals(commandName)) {
+                                if ("update".equals(commandName) || "add".equals(commandName) ||
+                                        "remove_by_id".equals(commandName) || "clear".equals(commandName) ||
+                                        "buy".equals(commandName) || "set_price".equals(commandName)) {
                                     executeShowSilent();
                                 }
                             }
@@ -1775,18 +1825,15 @@ public class CommandDialogHandler {
 
     private void showScrollableInfo(String message) {
         Dialog<Void> dialog = new Dialog<>();
-        styleDialog(dialog, localization.get("dialog.result.title"));
-        dialog.setTitle(localization.get("app.title"));
-        dialog.setHeaderText(localization.get("dialog.result.title"));
+        dialog.getDialogPane().setStyle(DIALOG_BG);
+        dialog.setTitle("Результат");
         dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
         dialog.setResizable(true);
         TextArea textArea = new TextArea(message);
         textArea.setEditable(false);
         textArea.setWrapText(true);
-        textArea.setStyle("-fx-font-size: 13px; -fx-background-color: transparent; -fx-control-inner-background: #F1F8E9;");
         ScrollPane scrollPane = new ScrollPane(textArea);
         scrollPane.setFitToWidth(true);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setPrefSize(600, 350);
         dialog.getDialogPane().setContent(scrollPane);
         dialog.showAndWait();
@@ -1794,154 +1841,172 @@ public class CommandDialogHandler {
 
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        styleDialog(alert, localization.get("app.title"));
-        alert.setTitle(localization.get("app.title"));
+        alert.getDialogPane().setStyle(DIALOG_BG);
+        alert.setTitle("Ошибка");
         alert.setHeaderText(null);
-        alert.setContentText(message != null ? message : localization.get("dialog.error.unknown"));
+        alert.setContentText(message != null ? message : "Произошла ошибка");
         alert.showAndWait();
     }
 
-    private Vehicle showVehicleDialog(Vehicle existing) {
+    // === ИЗМЕНЕНИЕ 2: Современный диалог добавления/редактирования ===
+    private Vehicle showModernVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
-        styleDialog(dialog, existing == null ? localization.get("dialog.add_vehicle") : localization.get("dialog.edit_vehicle"));
-        dialog.setTitle(localization.get("app.title"));
-        dialog.setHeaderText(existing == null ? localization.get("dialog.add_vehicle") : localization.get("dialog.edit_vehicle"));
-        ButtonType saveButtonType = new ButtonType(localization.get("dialog.save"), ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancelButtonType = new ButtonType(localization.get("dialog.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
+        dialog.getDialogPane().setStyle(DIALOG_BG);
+        dialog.setTitle(existing == null ? "Добавление ТС" : "Редактирование ТС");
+        dialog.setHeaderText(existing == null ? "Заполните данные нового транспортного средства" : "Измените данные ТС");
 
-        dialog.getDialogPane().lookupButton(saveButtonType).setStyle(BTN_GREEN_STYLE);
-        dialog.getDialogPane().lookupButton(cancelButtonType).setStyle(BTN_GREEN_STYLE);
+        // Очищаем стандартные кнопки, так как будем использовать свои
+        dialog.getDialogPane().getButtonTypes().clear();
 
+        Button saveButton = new Button("Сохранить");
+        saveButton.setStyle(BTN_SAVE_STYLE);
+        Button cancelButton = new Button("Отмена");
+        cancelButton.setStyle(BTN_CANCEL_STYLE);
+
+        // Layout
         GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
+        grid.setHgap(15);
+        grid.setVgap(15);
+        grid.setPadding(new Insets(20, 30, 10, 30));
+        grid.setAlignment(Pos.CENTER);
 
-        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9; -fx-prompt-text-fill: #66BB6A;";
-        String labelStyle = "-fx-text-fill: #2E7D32; -fx-font-weight: bold;";
-
-        TextField nameField = new TextField(existing != null ? existing.getName() : "");
-        nameField.setPromptText(localization.get("dialog.prompt.name"));
-        nameField.setStyle(fieldStyle);
-
-        TextField xField = new TextField(existing != null ? String.valueOf(existing.getCoordinates().getX()) : "0");
-        xField.setPromptText(localization.get("dialog.prompt.x"));
-        xField.setStyle(fieldStyle);
-
-        TextField yField = new TextField(existing != null ? String.valueOf(existing.getCoordinates().getY()) : "0");
-        yField.setPromptText(localization.get("dialog.prompt.y"));
-        yField.setStyle(fieldStyle);
-
-        TextField powerField = new TextField(existing != null ? String.valueOf(existing.getEnginePower()) : "0");
-        powerField.setPromptText(localization.get("dialog.prompt.power"));
-        powerField.setStyle(fieldStyle);
-
-        TextField distanceField = new TextField(existing != null ? String.valueOf(existing.getDistanceTravelled()) : "0");
-        distanceField.setPromptText(localization.get("dialog.prompt.distance"));
-        distanceField.setStyle(fieldStyle);
-
-        TextField priceField = new TextField(existing != null ? String.valueOf(existing.getPrice()) : "0");
-        priceField.setPromptText(localization.get("dialog.prompt.price"));
-        priceField.setStyle(fieldStyle);
+        // Поля ввода
+        TextField nameField = createStyledTextField(existing != null ? existing.getName() : "", "Название ТС");
+        TextField xField = createStyledTextField(existing != null ? String.valueOf(existing.getCoordinates().getX()) : "0", "Координата X");
+        TextField yField = createStyledTextField(existing != null ? String.valueOf(existing.getCoordinates().getY()) : "0", "Координата Y");
+        TextField powerField = createStyledTextField(existing != null ? String.valueOf(existing.getEnginePower()) : "0", "Мощность двигателя");
+        TextField distanceField = createStyledTextField(existing != null ? String.valueOf(existing.getDistanceTravelled()) : "0", "Пройденная дистанция");
+        TextField priceField = createStyledTextField(existing != null ? String.valueOf(existing.getPrice()) : "0", "Цена");
 
         DatePicker datePicker = new DatePicker();
-        datePicker.setPromptText(localization.get("dialog.prompt.creation_date"));
-        datePicker.setStyle(fieldStyle);
         if (existing != null && existing.getCreationDate() != null) {
-            datePicker.setValue(existing.getCreationDate().toInstant()
-                    .atZone(java.time.ZoneId.systemDefault())
-                    .toLocalDate());
+            datePicker.setValue(existing.getCreationDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate());
         } else {
             datePicker.setValue(java.time.LocalDate.now());
         }
+        datePicker.setStyle(INPUT_FIELD_STYLE);
 
         ComboBox<VehicleType> typeCombo = new ComboBox<>();
         typeCombo.getItems().addAll(VehicleType.values());
-        typeCombo.setValue(existing != null && existing.getType() != null ? existing.getType() : VehicleType.BOAT);
-        typeCombo.setStyle(fieldStyle);
+        typeCombo.setValue(existing != null ? existing.getType() : VehicleType.BOAT);
+        typeCombo.setStyle(INPUT_FIELD_STYLE);
 
         ComboBox<FuelType> fuelCombo = new ComboBox<>();
         fuelCombo.getItems().addAll(FuelType.values());
-        fuelCombo.setValue(existing != null && existing.getFuelType() != null ? existing.getFuelType() : FuelType.GASOLINE);
-        fuelCombo.setStyle(fieldStyle);
+        fuelCombo.setValue(existing != null ? existing.getFuelType() : FuelType.GASOLINE);
+        fuelCombo.setStyle(INPUT_FIELD_STYLE);
 
-        grid.add(new Label(localization.get("dialog.label.name")), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label(localization.get("dialog.label.x")), 0, 1);
-        grid.add(xField, 1, 1);
-        grid.add(new Label(localization.get("dialog.label.y")), 0, 2);
-        grid.add(yField, 1, 2);
-        grid.add(new Label(localization.get("dialog.label.power")), 0, 3);
-        grid.add(powerField, 1, 3);
-        grid.add(new Label(localization.get("dialog.label.distance")), 0, 4);
-        grid.add(distanceField, 1, 4);
-        grid.add(new Label(localization.get("dialog.label.creation_date")), 0, 5);
-        grid.add(datePicker, 1, 5);
-        grid.add(new Label(localization.get("dialog.label.type")), 0, 6);
-        grid.add(typeCombo, 1, 6);
-        grid.add(new Label(localization.get("dialog.label.fuel")), 0, 7);
-        grid.add(fuelCombo, 1, 7);
-        grid.add(new Label(localization.get("dialog.label.price")), 0, 8);
-        grid.add(priceField, 1, 8);
+        // Добавление в сетку
+        int row = 0;
+        grid.add(createLabel("Название:"), 0, row);
+        grid.add(nameField, 1, row++);
 
-        for (javafx.scene.Node node : grid.getChildren()) {
-            if (node instanceof Label) {
-                node.setStyle(labelStyle);
+        grid.add(createLabel("Координаты (X, Y):"), 0, row);
+        HBox coordsBox = new HBox(10, xField, yField);
+        grid.add(coordsBox, 1, row++);
+
+        grid.add(createLabel("Дата создания:"), 0, row);
+        grid.add(datePicker, 1, row++);
+
+        grid.add(createLabel("Мощность:"), 0, row);
+        grid.add(powerField, 1, row++);
+
+        grid.add(createLabel("Дистанция:"), 0, row);
+        grid.add(distanceField, 1, row++);
+
+        grid.add(createLabel("Тип ТС:"), 0, row);
+        grid.add(typeCombo, 1, row++);
+
+        grid.add(createLabel("Тип топлива:"), 0, row);
+        grid.add(fuelCombo, 1, row++);
+
+        grid.add(createLabel("Цена:"), 0, row);
+        grid.add(priceField, 1, row++);
+
+        // Валидация в реальном времени для активации кнопки Save
+        Runnable validate = () -> {
+            boolean valid = !nameField.getText().trim().isEmpty();
+            try {
+                Integer.parseInt(xField.getText());
+                Float.parseFloat(yField.getText());
+                Float.parseFloat(powerField.getText());
+                Float.parseFloat(distanceField.getText());
+                Double.parseDouble(priceField.getText());
+            } catch (NumberFormatException e) {
+                valid = false;
             }
-        }
+            saveButton.setDisable(!valid);
+        };
+
+        nameField.textProperty().addListener((o, n, w) -> validate.run());
+        xField.textProperty().addListener((o, n, w) -> validate.run());
+        yField.textProperty().addListener((o, n, w) -> validate.run());
+        powerField.textProperty().addListener((o, n, w) -> validate.run());
+        distanceField.textProperty().addListener((o, n, w) -> validate.run());
+        priceField.textProperty().addListener((o, n, w) -> validate.run());
+
+        // Обработчики кнопок
+        saveButton.setOnAction(e -> {
+            try {
+                Vehicle v = existing != null ? existing : new Vehicle();
+                v.setName(nameField.getText());
+                v.setCoordinates(Integer.parseInt(xField.getText()), Float.parseFloat(yField.getText()));
+                v.setEnginePower(Float.parseFloat(powerField.getText()));
+                v.setDistanceTravelled(Float.parseFloat(distanceField.getText()));
+                if (datePicker.getValue() != null) {
+                    Date creationDate = Date.from(datePicker.getValue().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+                    v.setCreationDate(creationDate);
+                }
+                v.setType(typeCombo.getValue());
+                v.setFuelType(fuelCombo.getValue());
+                v.setPrice(Double.parseDouble(priceField.getText()));
+
+                dialog.setResult(v);
+                dialog.close();
+            } catch (NumberFormatException ex) {
+                showError("Проверьте правильность ввода чисел");
+            }
+        });
+
+        cancelButton.setOnAction(e -> dialog.close());
+
+        // Добавляем кнопки в нижнюю часть диалога
+        HBox buttonBar = new HBox(15, cancelButton, saveButton);
+        buttonBar.setAlignment(Pos.CENTER_RIGHT);
+        buttonBar.setPadding(new Insets(10, 30, 20, 30));
+
+        // Добавляем панель с кнопками в конец GridPane
+        grid.add(buttonBar, 1, row);
 
         dialog.getDialogPane().setContent(grid);
-
-        dialog.setResultConverter(buttonType -> {
-            if (buttonType == saveButtonType) {
-                try {
-                    Vehicle v = existing != null ? existing : new Vehicle();
-                    v.setName(nameField.getText());
-                    v.setCoordinates(Integer.parseInt(xField.getText()), Float.parseFloat(yField.getText()));
-                    v.setEnginePower(Float.parseFloat(powerField.getText()));
-                    v.setDistanceTravelled(Float.parseFloat(distanceField.getText()));
-                    if (datePicker.getValue() != null) {
-                        java.time.LocalDate localDate = datePicker.getValue();
-                        java.time.LocalDateTime localDateTime = localDate.atStartOfDay();
-                        Date creationDate = Date.from(localDateTime.atZone(java.time.ZoneId.systemDefault()).toInstant());
-                        v.setCreationDate(creationDate);
-                    } else if (existing == null) {
-                        v.setCreationDate();
-                    }
-                    v.setType(typeCombo.getValue());
-                    v.setFuelType(fuelCombo.getValue());
-                    v.setPrice(Double.parseDouble(priceField.getText()));
-                    return v;
-                } catch (NumberFormatException e) {
-                    showError(localization.get("dialog.error.invalid_data") + e.getMessage());
-                    return null;
-                }
-            }
-            return null;
-        });
 
         return dialog.showAndWait().orElse(null);
     }
 
-    public void executeShow() {
-        sendCommand("show", List.of("show"), null);
+
+    private TextField createStyledTextField(String text, String prompt) {
+        TextField tf = new TextField(text);
+        tf.setPromptText(prompt);
+        tf.setStyle(INPUT_FIELD_STYLE);
+        return tf;
     }
 
-    public void executeShowSilent() {
-        sendCommand("show", List.of("show"), null);
+    private Label createLabel(String text) {
+        Label l = new Label(text);
+        l.setStyle(LABEL_STYLE);
+        return l;
     }
+
+    public void executeShow() { sendCommand("show", List.of("show"), null); }
+    public void executeShowSilent() { sendCommand("show", List.of("show"), null); }
 
     public void executeEdit(Vehicle existingVehicle) {
         if (existingVehicle == null) return;
-        Vehicle vehicleToSave = showVehicleDialog(existingVehicle);
+        Vehicle vehicleToSave = showModernVehicleDialog(existingVehicle);
         if (vehicleToSave != null) {
             vehicleToSave.setId(existingVehicle.getId());
             sendCommand("update", List.of("update", String.valueOf(existingVehicle.getId())), vehicleToSave);
         }
-    }
-
-    private void styleDialog(Dialog<?> dialog, String title) {
-        dialog.getDialogPane().setStyle(DIALOG_STYLE);
     }
 }=== FILE: ./src/client/gui/AuthScene.java ===
 package client.gui;
@@ -2301,82 +2366,110 @@ public class VehicleTextParser {
     }
 }=== FILE: ./src/client/gui/VehicleCanvasController.java ===
 package client.gui;
+
 import common.Vehicle;
 import common.VehicleType;
-import javafx.animation.ScaleTransition;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.text.Font;
-import javafx.util.Duration;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-/**
- * Контроллер Canvas для визуализации объектов Vehicle.
- * С неоновыми фиолетовыми цветами и анимацией при наведении.
- */
 public class VehicleCanvasController {
     private final LocalizationManager localization;
     private Canvas canvas;
     private GraphicsContext gc;
     private Consumer<Vehicle> onVehicleClicked;
 
-    // Параметры отображения
-    private double scaleX = 1.0;
-    private double scaleY = 1.0;
-    private double offsetX = 0.0;
-    private double offsetY = 0.0;
+    // Переменные для масштаба и смещения (Pan & Zoom)
+    private double zoom = 1.0;
+    private double panX = 0.0;
+    private double panY = 0.0;
+    private boolean isPanning = false;
+    private double lastMouseX, lastMouseY;
 
-    // Текущие данные
+    // Базовые параметры координатной системы (рассчитываются один раз или при ресайзе)
+    private double baseScaleX = 1.0;
+    private double baseScaleY = 1.0;
+    private double baseOffsetX = 0.0;
+    private double baseOffsetY = 0.0;
+
     private List<Vehicle> vehicles = List.of();
-
-    // Отслеживание наведения
     private Vehicle hoveredVehicle = null;
-    private double hoverScale = 1.0;
-    private ScaleTransition hoverAnimation;
+    private Vehicle selectedVehicle = null; // Выбранный пользователем объект
 
-    // Неоновые фиолетовые цвета для владельцев
     private final Map<String, Color> ownerColors = new ConcurrentHashMap<>();
-    private static final Color[] NEON_PURPLE_COLORS = {
-            Color.rgb(180, 0, 255),    // Ярко-фиолетовый
-            Color.rgb(255, 0, 255),    // Маджента
-            Color.rgb(204, 0, 204),    // Тёмная маджента
-            Color.rgb(153, 0, 255),    // Фиолетовый
-            Color.rgb(218, 112, 255),  // Светло-фиолетовый
-            Color.rgb(148, 0, 211),    // Тёмно-фиолетовый
-            Color.rgb(255, 105, 180),  // Hot Pink
-            Color.rgb(255, 20, 147),   // Deep Pink
-            Color.rgb(138, 43, 226),   // Blue Violet
-            Color.rgb(123, 104, 238)   // Medium Slate Blue
+    private static final Color[] MODERN_COLORS = {
+            Color.rgb(41, 121, 255), Color.rgb(76, 175, 80), Color.rgb(255, 152, 0),
+            Color.rgb(233, 30, 99), Color.rgb(156, 39, 176), Color.rgb(0, 188, 212),
+            Color.rgb(255, 87, 34), Color.rgb(63, 81, 181)
     };
 
     public VehicleCanvasController(LocalizationManager localization) {
         this.localization = localization;
     }
 
-    /**
-     * Создает Canvas и возвращает его.
-     */
     public Canvas createCanvas(double width, double height) {
         canvas = new Canvas(width, height);
         gc = canvas.getGraphicsContext2D();
         gc.setLineCap(StrokeLineCap.ROUND);
 
-        // Обработка клика
         canvas.setOnMouseClicked(this::handleMouseClick);
-        // Обработка наведения
         canvas.setOnMouseMoved(this::handleMouseMove);
         canvas.setOnMouseExited(e -> {
             hoveredVehicle = null;
-            hoverScale = 1.0;
+            drawAll();
+        });
+
+        // Обработка перемещения (Pan)
+        canvas.setOnMousePressed(e -> {
+            isPanning = true;
+            lastMouseX = e.getX();
+            lastMouseY = e.getY();
+            canvas.setCursor(javafx.scene.Cursor.MOVE);
+        });
+
+        canvas.setOnMouseDragged(e -> {
+            if (isPanning) {
+                double dx = e.getX() - lastMouseX;
+                double dy = e.getY() - lastMouseY;
+                panX += dx;
+                panY += dy;
+                lastMouseX = e.getX();
+                lastMouseY = e.getY();
+                drawAll();
+            }
+        });
+
+        canvas.setOnMouseReleased(e -> {
+            isPanning = false;
+            canvas.setCursor(javafx.scene.Cursor.DEFAULT);
+        });
+
+        // Обработка зума (Scroll)
+        canvas.setOnScroll((ScrollEvent e) -> {
+            double zoomFactor = 1.1;
+            if (e.getDeltaY() < 0) zoomFactor = 1 / 1.1;
+
+            // Зум относительно позиции мыши
+            double mouseX = e.getX();
+            double mouseY = e.getY();
+
+            // Корректировка смещения, чтобы точка под мышью оставалась на месте
+            panX = mouseX - (mouseX - panX) * zoomFactor;
+            panY = mouseY - (mouseY - panY) * zoomFactor;
+
+            zoom *= zoomFactor;
+            // Ограничения зума
+            zoom = Math.max(0.1, Math.min(zoom, 10.0));
+
             drawAll();
         });
 
@@ -2387,25 +2480,25 @@ public class VehicleCanvasController {
         this.onVehicleClicked = callback;
     }
 
-    /**
-     * Обновляет данные и перерисовывает Canvas.
-     */
     public void updateData(List<Vehicle> vehicles) {
         if (vehicles == null) return;
         this.vehicles = vehicles;
-        calculateScaling();
+
+        // ВАЖНО: Не сбрасываем zoom, panX, panY здесь, чтобы сохранить позицию пользователя
+        // calculateBaseScaling вызываем только если размеры канваса изменились или это первый запуск
+        // Но для простоты, если список пуст или изменился кардинально, можно пересчитать базу,
+        // но лучше оставить как есть, чтобы пользователь мог исследовать карту.
+
+        if (baseScaleX == 1.0 && baseScaleY == 1.0 && vehicles.size() > 0) {
+            calculateBaseScaling();
+        }
+
         drawAll();
     }
 
-    /**
-     * Рассчитывает масштаб и смещение на основе всех координат.
-     */
-    private void calculateScaling() {
+    private void calculateBaseScaling() {
         if (vehicles.isEmpty()) {
-            scaleX = 1.0;
-            scaleY = 1.0;
-            offsetX = 0;
-            offsetY = 0;
+            baseScaleX = 1.0; baseScaleY = 1.0; baseOffsetX = 0; baseOffsetY = 0;
             return;
         }
 
@@ -2415,173 +2508,159 @@ public class VehicleCanvasController {
         for (Vehicle v : vehicles) {
             double x = v.getCoordinates().getX();
             double y = v.getCoordinates().getY();
-            if (x < minX) minX = x;
-            if (x > maxX) maxX = x;
-            if (y < minY) minY = y;
-            if (y > maxY) maxY = y;
+            if (x < minX) minX = x; if (x > maxX) maxX = x;
+            if (y < minY) minY = y; if (y > maxY) maxY = y;
         }
 
-        // Добавляем отступы, чтобы объекты не прилипали к краям
-        double padding = 50;
+        double padding = 60;
         double rangeX = maxX - minX + 2 * padding;
         double rangeY = maxY - minY + 2 * padding;
 
-        if (rangeX == 0) rangeX = 1;
-        if (rangeY == 0) rangeY = 1;
+        if (rangeX == 0) rangeX = 1; if (rangeY == 0) rangeY = 1;
 
-        scaleX = (canvas.getWidth() - 2 * padding) / rangeX;
-        scaleY = (canvas.getHeight() - 2 * padding) / rangeY;
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+        if (w == 0) w = 600; if (h == 0) h = 400;
 
-        // Центрируем
-        offsetX = padding - minX * scaleX;
-        offsetY = padding - minY * scaleY;
+        baseScaleX = (w - 2 * padding) / rangeX;
+        baseScaleY = (h - 2 * padding) / rangeY;
+
+        // Центрируем начальное положение
+        baseOffsetX = padding - minX * baseScaleX;
+        baseOffsetY = padding - minY * baseScaleY;
     }
 
-    /**
-     * Преобразует логические координаты в пиксели Canvas.
-     */
+    // Преобразование логических координат (из Vehicle) в пиксельные (на экране с учетом зума и пана)
     private double toPixelX(double logicalX) {
-        return logicalX * scaleX + offsetX;
+        return (logicalX * baseScaleX + baseOffsetX) * zoom + panX;
     }
 
     private double toPixelY(double logicalY) {
-        // Инвертируем Y
-        return canvas.getHeight() - (logicalY * scaleY + offsetY);
+        // Y инвертирован в JavaFX Canvas (0 сверху), а в декартовой системе обычно снизу.
+        // Здесь используем логику из оригинального кода: canvas.getHeight() - ...
+        return (canvas.getHeight() - (logicalY * baseScaleY + baseOffsetY)) * zoom + panY;
     }
 
-    /**
-     * Получает неоновый фиолетовый цвет для владельца.
-     */
-    private Color getOwnerColor(String ownerLogin) {
-        if (ownerLogin == null || ownerLogin.isEmpty()) {
-            return NEON_PURPLE_COLORS[0];
-        }
+    // Обратное преобразование: пиксельные координаты (клик мыши) в логические
+    private double toLogicalX(double pixelX) {
+        return ((pixelX - panX) / zoom - baseOffsetX) / baseScaleX;
+    }
 
+    private double toLogicalY(double pixelY) {
+        return (canvas.getHeight() - ((pixelY - panY) / zoom) - baseOffsetY) / baseScaleY;
+    }
+
+    private Color getOwnerColor(String ownerLogin) {
+        if (ownerLogin == null || ownerLogin.isEmpty()) return MODERN_COLORS[0];
         return ownerColors.computeIfAbsent(ownerLogin, login -> {
-            // Используем хеш для выбора цвета из неоновой палитры
-            int index = Math.abs(login.hashCode()) % NEON_PURPLE_COLORS.length;
-            return NEON_PURPLE_COLORS[index];
+            int index = Math.abs(login.hashCode()) % MODERN_COLORS.length;
+            return MODERN_COLORS[index];
         });
     }
 
-    /**
-     * Отрисовывает все объекты.
-     */
     private void drawAll() {
         if (gc == null) return;
-
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
-        // Рисуем сетку и оси
         drawGridAndAxes();
 
-        // Рисуем объекты
         for (Vehicle v : vehicles) {
             drawVehicle(v);
         }
     }
 
-    /**
-     * Отрисовывает сетку и координатные оси X и Y.
-     */
     private void drawGridAndAxes() {
         double w = canvas.getWidth();
         double h = canvas.getHeight();
 
-        // Сетка
-        gc.setStroke(Color.rgb(230, 230, 250));
-        gc.setLineWidth(0.5);
+        gc.setStroke(Color.rgb(240, 240, 240));
+        gc.setLineWidth(1);
 
-        // Вертикальные линии сетки
-        for (double x = 0; x <= w; x += 50) {
-            gc.strokeLine(x, 0, x, h);
-        }
+        // Рисуем сетку с учетом зума
+        double step = 50 * zoom;
+        if (step < 10) step = 10;
 
-        // Горизонтальные линии сетки
-        for (double y = 0; y <= h; y += 50) {
-            gc.strokeLine(0, y, w, y);
-        }
+        // Вертикальные линии
+        for (double x = 0; x <= w; x += step) gc.strokeLine(x, 0, x, h);
+        // Горизонтальные линии
+        for (double y = 0; y <= h; y += step) gc.strokeLine(0, y, w, y);
 
-        // Оси X и Y
-        // Находим пиксельные координаты нуля (0,0) из логических координат
+        // Оси X и Y (логические 0,0)
         double zeroX = toPixelX(0);
         double zeroY = toPixelY(0);
 
-        gc.setStroke(Color.rgb(138, 43, 226)); // Фиолетовые оси
-        gc.setLineWidth(2.5);
+        gc.setStroke(Color.rgb(150, 150, 150));
+        gc.setLineWidth(2);
 
-        // Ось X (горизонтальная линия через Y=0)
+        // Ось X
         if (zeroY >= 0 && zeroY <= h) {
             gc.strokeLine(0, zeroY, w, zeroY);
-            // Подпись "X"
-            gc.setFill(Color.rgb(138, 43, 226));
-            gc.setFont(Font.font(14));
-            gc.fillText("X", w - 20, zeroY - 10);
+            gc.setFill(Color.rgb(100, 100, 100));
+            gc.setFont(Font.font(12 * Math.max(0.8, zoom)));
+            gc.fillText("X", w - 20 * zoom, zeroY - 5);
         }
-
-        // Ось Y (вертикальная линия через X=0)
+        // Ось Y
         if (zeroX >= 0 && zeroX <= w) {
             gc.strokeLine(zeroX, 0, zeroX, h);
-            // Подпись "Y"
-            gc.setFill(Color.rgb(138, 43, 226));
-            gc.setFont(Font.font(14));
-            gc.fillText("Y", zeroX + 10, 20);
-            // Подпись "0" в начале координат
-            gc.fillText("0", zeroX + 5, zeroY + 15);
+            gc.setFill(Color.rgb(100, 100, 100));
+            gc.setFont(Font.font(12 * Math.max(0.8, zoom)));
+            gc.fillText("Y", zeroX + 5, 15 * zoom);
+            gc.fillText("0", zeroX + 5, zeroY + 15 * zoom);
         }
     }
 
-    /**
-     * Отрисовывает один объект в зависимости от типа.
-     */
     private void drawVehicle(Vehicle v) {
         double px = toPixelX(v.getCoordinates().getX());
         double py = toPixelY(v.getCoordinates().getY());
-        double baseSize = 20;
 
-        // Проверяем, является ли этот объект наведённым
+        double baseSize = 18 * zoom;
+        if (baseSize < 5) baseSize = 5;
+
         boolean isHovered = (hoveredVehicle != null && hoveredVehicle.getId() == v.getId());
-        double size = isHovered ? baseSize * hoverScale : baseSize;
+        boolean isSelected = (selectedVehicle != null && selectedVehicle.getId() == v.getId());
 
+        double size = isHovered ? baseSize * 1.2 : baseSize;
         Color baseColor = getOwnerColor(v.getOwnerLogin());
 
+        // Рисуем сам объект
         if (isHovered) {
-            // Для наведённого объекта — яркий неон с эффектом свечения
+            gc.setGlobalAlpha(0.2);
+            gc.setFill(baseColor);
+            drawShape(px, py, size * 1.5, v.getType());
+            gc.setGlobalAlpha(1.0);
+
             gc.setFill(baseColor);
             gc.setStroke(Color.WHITE);
             gc.setLineWidth(3);
-
-            // Рисуем эффект свечения
-            gc.setGlobalAlpha(0.3);
-            gc.setFill(baseColor);
-            drawShape(px, py, size * 1.3, v.getType());
-            gc.setGlobalAlpha(1.0);
         } else {
-            // Обычный объект
             gc.setFill(baseColor);
-            gc.setStroke(baseColor.darker());
+            gc.setStroke(Color.WHITE);
             gc.setLineWidth(2);
         }
-
-        // Рисуем основную форму
         drawShape(px, py, size, v.getType());
 
-        // Подпись ID
-        gc.setFill(isHovered ? Color.rgb(138, 43, 226) : Color.BLACK);
-        gc.setFont(Font.font(isHovered ? 12 : 10));
-        gc.fillText(String.valueOf(v.getId()), px - 5, py + size + 15);
+        // ID под объектом
+        gc.setFill(Color.rgb(80, 80, 80));
+        gc.setFont(Font.font(11 * Math.max(0.8, zoom)));
+        gc.fillText(String.valueOf(v.getId()), px - 5, py + size + 14 * zoom);
 
-        // При наведении показываем дополнительную информацию
+        // Имя при наведении
         if (isHovered) {
-            gc.setFill(Color.rgb(180, 0, 255));
-            gc.setFont(Font.font(11));
-            gc.fillText(v.getName(), px - 20, py - size - 5);
+            gc.setFill(Color.rgb(50, 50, 50));
+            gc.setFont(Font.font("System Bold", 12 * Math.max(0.8, zoom)));
+            gc.fillText(v.getName(), px - 20, py - size - 8);
+        }
+
+        // === ВЫДЕЛЕНИЕ ВЫБРАННОГО ОБЪЕКТА ===
+        if (isSelected) {
+            gc.setStroke(Color.RED);
+            gc.setLineWidth(3);
+            // Рисуем рамку вокруг объекта
+            double rectSize = size * 1.5;
+            gc.strokeRect(px - rectSize/2, py - rectSize/2, rectSize, rectSize);
         }
     }
 
-    /**
-     * Рисует форму в зависимости от типа транспортного средства.
-     */
     private void drawShape(double cx, double cy, double size, VehicleType type) {
         switch (type) {
             case BOAT -> drawBoat(cx, cy, size);
@@ -2593,23 +2672,20 @@ public class VehicleCanvasController {
         }
     }
 
-    // Примитивы
     private void drawCircle(double cx, double cy, double r) {
         gc.fillOval(cx - r, cy - r, 2 * r, 2 * r);
         gc.strokeOval(cx - r, cy - r, 2 * r, 2 * r);
     }
 
     private void drawBoat(double cx, double cy, double size) {
-        double[] xPoints = {cx - size, cx + size, cx};
-        double[] yPoints = {cy + size/2, cy + size/2, cy - size};
-        gc.fillPolygon(xPoints, yPoints, 3);
-        gc.strokePolygon(xPoints, yPoints, 3);
+        double[] xP = {cx - size, cx + size, cx};
+        double[] yP = {cy + size/2, cy + size/2, cy - size};
+        gc.fillPolygon(xP, yP, 3); gc.strokePolygon(xP, yP, 3);
     }
 
     private void drawHelicopter(double cx, double cy, double size) {
         gc.fillRect(cx - size/2, cy - size/2, size, size);
         gc.strokeRect(cx - size/2, cy - size/2, size, size);
-        // Винт сверху
         gc.strokeLine(cx - size, cy - size/2 - 5, cx + size, cy - size/2 - 5);
     }
 
@@ -2619,22 +2695,17 @@ public class VehicleCanvasController {
     }
 
     private void drawPlane(double cx, double cy, double size) {
-        double[] xPoints = {cx - size, cx + size, cx, cx - size/2, cx + size/2};
-        double[] yPoints = {cy, cy, cy - size, cy + size/2, cy + size/2};
-        gc.fillPolygon(xPoints, yPoints, 5);
-        gc.strokePolygon(xPoints, yPoints, 5);
+        double[] xP = {cx - size, cx + size, cx, cx - size/2, cx + size/2};
+        double[] yP = {cy, cy, cy - size, cy + size/2, cy + size/2};
+        gc.fillPolygon(xP, yP, 5); gc.strokePolygon(xP, yP, 5);
     }
 
     private void drawShip(double cx, double cy, double size) {
-        double[] xPoints = {cx - size, cx + size, cx + size/2, cx - size/2};
-        double[] yPoints = {cy + size/2, cy + size/2, cy - size, cy - size};
-        gc.fillPolygon(xPoints, yPoints, 4);
-        gc.strokePolygon(xPoints, yPoints, 4);
+        double[] xP = {cx - size, cx + size, cx + size/2, cx - size/2};
+        double[] yP = {cy + size/2, cy + size/2, cy - size, cy - size};
+        gc.fillPolygon(xP, yP, 4); gc.strokePolygon(xP, yP, 4);
     }
 
-    /**
-     * Обработка движения мыши — поиск ближайшего объекта для наведения.
-     */
     private void handleMouseMove(MouseEvent event) {
         double clickX = event.getX();
         double clickY = event.getY();
@@ -2642,101 +2713,61 @@ public class VehicleCanvasController {
         Vehicle closest = null;
         double minDist = Double.MAX_VALUE;
 
+        // Радиус попадания зависит от зума
+        double hitRadius = 25 * zoom;
+
         for (Vehicle v : vehicles) {
             double vx = toPixelX(v.getCoordinates().getX());
             double vy = toPixelY(v.getCoordinates().getY());
             double dist = Math.sqrt(Math.pow(clickX - vx, 2) + Math.pow(clickY - vy, 2));
 
-            if (dist < 25 && dist < minDist) {
+            if (dist < hitRadius && dist < minDist) {
                 minDist = dist;
                 closest = v;
             }
         }
 
-        // Если наведение изменилось
         if ((hoveredVehicle == null && closest != null) ||
                 (hoveredVehicle != null && closest == null) ||
                 (hoveredVehicle != null && closest != null && hoveredVehicle.getId() != closest.getId())) {
-
             hoveredVehicle = closest;
-
-            if (hoveredVehicle != null) {
-                // Анимация увеличения
-                hoverScale = 1.0;
-                if (hoverAnimation != null) {
-                    hoverAnimation.stop();
-                }
-                hoverAnimation = new ScaleTransition(Duration.millis(200));
-                hoverAnimation.setOnFinished(e -> {
-                    hoverScale = 1.3;
-                    drawAll();
-                });
-                hoverAnimation.play();
-            } else {
-                hoverScale = 1.0;
-            }
-
             drawAll();
         }
     }
 
-    /**
-     * Обработка клика по Canvas — поиск ближайшего объекта.
-     */
     private void handleMouseClick(MouseEvent event) {
+        // Игнорируем клик, если было перетаскивание
+        if (Math.abs(event.getX() - lastMouseX) > 5 || Math.abs(event.getY() - lastMouseY) > 5) return;
+
         double clickX = event.getX();
         double clickY = event.getY();
 
         Vehicle closest = null;
         double minDist = Double.MAX_VALUE;
+        double hitRadius = 20 * zoom;
 
         for (Vehicle v : vehicles) {
             double vx = toPixelX(v.getCoordinates().getX());
             double vy = toPixelY(v.getCoordinates().getY());
             double dist = Math.sqrt(Math.pow(clickX - vx, 2) + Math.pow(clickY - vy, 2));
 
-            if (dist < 20 && dist < minDist) {
+            if (dist < hitRadius && dist < minDist) {
                 minDist = dist;
                 closest = v;
             }
         }
 
         if (closest != null) {
-            // Если есть callback — вызываем его (редактирование), иначе старый Alert
-            if (onVehicleClicked != null) {
-                onVehicleClicked.accept(closest);
-            } else {
-                showVehicleInfo(closest);
-            }
+            // Устанавливаем выбранный объект
+            this.selectedVehicle = closest;
+            drawAll(); // Перерисовываем, чтобы показать рамку
+
+            if (onVehicleClicked != null) onVehicleClicked.accept(closest);
+        } else {
+            // Если кликнули в пустоту, снимаем выделение
+            this.selectedVehicle = null;
+            drawAll();
         }
-    }
-
-    /**
-     * Показывает информацию об объекте в Alert.
-     */
-    private void showVehicleInfo(Vehicle v) {
-        Alert alert = new Alert(AlertType.INFORMATION);
-        alert.setTitle(localization.get("vehicle.info"));
-        alert.setHeaderText("ID: " + v.getId());
-        alert.setContentText(
-                "Name: " + v.getName() + "\n" +
-                        "Owner: " + v.getOwnerLogin() + "\n" +
-                        "Coords: (" + v.getCoordinates().getX() + ", " + v.getCoordinates().getY() + ")\n" +
-                        "Type: " + v.getType() + "\n" +
-                        "Fuel: " + v.getFuelType() + "\n" +
-                        "Price: " + v.getPrice()
-        );
-
-        // Стилизация alert в фиолетовых тонах
-        alert.getDialogPane().setStyle("-fx-background-color: #f0e6ff;");
-        alert.showAndWait();
-    }
-
-    /**
-     * Публичный метод для внешнего обновления данных.
-     */
-    public void setData(List<Vehicle> vehicles) {
-        updateData(vehicles);
     }
 }=== FILE: ./src/client/logic/CommandRegistryLoader.java ===
 package client.logic;

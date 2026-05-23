@@ -1,4 +1,5 @@
 package client.gui;
+
 import common.Vehicle;
 import common.VehicleType;
 import common.FuelType;
@@ -10,6 +11,7 @@ import javafx.scene.control.SelectionMode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Callback;
+
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +22,7 @@ public class VehicleTableController {
     private TableView<Vehicle> tableView;
     private final ObservableList<Vehicle> allVehicles = FXCollections.observableArrayList();
     private final ObservableList<Vehicle> filteredVehicles = FXCollections.observableArrayList();
+
     private TextField filterId;
     private TextField filterName;
     private TextField filterOwner;
@@ -27,6 +30,7 @@ public class VehicleTableController {
     private TextField filterMaxPrice;
     private ComboBox<VehicleType> filterType;
     private ComboBox<FuelType> filterFuel;
+
     private static final DecimalFormat PRICE_FORMAT = new DecimalFormat("#,##0.00");
 
     public VehicleTableController(LocalizationManager localization) {
@@ -36,39 +40,65 @@ public class VehicleTableController {
     public VBox createTablePane(){
         VBox root = new VBox(15);
         root.setPadding(new Insets(0));
-        // Убрали внешние стили, так как теперь таблица лежит внутри карточки в MainScene
 
-        // 1. Панель фильтров
         HBox filterPanel = createFilterPanel();
 
-        // 2. Таблица
         tableView = new TableView<>();
         tableView.setItems(filteredVehicles);
         tableView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
 
-        // Чистый стиль таблицы
         tableView.setStyle("-fx-background-color: transparent; " +
                 "-fx-control-inner-background: white; " +
                 "-fx-table-cell-border-color: #F0F0F0;");
 
-        // Стилизация строк
+        // ИЗМЕНЕНИЕ 3: Кастомная фабрика строк для выделения
         tableView.setRowFactory(tv -> {
             TableRow<Vehicle> row = new TableRow<>();
-            row.indexProperty().addListener((obs, oldIndex, newIndex) -> {
-                if (!row.isEmpty()) {
-                    // Чередование цветов (зебра) очень легкое
-                    if ((int)newIndex % 2 == 0){
-                        row.setStyle("-fx-background-color: #FAFAFA;");
-                    } else {
-                        row.setStyle("-fx-background-color: white;");
-                    }
 
-                    // Стиль выделенной строки
-                    if (row.isSelected()) {
-                        row.setStyle("-fx-background-color: #E3F2FD; -fx-font-weight: bold;");
+            // Слушатель изменения свойства selected
+            row.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
+                if (isNowSelected) {
+                    // Выделенная строка: синий фон, белый текст, легкая тень
+                    row.setStyle("-fx-background-color: #2979FF; " +
+                            "-fx-text-fill: white; " +
+                            "-fx-font-weight: bold; " +
+                            "-fx-effect: dropshadow(gaussian, rgba(41,121,255,0.4), 10, 0, 0, 0);");
+
+                    // Попытка увеличить масштаб (может влиять на соседей, поэтому осторожно)
+                    // Более безопасный вариант - просто изменить стиль выше.
+                    // Если нужно именно увеличение, раскомментируй ниже, но это может ломать верстку таблицы
+                    // row.setScaleX(1.02);
+                    // row.setScaleY(1.02);
+
+                } else {
+                    // Обычная строка: чередование цветов
+                    if (!row.isEmpty()) {
+                        if ((int)row.getIndex() % 2 == 0){
+                            row.setStyle("-fx-background-color: #FAFAFA;");
+                        } else {
+                            row.setStyle("-fx-background-color: white;");
+                        }
+                        // row.setScaleX(1.0);
+                        // row.setScaleY(1.0);
                     }
                 }
             });
+
+            // Hover эффект
+            row.hoverProperty().addListener((obs, wasHovered, isNowHovered) -> {
+                if (!row.isSelected() && !row.isEmpty()) {
+                    if (isNowHovered) {
+                        row.setStyle("-fx-background-color: #E3F2FD;");
+                    } else {
+                        if ((int)row.getIndex() % 2 == 0){
+                            row.setStyle("-fx-background-color: #FAFAFA;");
+                        } else {
+                            row.setStyle("-fx-background-color: white;");
+                        }
+                    }
+                }
+            });
+
             return row;
         });
 
@@ -86,7 +116,6 @@ public class VehicleTableController {
         Label filterLabel = new Label("Фильтры:");
         filterLabel.setStyle("-fx-text-fill: #757575; -fx-font-weight: 500;");
 
-        // Стиль полей ввода (современный, с закруглением)
         String fieldStyle = "-fx-background-color: white; " +
                 "-fx-background-radius: 6; " +
                 "-fx-border-color: #E0E0E0; " +
@@ -137,6 +166,7 @@ public class VehicleTableController {
         setupFilterFuelLocalization();
 
         Callback<Void, Void> updateFilter = v -> { applyFilters(); return null; };
+
         filterId.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterName.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterOwner.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
@@ -193,7 +223,6 @@ public class VehicleTableController {
     }
 
     private void setupColumns() {
-        // Стиль заголовков
         String headerStyle = "-fx-background-color: #FAFAFA; " +
                 "-fx-text-fill: #424242; " +
                 "-fx-font-weight: bold; " +
@@ -268,10 +297,6 @@ public class VehicleTableController {
     public void updateLocalization() {
         tableView.getColumns().clear();
         setupColumns();
-
-        // Обновляем фильтры (упрощенно)
-        // В реальном коде тут нужно пересоздать HBox фильтров, но для простоты оставим как есть
-        // или можно вызвать createFilterPanel заново, если нужно.
     }
 
     private void applyFilters() {
