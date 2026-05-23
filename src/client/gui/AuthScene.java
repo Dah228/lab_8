@@ -1,5 +1,4 @@
 package client.gui;
-
 import client.logic.NetworkService;
 import common.CommandRequest;
 import common.CommandResponse;
@@ -12,17 +11,14 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-
 import java.util.List;
 
 /**
  * Сцена авторизации и регистрации.
  */
 public class AuthScene {
-
     private final NetworkService networkService;
     private final LocalizationManager localization;
-
     private TextField loginField;
     private PasswordField passwordField;
     private Button actionButton;
@@ -31,6 +27,14 @@ public class AuthScene {
 
     // Callback для перехода на главную сцену
     private Runnable onLoginSuccess;
+
+    // Стили для розовой темы
+    private static final String BTN_PINK_STYLE = "-fx-background-color: linear-gradient(to bottom, #ff69b4, #ff1493); " +
+            "-fx-text-fill: white; -fx-padding: 12 25; " +
+            "-fx-font-weight: bold; -fx-background-radius: 10; " +
+            "-fx-border-radius: 10; " +
+            "-fx-effect: dropshadow(gaussian, rgba(255,20,147,0.5), 8, 0, 0, 2); " +
+            "-fx-cursor: hand;";
 
     public AuthScene(Stage stage, NetworkService networkService, LocalizationManager localization) {
         this.networkService = networkService;
@@ -45,10 +49,13 @@ public class AuthScene {
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
         root.setAlignment(Pos.CENTER);
-        root.setStyle("-fx-background-color: #f4f4f4;");
+        // Розовый градиентный фон
+        root.setStyle("-fx-background-color: linear-gradient(to bottom right, #ffe4e8, #ffc0cb, #ffb6c1);");
 
         Label titleLabel = new Label(localization.get("app.title"));
-        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
+        titleLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; " +
+                "-fx-text-fill: #ff1493; " +
+                "-fx-effect: dropshadow(gaussian, rgba(255,20,147,0.4), 5, 0, 0, 1);");
 
         RadioButton rbLogin = new RadioButton(localization.get("auth.login.button"));
         RadioButton rbRegister = new RadioButton(localization.get("auth.register.button"));
@@ -57,21 +64,31 @@ public class AuthScene {
         rbRegister.setToggleGroup(modeToggle);
         rbLogin.setSelected(true);
 
+        // Стилизация радио-кнопок
+        rbLogin.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
+        rbRegister.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
+
         HBox modeBox = new HBox(10, rbLogin, rbRegister);
         modeBox.setAlignment(Pos.CENTER);
-
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
         grid.setAlignment(Pos.CENTER);
 
+        // Стилизация полей ввода
+        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1; -fx-padding: 5;";
+
         Label loginLabel = new Label(localization.get("auth.login"));
+        loginLabel.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
         loginField = new TextField();
         loginField.setPromptText("login");
+        loginField.setStyle(fieldStyle);
 
         Label passLabel = new Label(localization.get("auth.password"));
+        passLabel.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
         passwordField = new PasswordField();
+        passwordField.setStyle(fieldStyle);
         passLabel.setLabelFor(passwordField);
 
         grid.add(loginLabel, 0, 0);
@@ -80,7 +97,7 @@ public class AuthScene {
         grid.add(passwordField, 1, 1);
 
         actionButton = new Button(localization.get("auth.login.button"));
-        actionButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-padding: 10 20;");
+        actionButton.setStyle(BTN_PINK_STYLE);
 
         modeToggle.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal == rbLogin) {
@@ -93,18 +110,16 @@ public class AuthScene {
         actionButton.setOnAction(e -> handleAction());
 
         errorLabel = new Label();
-        errorLabel.setStyle("-fx-text-fill: red; -fx-font-size: 12px;");
+        errorLabel.setStyle("-fx-text-fill: #d80000; -fx-font-size: 12px; -fx-font-weight: bold;");
         errorLabel.setVisible(false);
 
         root.getChildren().addAll(titleLabel, modeBox, grid, actionButton, errorLabel);
-
         return new Scene(root, 400, 300);
     }
 
     private void handleAction() {
         String login = loginField.getText().trim();
         String password = passwordField.getText().trim();
-
         if (login.isEmpty() || password.isEmpty()) {
             showError(localization.get("auth.error.empty"));
             return;
@@ -126,7 +141,6 @@ public class AuthScene {
                 } else {
                     response = sendLoginRequest(login, password);
                 }
-
                 // Возвращаемся в JavaFX Thread для обновления UI
                 Platform.runLater(() -> {
                     setControlsDisabled(false);
@@ -155,7 +169,6 @@ public class AuthScene {
         // Команда register требует аргументы: ["register", login, password]
         List<String> args = List.of("register", login, password);
         CommandRequest request = new CommandRequest("register", args, null, true, "", "");
-
         networkService.send(request);
         return networkService.receive();
     }
@@ -182,7 +195,6 @@ public class AuthScene {
             }
         }
     }
-
 
     public String getLoginText() {
         return loginField.getText().trim();

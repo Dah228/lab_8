@@ -1,5 +1,4 @@
 package client.gui;
-
 import client.logic.NetworkService;
 import common.Vehicle;
 import javafx.application.Platform;
@@ -9,7 +8,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
@@ -22,16 +20,35 @@ public class MainScene {
     private final String currentUserLogin;
     private final String currentUserPassword;
     private final NetworkService networkService;
-
     private VehicleTableController tableController;
     private VehicleCanvasController canvasController;
     private CommandDialogHandler commandHandler;
-
     private Label userLabel;
     private ComboBox<Locale> langComboBox;
 
     // Фоновый планировщик для автообновления (требование 3 и 4)
     private ScheduledExecutorService refreshScheduler;
+
+    // Стили для розовой темы
+    private static final String BTN_BASE_STYLE = "-fx-background-color: linear-gradient(to bottom, #ffc0cb, #ff69b4); " +
+            "-fx-text-fill: white; " +
+            "-fx-font-weight: bold; " +
+            "-fx-background-radius: 8; " +
+            "-fx-border-radius: 8; " +
+            "-fx-border-color: #ff1493; " +
+            "-fx-border-width: 1; " +
+            "-fx-effect: dropshadow(gaussian, rgba(255,105,180,0.4), 5, 0, 0, 2); " +
+            "-fx-cursor: hand;";
+
+    private static final String BTN_HOVER_STYLE = "-fx-background-color: linear-gradient(to bottom, #ff69b4, #ff1493); " +
+            "-fx-text-fill: white; " +
+            "-fx-font-weight: bold; " +
+            "-fx-background-radius: 8; " +
+            "-fx-border-radius: 8; " +
+            "-fx-border-color: #c71585; " +
+            "-fx-border-width: 1; " +
+            "-fx-effect: dropshadow(gaussian, rgba(255,20,147,0.6), 8, 0, 0, 3); " +
+            "-fx-cursor: hand;";
 
     public MainScene(Stage stage, LocalizationManager localization, NetworkService networkService,
                      String currentUserLogin, String currentUserPassword) {
@@ -74,7 +91,6 @@ public class MainScene {
             t.setDaemon(true);
             return t;
         });
-
         refreshScheduler.scheduleAtFixedRate(() -> {
             if (stage.isShowing()) {
                 Platform.runLater(() -> {
@@ -95,18 +111,27 @@ public class MainScene {
         HBox hbox = new HBox(15);
         hbox.setPadding(new Insets(10));
         hbox.setAlignment(Pos.CENTER_LEFT);
-        hbox.setStyle("-fx-background-color: #e0e0e0; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;");
+        // Розовый градиент для верхней панели
+        hbox.setStyle("-fx-background-color: linear-gradient(to bottom, #ffb6c1, #ff69b4); " +
+                "-fx-border-color: #ff1493; -fx-border-width: 0 0 2 0; " +
+                "-fx-effect: dropshadow(gaussian, rgba(255,105,180,0.3), 10, 0, 0, 2);");
 
         userLabel = new Label(localization.get("main.user.label") + " " + currentUserLogin);
-        userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+        userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; " +
+                "-fx-text-fill: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button btnVisualize = new Button(localization.get("main.visual.title"));
+        btnVisualize.setStyle(BTN_BASE_STYLE);
+        btnVisualize.setOnMouseEntered(e -> btnVisualize.setStyle(BTN_HOVER_STYLE));
+        btnVisualize.setOnMouseExited(e -> btnVisualize.setStyle(BTN_BASE_STYLE));
         btnVisualize.setOnAction(e -> openVisualization());
 
         Label langLabel = new Label(localization.get("main.lang.label"));
+        langLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+
         langComboBox = new ComboBox<>();
         langComboBox.getItems().setAll(localization.getAvailableLocales());
         langComboBox.setCellFactory(lv -> new ListCell<>() {
@@ -138,12 +163,9 @@ public class MainScene {
         if (canvasController == null) {
             canvasController = new VehicleCanvasController(localization);
         }
-
         List<Vehicle> currentVehicles = tableController != null ? tableController.getAllVehicles() : List.of();
-
         Stage vizStage = new Stage();
         vizStage.setTitle(localization.get("main.visual.title"));
-
         javafx.scene.canvas.Canvas canvas = canvasController.createCanvas(800, 600);
         canvasController.updateData(currentVehicles);
 
@@ -156,7 +178,6 @@ public class MainScene {
 
         StackPane pane = new StackPane(canvas);
         pane.setStyle("-fx-background-color: white;");
-
         Scene scene = new Scene(pane, 800, 600);
         vizStage.setScene(scene);
         vizStage.show();
@@ -166,7 +187,9 @@ public class MainScene {
         VBox vbox = new VBox(15);
         vbox.setPadding(new Insets(10));
         vbox.setAlignment(Pos.TOP_CENTER);
-        vbox.setStyle("-fx-background-color: #f5f5f5;");
+        // Нежно-розовый фон
+        vbox.setStyle("-fx-background-color: linear-gradient(to bottom, #fff0f5, #ffe4e8); " +
+                "-fx-border-color: #ffb6c1; -fx-border-width: 1;");
 
         tableController = new VehicleTableController(localization);
         VBox tablePane = tableController.createTablePane();
@@ -194,7 +217,10 @@ public class MainScene {
         HBox hbox = new HBox(10);
         hbox.setPadding(new Insets(10));
         hbox.setAlignment(Pos.CENTER);
-        hbox.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #cccccc; -fx-border-width: 1 0 0 0;");
+        // Розовая нижняя панель
+        hbox.setStyle("-fx-background-color: linear-gradient(to bottom, #ffb6c1, #ff69b4); " +
+                "-fx-border-color: #ff1493; -fx-border-width: 2 0 0 0; " +
+                "-fx-effect: dropshadow(gaussian, rgba(255,20,147,0.4), 8, 0, 0, -2);");
 
         Button btnShow = new Button(localization.get("btn.show"));
         Button btnAdd = new Button(localization.get("btn.add"));
@@ -212,6 +238,18 @@ public class MainScene {
         Button btnHelp = new Button(localization.get("btn.help"));
         Button btnExit = new Button(localization.get("btn.exit"));
 
+        // Применяем стиль ко всем кнопкам
+        List<Button> buttons = List.of(btnShow, btnAdd, btnUpdate, btnRemove, btnClear,
+                btnInfo, btnSort, btnPrintDesc, btnShuffle,
+                btnFilterEngine, btnBuy, btnBalance, btnDeposit,
+                btnHelp, btnExit);
+
+        for (Button btn : buttons) {
+            btn.setStyle(BTN_BASE_STYLE);
+            btn.setOnMouseEntered(e -> btn.setStyle(BTN_HOVER_STYLE));
+            btn.setOnMouseExited(e -> btn.setStyle(BTN_BASE_STYLE));
+        }
+
         btnShow.setOnAction(e -> commandHandler.executeShow());
         btnAdd.setOnAction(e -> commandHandler.executeAdd());
         btnUpdate.setOnAction(e -> commandHandler.executeUpdate());
@@ -226,12 +264,17 @@ public class MainScene {
         btnBalance.setOnAction(e -> commandHandler.executeShowBalance());
         btnDeposit.setOnAction(e -> commandHandler.executeDeposit());
         btnHelp.setOnAction(e -> commandHandler.executeHelp());
-
         btnExit.setOnAction(e -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle(localization.get("app.title"));
             alert.setHeaderText(null);
             alert.setContentText(localization.get("confirm.exit"));
+            // Стилизация алерта подтверждения
+            DialogPane dialogPane = alert.getDialogPane();
+            dialogPane.setStyle("-fx-background-color: #fff0f5;");
+            dialogPane.lookupButton(ButtonType.OK).setStyle(BTN_BASE_STYLE);
+            dialogPane.lookupButton(ButtonType.CANCEL).setStyle(BTN_BASE_STYLE);
+
             if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
                 stopAutoRefresh();
                 if (networkService != null && networkService.isConnected()) {

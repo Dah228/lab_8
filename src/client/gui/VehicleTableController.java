@@ -1,5 +1,4 @@
 package client.gui;
-
 import common.Vehicle;
 import common.VehicleType;
 import common.FuelType;
@@ -10,7 +9,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Callback;
-
 import java.text.DecimalFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -22,7 +20,6 @@ import java.util.stream.Collectors;
  * Реализует отображение, фильтрацию и сортировку через Streams API.
  */
 public class VehicleTableController {
-
     private final LocalizationManager localization;
     private TableView<Vehicle> tableView;
 
@@ -53,6 +50,10 @@ public class VehicleTableController {
     public VBox createTablePane(){
         VBox root = new VBox(10);
         root.setPadding(new Insets(10));
+        root.setStyle("-fx-background-color: white; " +
+                "-fx-border-radius: 10; " +
+                "-fx-background-radius: 10; " +
+                "-fx-effect: dropshadow(gaussian, rgba(255,182,193,0.4), 10, 0, 0, 2);");
 
         // 1. Панель фильтров
         HBox filterPanel = createFilterPanel();
@@ -60,11 +61,31 @@ public class VehicleTableController {
         // 2. Таблица
         tableView = new TableView<>();
         tableView.setItems(filteredVehicles);
+
+        // Стилизация таблицы
+        tableView.setStyle("-fx-background-color: white; " +
+                "-fx-control-inner-background: #fff0f5; " +
+                "-fx-table-cell-border-color: #ffb6c1;");
+
+        // Чередование цветов строк (Зебра)
+        tableView.setRowFactory(tv -> {
+            TableRow<Vehicle> row = new TableRow<>();
+            row.indexProperty().addListener((obs, oldIndex, newIndex) -> {
+                if (!row.isEmpty()) {
+                    if ((int)newIndex % 2 == 0){
+                        row.setStyle("-fx-background-color: #fff0f5;");
+                    } else {
+                        row.setStyle("-fx-background-color: white;");
+                    }
+                }
+            });
+            return row;
+        });
+
         setupColumns();
 
         root.getChildren().addAll(filterPanel, tableView);
         VBox.setVgrow(tableView, javafx.scene.layout.Priority.ALWAYS);
-
         return root;
     }
 
@@ -73,24 +94,38 @@ public class VehicleTableController {
         hbox.setPadding(new Insets(5));
         hbox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
+        // Стиль для лейбла фильтра
+        Label filterLabel = new Label(localization.get("table.filter"));
+        filterLabel.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
+
         // Текстовые фильтры
+        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1; -fx-prompt-text-fill: #ff69b4;";
+
         filterId = new TextField();
         filterId.setPromptText(localization.get("table.column.id"));
         filterId.setPrefWidth(60);
+        filterId.setStyle(fieldStyle);
+
         filterName = new TextField();
         filterName.setPromptText(localization.get("table.column.name"));
         filterName.setPrefWidth(100);
+        filterName.setStyle(fieldStyle);
+
         filterOwner = new TextField();
         filterOwner.setPromptText(localization.get("table.column.owner"));
         filterOwner.setPrefWidth(100);
+        filterOwner.setStyle(fieldStyle);
 
         // Числовые фильтры
         filterMinPrice = new TextField();
         filterMinPrice.setPromptText(localization.get("filter.min_price"));
         filterMinPrice.setPrefWidth(70);
+        filterMinPrice.setStyle(fieldStyle);
+
         filterMaxPrice = new TextField();
         filterMaxPrice.setPromptText(localization.get("filter.max_price"));
         filterMaxPrice.setPrefWidth(70);
+        filterMaxPrice.setStyle(fieldStyle);
 
         // Выпадающие списки
         filterType = new ComboBox<>();
@@ -99,6 +134,7 @@ public class VehicleTableController {
         filterType.setPromptText(localization.get("table.column.type"));
         setupFilterTypeLocalization();
         filterType.setValue(null);
+        filterType.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1;");
 
         filterFuel = new ComboBox<>();
         filterFuel.getItems().add(null);
@@ -106,6 +142,7 @@ public class VehicleTableController {
         filterFuel.setPromptText(localization.get("table.column.fuel"));
         setupFilterFuelLocalization();
         filterFuel.setValue(null);
+        filterFuel.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1;");
 
         // Привязка событий изменения фильтров
         Callback<Void, Void> updateFilter = v -> { applyFilters(); return null; };
@@ -118,7 +155,7 @@ public class VehicleTableController {
         filterFuel.valueProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
 
         hbox.getChildren().addAll(
-                new Label(localization.get("table.filter")),
+                filterLabel,
                 filterId, filterName, filterOwner,
                 filterMinPrice, filterMaxPrice,
                 filterType, filterFuel
@@ -141,7 +178,6 @@ public class VehicleTableController {
                 }
             }
         });
-
         filterType.setButtonCell(new ListCell<>() {
             @Override
             protected void updateItem(VehicleType item, boolean empty) {
@@ -170,7 +206,6 @@ public class VehicleTableController {
                 }
             }
         });
-
         filterFuel.setButtonCell(new ListCell<>() {
             @Override
             protected void updateItem(FuelType item, boolean empty) {
@@ -185,47 +220,60 @@ public class VehicleTableController {
     }
 
     private void setupColumns() {
+        String headerStyle = "-fx-background-color: linear-gradient(to bottom, #ffb6c1, #ff69b4); " +
+                "-fx-text-fill: white; -fx-font-weight: bold;";
+
         TableColumn<Vehicle, Number> colId = new TableColumn<>(localization.get("col.id"));
+        colId.setStyle(headerStyle);
         colId.setCellValueFactory(data -> new javafx.beans.property.SimpleLongProperty(data.getValue().getId()));
         colId.setPrefWidth(50);
 
         TableColumn<Vehicle, String> colName = new TableColumn<>(localization.get("col.name"));
+        colName.setStyle(headerStyle);
         colName.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getName()));
         colName.setPrefWidth(150);
 
         TableColumn<Vehicle, String> colCoords = new TableColumn<>(localization.get("col.coords"));
+        colCoords.setStyle(headerStyle);
         colCoords.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
                 data.getValue().getCoordinates().getX() + ", " + data.getValue().getCoordinates().getY()
         ));
         colCoords.setPrefWidth(100);
 
         TableColumn<Vehicle, String> colDate = new TableColumn<>(localization.get("col.creation_date"));
+        colDate.setStyle(headerStyle);
         colDate.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
                 localization.formatDateTime(data.getValue().getCreationDate())
         ));
         colDate.setPrefWidth(130);
 
         TableColumn<Vehicle, Float> colPower = new TableColumn<>(localization.get("col.engine_power"));
+        colPower.setStyle(headerStyle);
         colPower.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getEnginePower()));
         colPower.setPrefWidth(80);
 
         TableColumn<Vehicle, Float> colDist = new TableColumn<>(localization.get("col.distance"));
+        colDist.setStyle(headerStyle);
         colDist.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getDistanceTravelled()));
         colDist.setPrefWidth(80);
 
         TableColumn<Vehicle, VehicleType> colType = new TableColumn<>(localization.get("col.type"));
+        colType.setStyle(headerStyle);
         colType.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getType()));
         colType.setPrefWidth(100);
 
         TableColumn<Vehicle, FuelType> colFuel = new TableColumn<>(localization.get("col.fuel"));
+        colFuel.setStyle(headerStyle);
         colFuel.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getFuelType()));
         colFuel.setPrefWidth(100);
 
         TableColumn<Vehicle, String> colOwner = new TableColumn<>(localization.get("col.owner"));
+        colOwner.setStyle(headerStyle);
         colOwner.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getOwnerLogin()));
         colOwner.setPrefWidth(100);
 
         TableColumn<Vehicle, Double> colPrice = new TableColumn<>(localization.get("col.price"));
+        colPrice.setStyle(headerStyle);
         colPrice.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getPrice()));
         colPrice.setCellFactory(tc -> new TableCell<>() {
             @Override
@@ -251,8 +299,12 @@ public class VehicleTableController {
         // Обновляем фильтры
         HBox filterPanel = (HBox) ((VBox) tableView.getParent()).getChildren().get(0);
         filterPanel.getChildren().clear();
+
+        Label filterLabel = new Label(localization.get("table.filter") + ":");
+        filterLabel.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
+
         filterPanel.getChildren().addAll(
-                new Label(localization.get("table.filter") + ":"),
+                filterLabel,
                 filterId, filterName, filterOwner,
                 filterMinPrice, filterMaxPrice,
                 filterType, filterFuel
@@ -296,16 +348,12 @@ public class VehicleTableController {
                     }
                     // Фильтр по Имени (частичное совпадение)
                     if (!nameStr.isEmpty() && !v.getName().toLowerCase().contains(nameStr)) return false;
-
                     // Фильтр по Владельцу
                     if (!ownerStr.isEmpty() && (v.getOwnerLogin() == null || !v.getOwnerLogin().toLowerCase().contains(ownerStr))) return false;
-
                     // Фильтр по Типу
                     if (typeVal != null && v.getType() != typeVal) return false;
-
                     // Фильтр по Топливу
                     if (fuelVal != null && v.getFuelType() != fuelVal) return false;
-
                     // Фильтр по Цене (Диапазон)
                     if (!minPriceStr.isEmpty()) {
                         try {
@@ -317,7 +365,6 @@ public class VehicleTableController {
                             if (v.getPrice() > Double.parseDouble(maxPriceStr)) return false;
                         } catch (NumberFormatException e) { return false; }
                     }
-
                     return true;
                 })
                 .sorted((v1, v2) -> {
@@ -339,14 +386,11 @@ public class VehicleTableController {
             filteredVehicles.clear();
             return;
         }
-
         // Заменяем содержимое исходного списка
         allVehicles.setAll(vehicles);
         // Переприменяем фильтры
         applyFilters();
     }
-
-
 
     public List<Vehicle> getAllVehicles() {
         return new ArrayList<>(allVehicles);

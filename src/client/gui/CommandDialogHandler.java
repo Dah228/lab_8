@@ -4,7 +4,6 @@ import common.*;
 import javafx.application.Platform;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
-
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -15,6 +14,23 @@ public class CommandDialogHandler {
     private final String login;
     private final String password;
     private VehicleTableController tableController;
+
+    // Стили для розовой темы
+    private static final String DIALOG_STYLE = "-fx-background-color: linear-gradient(to bottom, #fff0f5, #ffe4e8); " +
+            "-fx-border-color: #ff69b4; -fx-border-width: 2;";
+
+    private static final String HEADER_LABEL_STYLE = "-fx-font-size: 18px; -fx-font-weight: bold; " +
+            "-fx-text-fill: #ff1493;";
+
+    private static final String BTN_PINK_STYLE = "-fx-background-color: linear-gradient(to bottom, #ffc0cb, #ff69b4); " +
+            "-fx-text-fill: white; " +
+            "-fx-font-weight: bold; " +
+            "-fx-background-radius: 5; " +
+            "-fx-border-radius: 5; " +
+            "-fx-border-color: #ff1493; " +
+            "-fx-border-width: 1; " +
+            "-fx-effect: dropshadow(gaussian, rgba(255,105,180,0.4), 3, 0, 0, 1); " +
+            "-fx-cursor: hand;";
 
     public CommandDialogHandler(NetworkService networkService, LocalizationManager localization,
                                 String login, String password) {
@@ -38,7 +54,7 @@ public class CommandDialogHandler {
 
     public void executeRemoveById() {
         TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle(localization.get("app.title"));
+        styleDialog(dialog, localization.get("dialog.remove_by_id.title"));
         dialog.setHeaderText(localization.get("dialog.remove_by_id.title"));
         dialog.setContentText(localization.get("dialog.remove_by_id.prompt"));
         dialog.showAndWait().ifPresent(id -> {
@@ -53,6 +69,7 @@ public class CommandDialogHandler {
 
     public void executeClear() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        styleDialog(alert, localization.get("dialog.clear.title"));
         alert.setTitle(localization.get("app.title"));
         alert.setHeaderText(localization.get("dialog.clear.title"));
         alert.setContentText(localization.get("dialog.clear.confirm"));
@@ -67,6 +84,7 @@ public class CommandDialogHandler {
         Vehicle vehicle = showVehicleDialog(null);
         if (vehicle != null) {
             TextInputDialog dialog = new TextInputDialog();
+            styleDialog(dialog, localization.get("dialog.update.title"));
             dialog.setTitle(localization.get("app.title"));
             dialog.setHeaderText(localization.get("dialog.update.title"));
             dialog.setContentText(localization.get("dialog.update.prompt"));
@@ -90,6 +108,7 @@ public class CommandDialogHandler {
 
     public void executeFilterByEnginePower() {
         TextInputDialog dialog = new TextInputDialog();
+        styleDialog(dialog, localization.get("dialog.filter.power.title"));
         dialog.setTitle(localization.get("app.title"));
         dialog.setHeaderText(localization.get("dialog.filter.power.title"));
         dialog.setContentText(localization.get("dialog.filter.power.prompt"));
@@ -109,6 +128,7 @@ public class CommandDialogHandler {
         comboBox.getItems().addAll(VehicleType.values());
         comboBox.setValue(VehicleType.BOAT);
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        styleDialog(alert, localization.get("dialog.filter.type.title"));
         alert.setTitle(localization.get("app.title"));
         alert.setHeaderText(localization.get("dialog.filter.type.title"));
         alert.getDialogPane().setContent(comboBox);
@@ -126,6 +146,7 @@ public class CommandDialogHandler {
         comboBox.getItems().addAll("TYPE", "FUELTYPE", "COORDINATES");
         comboBox.setValue("TYPE");
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        styleDialog(alert, localization.get("dialog.group_by.title"));
         alert.setTitle(localization.get("app.title"));
         alert.setHeaderText(localization.get("dialog.group_by.title"));
         alert.getDialogPane().setContent(comboBox);
@@ -146,6 +167,7 @@ public class CommandDialogHandler {
 
     public void executeBuy() {
         TextInputDialog dialog = new TextInputDialog();
+        styleDialog(dialog, localization.get("dialog.buy.title"));
         dialog.setTitle(localization.get("app.title"));
         dialog.setHeaderText(localization.get("dialog.buy.title"));
         dialog.setContentText(localization.get("dialog.buy.prompt"));
@@ -163,6 +185,7 @@ public class CommandDialogHandler {
 
     public void executeDeposit() {
         TextInputDialog dialog = new TextInputDialog();
+        styleDialog(dialog, localization.get("dialog.deposit.title"));
         dialog.setTitle(localization.get("app.title"));
         dialog.setHeaderText(localization.get("dialog.deposit.title"));
         dialog.setContentText(localization.get("dialog.deposit.prompt"));
@@ -182,6 +205,7 @@ public class CommandDialogHandler {
 
     public void executeSetPrice() {
         TextInputDialog idDialog = new TextInputDialog();
+        styleDialog(idDialog, localization.get("dialog.set_price.title_id"));
         idDialog.setTitle(localization.get("app.title"));
         idDialog.setHeaderText(localization.get("dialog.set_price.title_id"));
         idDialog.setContentText(localization.get("dialog.set_price.prompt_id"));
@@ -189,6 +213,7 @@ public class CommandDialogHandler {
             try {
                 Long.parseLong(id);
                 TextInputDialog priceDialog = new TextInputDialog();
+                styleDialog(priceDialog, localization.get("dialog.set_price.title_id"));
                 priceDialog.setTitle(localization.get("app.title"));
                 priceDialog.setHeaderText(localization.get("dialog.set_price.title_id"));
                 priceDialog.setContentText(localization.get("dialog.set_price.prompt_price"));
@@ -252,7 +277,6 @@ public class CommandDialogHandler {
                                 if (message != null && !message.trim().isEmpty()) {
                                     showScrollableInfo(message);
                                 }
-
                                 if ("update".equals(commandName) ||
                                         "add".equals(commandName) ||
                                         "remove_by_id".equals(commandName) ||
@@ -276,6 +300,7 @@ public class CommandDialogHandler {
     /** Прокручиваемое окно для текстовых результатов */
     private void showScrollableInfo(String message) {
         Dialog<Void> dialog = new Dialog<>();
+        styleDialog(dialog, localization.get("dialog.result.title"));
         dialog.setTitle(localization.get("app.title"));
         dialog.setHeaderText(localization.get("dialog.result.title"));
         dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
@@ -284,7 +309,7 @@ public class CommandDialogHandler {
         TextArea textArea = new TextArea(message);
         textArea.setEditable(false);
         textArea.setWrapText(true);
-        textArea.setStyle("-fx-font-size: 13px; -fx-background-color: transparent;");
+        textArea.setStyle("-fx-font-size: 13px; -fx-background-color: transparent; -fx-control-inner-background: #fff0f5;");
 
         ScrollPane scrollPane = new ScrollPane(textArea);
         scrollPane.setFitToWidth(true);
@@ -298,6 +323,7 @@ public class CommandDialogHandler {
     /** Окно ошибки (компактное, без скролла) */
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
+        styleDialog(alert, localization.get("app.title"));
         alert.setTitle(localization.get("app.title"));
         alert.setHeaderText(null);
         alert.setContentText(message != null ? message : localization.get("dialog.error.unknown"));
@@ -308,6 +334,7 @@ public class CommandDialogHandler {
     /** Диалог добавления/редактирования Vehicle */
     private Vehicle showVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
+        styleDialog(dialog, existing == null ? localization.get("dialog.add_vehicle") : localization.get("dialog.edit_vehicle"));
         dialog.setTitle(localization.get("app.title"));
         dialog.setHeaderText(existing == null ? localization.get("dialog.add_vehicle") : localization.get("dialog.edit_vehicle"));
 
@@ -315,31 +342,45 @@ public class CommandDialogHandler {
         ButtonType cancelButtonType = new ButtonType(localization.get("dialog.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
 
+        // Стилизация кнопок диалога
+        dialog.getDialogPane().lookupButton(saveButtonType).setStyle(BTN_PINK_STYLE);
+        dialog.getDialogPane().lookupButton(cancelButtonType).setStyle(BTN_PINK_STYLE);
+
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
 
+        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1; -fx-prompt-text-fill: #ff69b4;";
+        String labelStyle = "-fx-text-fill: #ff1493; -fx-font-weight: bold;";
+
         TextField nameField = new TextField(existing != null ? existing.getName() : "");
         nameField.setPromptText(localization.get("dialog.prompt.name"));
+        nameField.setStyle(fieldStyle);
 
         TextField xField = new TextField(existing != null ? String.valueOf(existing.getCoordinates().getX()) : "0");
         xField.setPromptText(localization.get("dialog.prompt.x"));
+        xField.setStyle(fieldStyle);
 
         TextField yField = new TextField(existing != null ? String.valueOf(existing.getCoordinates().getY()) : "0");
         yField.setPromptText(localization.get("dialog.prompt.y"));
+        yField.setStyle(fieldStyle);
 
         TextField powerField = new TextField(existing != null ? String.valueOf(existing.getEnginePower()) : "0");
         powerField.setPromptText(localization.get("dialog.prompt.power"));
+        powerField.setStyle(fieldStyle);
 
         TextField distanceField = new TextField(existing != null ? String.valueOf(existing.getDistanceTravelled()) : "0");
         distanceField.setPromptText(localization.get("dialog.prompt.distance"));
+        distanceField.setStyle(fieldStyle);
 
         TextField priceField = new TextField(existing != null ? String.valueOf(existing.getPrice()) : "0");
         priceField.setPromptText(localization.get("dialog.prompt.price"));
+        priceField.setStyle(fieldStyle);
 
         // === НОВОЕ: DatePicker для даты создания ===
         DatePicker datePicker = new DatePicker();
         datePicker.setPromptText(localization.get("dialog.prompt.creation_date"));
+        datePicker.setStyle(fieldStyle);
         if (existing != null && existing.getCreationDate() != null) {
             // Конвертируем Date в LocalDate
             datePicker.setValue(existing.getCreationDate().toInstant()
@@ -354,10 +395,12 @@ public class CommandDialogHandler {
         ComboBox<VehicleType> typeCombo = new ComboBox<>();
         typeCombo.getItems().addAll(VehicleType.values());
         typeCombo.setValue(existing != null && existing.getType() != null ? existing.getType() : VehicleType.BOAT);
+        typeCombo.setStyle(fieldStyle);
 
         ComboBox<FuelType> fuelCombo = new ComboBox<>();
         fuelCombo.getItems().addAll(FuelType.values());
         fuelCombo.setValue(existing != null && existing.getFuelType() != null ? existing.getFuelType() : FuelType.GASOLINE);
+        fuelCombo.setStyle(fieldStyle);
 
         grid.add(new Label(localization.get("dialog.label.name")), 0, 0);
         grid.add(nameField, 1, 0);
@@ -378,6 +421,13 @@ public class CommandDialogHandler {
         grid.add(new Label(localization.get("dialog.label.price")), 0, 8);
         grid.add(priceField, 1, 8);
 
+        // Применяем стиль к лейблам
+        for (javafx.scene.Node node : grid.getChildren()) {
+            if (node instanceof Label) {
+                node.setStyle(labelStyle);
+            }
+        }
+
         dialog.getDialogPane().setContent(grid);
 
         dialog.setResultConverter(buttonType -> {
@@ -388,7 +438,6 @@ public class CommandDialogHandler {
                     v.setCoordinates(Integer.parseInt(xField.getText()), Float.parseFloat(yField.getText()));
                     v.setEnginePower(Float.parseFloat(powerField.getText()));
                     v.setDistanceTravelled(Float.parseFloat(distanceField.getText()));
-
                     // === НОВОЕ: Установка даты из DatePicker ===
                     if (datePicker.getValue() != null) {
                         java.time.LocalDate localDate = datePicker.getValue();
@@ -399,11 +448,9 @@ public class CommandDialogHandler {
                         v.setCreationDate();
                     }
                     // ================================================
-
                     v.setType(typeCombo.getValue());
                     v.setFuelType(fuelCombo.getValue());
                     v.setPrice(Double.parseDouble(priceField.getText()));
-
                     return v;
                 } catch (NumberFormatException e) {
                     showError(localization.get("dialog.error.invalid_data") + e.getMessage());
@@ -412,10 +459,8 @@ public class CommandDialogHandler {
             }
             return null;
         });
-
         return dialog.showAndWait().orElse(null);
     }
-
 
     public void executeShow() {
         sendCommand("show", List.of("show"), null);
@@ -434,5 +479,12 @@ public class CommandDialogHandler {
             vehicleToSave.setId(existingVehicle.getId()); // сохраняем оригинальный ID
             sendCommand("update", List.of("update", String.valueOf(existingVehicle.getId())), vehicleToSave);
         }
+    }
+
+    /**
+     * вспомогательный метод для стилизации диалогов
+     */
+    private void styleDialog(Dialog<?> dialog, String title) {
+        dialog.getDialogPane().setStyle(DIALOG_STYLE);
     }
 }

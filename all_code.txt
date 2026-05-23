@@ -5646,6 +5646,7 @@ public class Vehicle implements Serializable {
     private FuelType fuelType;
     private String ownerLogin;
     private double price;
+    private static final long serialVersionUID = 1L;
 
     public Vehicle() {
         this.creationDate = new Date();
