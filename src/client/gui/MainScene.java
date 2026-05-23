@@ -177,8 +177,8 @@ public class MainScene {
         });
 
         StackPane pane = new StackPane(canvas);
-        pane.setStyle("-fx-background-color: white;");
-        Scene scene = new Scene(pane, 800, 600);
+        pane.setStyle("-fx-background-color: E6F2FF;");
+        Scene scene = new Scene(pane, 1000, 600);
         vizStage.setScene(scene);
         vizStage.show();
     }

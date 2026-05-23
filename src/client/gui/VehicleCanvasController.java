@@ -1,7 +1,7 @@
 package client.gui;
-
 import common.Vehicle;
 import common.VehicleType;
+import javafx.animation.ScaleTransition;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Alert;
@@ -10,6 +10,8 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.text.Font;
+import javafx.util.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,12 +19,12 @@ import java.util.function.Consumer;
 
 /**
  * Контроллер Canvas для визуализации объектов Vehicle.
+ * С неоновыми фиолетовыми цветами и анимацией при наведении.
  */
 public class VehicleCanvasController {
     private final LocalizationManager localization;
     private Canvas canvas;
     private GraphicsContext gc;
-
     private Consumer<Vehicle> onVehicleClicked;
 
     // Параметры отображения
@@ -31,11 +33,28 @@ public class VehicleCanvasController {
     private double offsetX = 0.0;
     private double offsetY = 0.0;
 
-    // Кэш цветов по владельцу
-    private final Map<String, Color> ownerColors = new ConcurrentHashMap<>();
-
     // Текущие данные
     private List<Vehicle> vehicles = List.of();
+
+    // Отслеживание наведения
+    private Vehicle hoveredVehicle = null;
+    private double hoverScale = 1.0;
+    private ScaleTransition hoverAnimation;
+
+    // Неоновые фиолетовые цвета для владельцев
+    private final Map<String, Color> ownerColors = new ConcurrentHashMap<>();
+    private static final Color[] NEON_PURPLE_COLORS = {
+            Color.rgb(180, 0, 255),    // Ярко-фиолетовый
+            Color.rgb(255, 0, 255),    // Маджента
+            Color.rgb(204, 0, 204),    // Тёмная маджента
+            Color.rgb(153, 0, 255),    // Фиолетовый
+            Color.rgb(218, 112, 255),  // Светло-фиолетовый
+            Color.rgb(148, 0, 211),    // Тёмно-фиолетовый
+            Color.rgb(255, 105, 180),  // Hot Pink
+            Color.rgb(255, 20, 147),   // Deep Pink
+            Color.rgb(138, 43, 226),   // Blue Violet
+            Color.rgb(123, 104, 238)   // Medium Slate Blue
+    };
 
     public VehicleCanvasController(LocalizationManager localization) {
         this.localization = localization;
@@ -51,6 +70,13 @@ public class VehicleCanvasController {
 
         // Обработка клика
         canvas.setOnMouseClicked(this::handleMouseClick);
+        // Обработка наведения
+        canvas.setOnMouseMoved(this::handleMouseMove);
+        canvas.setOnMouseExited(e -> {
+            hoveredVehicle = null;
+            hoverScale = 1.0;
+            drawAll();
+        });
 
         return canvas;
     }
@@ -122,16 +148,17 @@ public class VehicleCanvasController {
     }
 
     /**
-     * Получает цвет для владельца (хеш → HSB).
+     * Получает неоновый фиолетовый цвет для владельца.
      */
     private Color getOwnerColor(String ownerLogin) {
         if (ownerLogin == null || ownerLogin.isEmpty()) {
-            return Color.GRAY;
+            return NEON_PURPLE_COLORS[0];
         }
+
         return ownerColors.computeIfAbsent(ownerLogin, login -> {
-            int hash = login.hashCode();
-            double hue = Math.abs(hash % 360);
-            return Color.hsb(hue, 0.7, 0.9, 0.8);
+            // Используем хеш для выбора цвета из неоновой палитры
+            int index = Math.abs(login.hashCode()) % NEON_PURPLE_COLORS.length;
+            return NEON_PURPLE_COLORS[index];
         });
     }
 
@@ -140,7 +167,9 @@ public class VehicleCanvasController {
      */
     private void drawAll() {
         if (gc == null) return;
+
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+
         // Рисуем сетку и оси
         drawGridAndAxes();
 
@@ -158,31 +187,32 @@ public class VehicleCanvasController {
         double h = canvas.getHeight();
 
         // --- Сетка ---
-        gc.setStroke(Color.LIGHTGRAY);
+        gc.setStroke(Color.rgb(230, 230, 250)); // Лавандовый для сетки
         gc.setLineWidth(0.5);
 
         // Вертикальные линии сетки
         for (double x = 0; x <= w; x += 50) {
             gc.strokeLine(x, 0, x, h);
         }
+
         // Горизонтальные линии сетки
         for (double y = 0; y <= h; y += 50) {
             gc.strokeLine(0, y, w, y);
         }
 
-        //  X и Y
+        // Оси X и Y
         // Находим пиксельные координаты нуля (0,0) из логических координат
         double zeroX = toPixelX(0);
         double zeroY = toPixelY(0);
 
-        gc.setStroke(Color.BLACK);
-        gc.setLineWidth(2.0);
+        gc.setStroke(Color.rgb(138, 43, 226)); // Фиолетовые оси
+        gc.setLineWidth(2.5);
 
         // Ось X (горизонтальная линия через Y=0)
         if (zeroY >= 0 && zeroY <= h) {
             gc.strokeLine(0, zeroY, w, zeroY);
             // Подпись "X"
-            gc.setFill(Color.BLACK);
+            gc.setFill(Color.rgb(138, 43, 226));
             gc.setFont(Font.font(14));
             gc.fillText("X", w - 20, zeroY - 10);
         }
@@ -191,10 +221,9 @@ public class VehicleCanvasController {
         if (zeroX >= 0 && zeroX <= w) {
             gc.strokeLine(zeroX, 0, zeroX, h);
             // Подпись "Y"
-            gc.setFill(Color.BLACK);
+            gc.setFill(Color.rgb(138, 43, 226));
             gc.setFont(Font.font(14));
             gc.fillText("Y", zeroX + 10, 20);
-
             // Подпись "0" в начале координат
             gc.fillText("0", zeroX + 5, zeroY + 15);
         }
@@ -206,26 +235,60 @@ public class VehicleCanvasController {
     private void drawVehicle(Vehicle v) {
         double px = toPixelX(v.getCoordinates().getX());
         double py = toPixelY(v.getCoordinates().getY());
-        double size = 20;
+        double baseSize = 20;
 
-        Color color = getOwnerColor(v.getOwnerLogin());
-        gc.setFill(color);
-        gc.setStroke(color.darker());
-        gc.setLineWidth(2);
+        // Проверяем, является ли этот объект наведённым
+        boolean isHovered = (hoveredVehicle != null && hoveredVehicle.getId() == v.getId());
+        double size = isHovered ? baseSize * hoverScale : baseSize;
 
-        switch (v.getType()) {
-            case BOAT -> drawBoat(px, py, size);
-            case HELICOPTER -> drawHelicopter(px, py, size);
-            case HOVERBOARD -> drawHoverboard(px, py, size);
-            case PLANE -> drawPlane(px, py, size);
-            case SHIP -> drawShip(px, py, size);
-            default -> drawCircle(px, py, size);
+        Color baseColor = getOwnerColor(v.getOwnerLogin());
+
+        if (isHovered) {
+            // Для наведённого объекта — яркий неон с эффектом свечения
+            gc.setFill(baseColor);
+            gc.setStroke(Color.WHITE);
+            gc.setLineWidth(3);
+
+            // Рисуем эффект свечения
+            gc.setGlobalAlpha(0.3);
+            gc.setFill(baseColor);
+            drawShape(px, py, size * 1.3, v.getType());
+            gc.setGlobalAlpha(1.0);
+        } else {
+            // Обычный объект
+            gc.setFill(baseColor);
+            gc.setStroke(baseColor.darker());
+            gc.setLineWidth(2);
         }
 
+        // Рисуем основную форму
+        drawShape(px, py, size, v.getType());
+
         // Подпись ID
-        gc.setFill(Color.BLACK);
-        gc.setFont(Font.font(10));
+        gc.setFill(isHovered ? Color.rgb(138, 43, 226) : Color.BLACK);
+        gc.setFont(Font.font(isHovered ? 12 : 10));
         gc.fillText(String.valueOf(v.getId()), px - 5, py + size + 15);
+
+        // При наведении показываем дополнительную информацию
+        if (isHovered) {
+            gc.setFill(Color.rgb(180, 0, 255));
+            gc.setFont(Font.font(11));
+            gc.fillText(v.getName(), px - 20, py - size - 5);
+        }
+    }
+
+    /**
+     * Рисует форму в зависимости от типа транспортного средства.
+     */
+    private void drawShape(double cx, double cy, double size, VehicleType type) {
+        switch (type) {
+            case BOAT -> drawBoat(cx, cy, size);
+            case HELICOPTER -> drawHelicopter(cx, cy, size);
+            case HOVERBOARD -> drawHoverboard(cx, cy, size);
+            case PLANE -> drawPlane(cx, cy, size);
+            case SHIP -> drawShip(cx, cy, size);
+            default -> drawCircle(cx, cy, size);
+        }
     }
 
     // Примитивы
@@ -268,11 +331,12 @@ public class VehicleCanvasController {
     }
 
     /**
-     * Обработка клика по Canvas — поиск ближайшего объекта.
+     * Обработка движения мыши — поиск ближайшего объекта для наведения.
      */
-    private void handleMouseClick(MouseEvent event) {
+    private void handleMouseMove(MouseEvent event) {
         double clickX = event.getX();
         double clickY = event.getY();
+
         Vehicle closest = null;
         double minDist = Double.MAX_VALUE;
 
@@ -280,6 +344,55 @@ public class VehicleCanvasController {
             double vx = toPixelX(v.getCoordinates().getX());
             double vy = toPixelY(v.getCoordinates().getY());
             double dist = Math.sqrt(Math.pow(clickX - vx, 2) + Math.pow(clickY - vy, 2));
+
+            if (dist < 25 && dist < minDist) {
+                minDist = dist;
+                closest = v;
+            }
+        }
+
+        // Если наведение изменилось
+        if ((hoveredVehicle == null && closest != null) ||
+                (hoveredVehicle != null && closest == null) ||
+                (hoveredVehicle != null && closest != null && hoveredVehicle.getId() != closest.getId())) {
+
+            hoveredVehicle = closest;
+
+            if (hoveredVehicle != null) {
+                // Анимация увеличения
+                hoverScale = 1.0;
+                if (hoverAnimation != null) {
+                    hoverAnimation.stop();
+                }
+                hoverAnimation = new ScaleTransition(Duration.millis(200));
+                hoverAnimation.setOnFinished(e -> {
+                    hoverScale = 1.3;
+                    drawAll();
+                });
+                hoverAnimation.play();
+            } else {
+                hoverScale = 1.0;
+            }
+
+            drawAll();
+        }
+    }
+
+    /**
+     * Обработка клика по Canvas — поиск ближайшего объекта.
+     */
+    private void handleMouseClick(MouseEvent event) {
+        double clickX = event.getX();
+        double clickY = event.getY();
+
+        Vehicle closest = null;
+        double minDist = Double.MAX_VALUE;
+
+        for (Vehicle v : vehicles) {
+            double vx = toPixelX(v.getCoordinates().getX());
+            double vy = toPixelY(v.getCoordinates().getY());
+            double dist = Math.sqrt(Math.pow(clickX - vx, 2) + Math.pow(clickY - vy, 2));
+
             if (dist < 20 && dist < minDist) {
                 minDist = dist;
                 closest = v;
@@ -287,7 +400,7 @@ public class VehicleCanvasController {
         }
 
         if (closest != null) {
-            // Если есть callback редактирование, иначе старый Alert
+            // Если есть callback — вызываем его (редактирование), иначе старый Alert
             if (onVehicleClicked != null) {
                 onVehicleClicked.accept(closest);
             } else {
@@ -311,8 +424,12 @@ public class VehicleCanvasController {
                         "Fuel: " + v.getFuelType() + "\n" +
                         "Price: " + v.getPrice()
         );
+
+        // Стилизация alert в фиолетовых тонах
+        alert.getDialogPane().setStyle("-fx-background-color: #f0e6ff;");
         alert.showAndWait();
     }
+
     /**
      * Публичный метод для внешнего обновления данных.
      */
