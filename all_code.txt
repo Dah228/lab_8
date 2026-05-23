@@ -1,6 +1,5 @@
 === FILE: ./src/client/gui/MainScene.java ===
 package client.gui;
-
 import client.logic.NetworkService;
 import common.Vehicle;
 import javafx.application.Platform;
@@ -29,24 +28,24 @@ public class MainScene {
     private ComboBox<Locale> langComboBox;
     private ScheduledExecutorService refreshScheduler;
 
-    // Стили для розовой темы
-    private static final String BTN_BASE_STYLE = "-fx-background-color: linear-gradient(to bottom, #ffc0cb, #ff69b4); " +
-            "-fx-text-fill: white; " +
+    // Мягкая зелёная тема (Material 3 style)
+    private static final String BTN_BASE_STYLE = "-fx-background-color: linear-gradient(to bottom, #C8E6C9, #A5D6A7); " +
+            "-fx-text-fill: #2E7D32; " +
             "-fx-font-weight: bold; " +
             "-fx-background-radius: 8; " +
             "-fx-border-radius: 8; " +
-            "-fx-border-color: #ff1493; " +
+            "-fx-border-color: #81C784; " +
             "-fx-border-width: 1; " +
-            "-fx-effect: dropshadow(gaussian, rgba(255,105,180,0.4), 5, 0, 0, 2); " +
+            "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.3), 5, 0, 0, 2); " +
             "-fx-cursor: hand;";
-    private static final String BTN_HOVER_STYLE = "-fx-background-color: linear-gradient(to bottom, #ff69b4, #ff1493); " +
-            "-fx-text-fill: white; " +
+    private static final String BTN_HOVER_STYLE = "-fx-background-color: linear-gradient(to bottom, #A5D6A7, #81C784); " +
+            "-fx-text-fill: #1B5E20; " +
             "-fx-font-weight: bold; " +
             "-fx-background-radius: 8; " +
             "-fx-border-radius: 8; " +
-            "-fx-border-color: #c71585; " +
+            "-fx-border-color: #66BB6A; " +
             "-fx-border-width: 1; " +
-            "-fx-effect: dropshadow(gaussian, rgba(255,20,147,0.6), 8, 0, 0, 3); " +
+            "-fx-effect: dropshadow(gaussian, rgba(102,187,106,0.5), 8, 0, 0, 3); " +
             "-fx-cursor: hand;";
 
     public MainScene(Stage stage, LocalizationManager localization, NetworkService networkService,
@@ -106,13 +105,13 @@ public class MainScene {
         HBox hbox = new HBox(15);
         hbox.setPadding(new Insets(10));
         hbox.setAlignment(Pos.CENTER_LEFT);
-        hbox.setStyle("-fx-background-color: linear-gradient(to bottom, #ffb6c1, #ff69b4); " +
-                "-fx-border-color: #ff1493; -fx-border-width: 0 0 2 0; " +
-                "-fx-effect: dropshadow(gaussian, rgba(255,105,180,0.3), 10, 0, 0, 2);");
+        hbox.setStyle("-fx-background-color: linear-gradient(to bottom, #E8F5E9, #C8E6C9); " +
+                "-fx-border-color: #81C784; -fx-border-width: 0 0 2 0; " +
+                "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.2), 10, 0, 0, 2);");
 
         userLabel = new Label(localization.get("main.user.label") + " " + currentUserLogin);
         userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; " +
-                "-fx-text-fill: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);");
+                "-fx-text-fill: #2E7D32; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 3, 0, 0, 1);");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -124,7 +123,7 @@ public class MainScene {
         btnVisualize.setOnAction(e -> openVisualization());
 
         Label langLabel = new Label(localization.get("main.lang.label"));
-        langLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+        langLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
 
         langComboBox = new ComboBox<>();
         langComboBox.getItems().setAll(localization.getAvailableLocales());
@@ -170,7 +169,7 @@ public class MainScene {
         });
 
         StackPane pane = new StackPane(canvas);
-        pane.setStyle("-fx-background-color: E6F2FF;");
+        pane.setStyle("-fx-background-color: #F1F8E9;");
         Scene scene = new Scene(pane, 1000, 600);
         vizStage.setScene(scene);
         vizStage.show();
@@ -180,8 +179,8 @@ public class MainScene {
         VBox vbox = new VBox(15);
         vbox.setPadding(new Insets(10));
         vbox.setAlignment(Pos.TOP_CENTER);
-        vbox.setStyle("-fx-background-color: linear-gradient(to bottom, #fff0f5, #ffe4e8); " +
-                "-fx-border-color: #ffb6c1; -fx-border-width: 1;");
+        vbox.setStyle("-fx-background-color: linear-gradient(to bottom, #F8FDF9, #E8F5E9); " +
+                "-fx-border-color: #C8E6C9; -fx-border-width: 1;");
 
         tableController = new VehicleTableController(localization);
         VBox tablePane = tableController.createTablePane();
@@ -210,9 +209,9 @@ public class MainScene {
         hbox.setPadding(new Insets(10));
         hbox.setAlignment(Pos.CENTER);
 
-        hbox.setStyle("-fx-background-color: linear-gradient(to bottom, #ffb6c1, #ff69b4); " +
-                "-fx-border-color: #ff1493; -fx-border-width: 2 0 0 0; " +
-                "-fx-effect: dropshadow(gaussian, rgba(255,20,147,0.4), 8, 0, 0, -2);");
+        hbox.setStyle("-fx-background-color: linear-gradient(to bottom, #E8F5E9, #C8E6C9); " +
+                "-fx-border-color: #81C784; -fx-border-width: 2 0 0 0; " +
+                "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.3), 8, 0, 0, -2);");
 
         Button btnAdd = new Button(localization.get("btn.add"));
         Button btnRemove = new Button(localization.get("btn.remove"));
@@ -256,7 +255,7 @@ public class MainScene {
             alert.setHeaderText(null);
             alert.setContentText(localization.get("confirm.exit"));
             DialogPane dialogPane = alert.getDialogPane();
-            dialogPane.setStyle("-fx-background-color: #fff0f5;");
+            dialogPane.setStyle("-fx-background-color: #F1F8E9;");
             dialogPane.lookupButton(ButtonType.OK).setStyle(BTN_BASE_STYLE);
             dialogPane.lookupButton(ButtonType.CANCEL).setStyle(BTN_BASE_STYLE);
             if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
@@ -1124,6 +1123,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Callback;
@@ -1132,20 +1132,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Контроллер таблицы транспортных средств.
- * Реализует отображение, фильтрацию и сортировку через Streams API.
- */
 public class VehicleTableController {
     private final LocalizationManager localization;
     private TableView<Vehicle> tableView;
-
-    // Исходные данные (полученные с сервера)
     private final ObservableList<Vehicle> allVehicles = FXCollections.observableArrayList();
-    // Отфильтрованные данные (отображаемые в таблице)
     private final ObservableList<Vehicle> filteredVehicles = FXCollections.observableArrayList();
-
-    // Элементы фильтров
     private TextField filterId;
     private TextField filterName;
     private TextField filterOwner;
@@ -1153,46 +1144,38 @@ public class VehicleTableController {
     private TextField filterMaxPrice;
     private ComboBox<VehicleType> filterType;
     private ComboBox<FuelType> filterFuel;
-
-    // Форматтеры
     private static final DecimalFormat PRICE_FORMAT = new DecimalFormat("#,##0.00");
 
     public VehicleTableController(LocalizationManager localization) {
         this.localization = localization;
     }
 
-    /**
-     * Создает VBox с панелью фильтров и таблицей.
-     */
     public VBox createTablePane(){
         VBox root = new VBox(10);
         root.setPadding(new Insets(10));
-        root.setStyle("-fx-background-color: white; " +
+        root.setStyle("-fx-background-color: #FFFFFF; " +
                 "-fx-border-radius: 10; " +
                 "-fx-background-radius: 10; " +
-                "-fx-effect: dropshadow(gaussian, rgba(255,182,193,0.4), 10, 0, 0, 2);");
+                "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.25), 10, 0, 0, 2);");
 
-        // 1. Панель фильтров
         HBox filterPanel = createFilterPanel();
 
-        // 2. Таблица
         tableView = new TableView<>();
         tableView.setItems(filteredVehicles);
+        tableView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
 
-        // Стилизация таблицы
         tableView.setStyle("-fx-background-color: white; " +
-                "-fx-control-inner-background: #fff0f5; " +
-                "-fx-table-cell-border-color: #ffb6c1;");
+                "-fx-control-inner-background: #F1F8E9; " +
+                "-fx-table-cell-border-color: #C8E6C9;");
 
-        // Чередование цветов строк
         tableView.setRowFactory(tv -> {
             TableRow<Vehicle> row = new TableRow<>();
             row.indexProperty().addListener((obs, oldIndex, newIndex) -> {
                 if (!row.isEmpty()) {
                     if ((int)newIndex % 2 == 0){
-                        row.setStyle("-fx-background-color: #fff0f5;");
+                        row.setStyle("-fx-background-color: #F1F8E9;");
                     } else {
-                        row.setStyle("-fx-background-color: white;");
+                        row.setStyle("-fx-background-color: #FFFFFF;");
                     }
                 }
             });
@@ -1200,7 +1183,6 @@ public class VehicleTableController {
         });
 
         setupColumns();
-
         root.getChildren().addAll(filterPanel, tableView);
         VBox.setVgrow(tableView, javafx.scene.layout.Priority.ALWAYS);
         return root;
@@ -1211,13 +1193,10 @@ public class VehicleTableController {
         hbox.setPadding(new Insets(5));
         hbox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
-        // Стиль для лейбла фильтра
         Label filterLabel = new Label(localization.get("table.filter"));
-        filterLabel.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
+        filterLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
 
-        // Текстовые фильтры
-        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1; -fx-prompt-text-fill: #ff69b4;";
-
+        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9; -fx-prompt-text-fill: #66BB6A;";
         filterId = new TextField();
         filterId.setPromptText(localization.get("table.column.id"));
         filterId.setPrefWidth(60);
@@ -1233,7 +1212,6 @@ public class VehicleTableController {
         filterOwner.setPrefWidth(100);
         filterOwner.setStyle(fieldStyle);
 
-        // Числовые фильтры
         filterMinPrice = new TextField();
         filterMinPrice.setPromptText(localization.get("filter.min_price"));
         filterMinPrice.setPrefWidth(70);
@@ -1244,14 +1222,13 @@ public class VehicleTableController {
         filterMaxPrice.setPrefWidth(70);
         filterMaxPrice.setStyle(fieldStyle);
 
-        // Выпадающие списки
         filterType = new ComboBox<>();
         filterType.getItems().add(null);
         filterType.getItems().addAll(VehicleType.values());
         filterType.setPromptText(localization.get("table.column.type"));
         setupFilterTypeLocalization();
         filterType.setValue(null);
-        filterType.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1;");
+        filterType.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9;");
 
         filterFuel = new ComboBox<>();
         filterFuel.getItems().add(null);
@@ -1259,9 +1236,8 @@ public class VehicleTableController {
         filterFuel.setPromptText(localization.get("table.column.fuel"));
         setupFilterFuelLocalization();
         filterFuel.setValue(null);
-        filterFuel.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1;");
+        filterFuel.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9;");
 
-        // Привязка событий изменения фильтров
         Callback<Void, Void> updateFilter = v -> { applyFilters(); return null; };
         filterId.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterName.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
@@ -1280,9 +1256,6 @@ public class VehicleTableController {
         return hbox;
     }
 
-    /**
-     * Настраивает локализацию для ComboBox типов транспортных средств
-     */
     private void setupFilterTypeLocalization() {
         filterType.setCellFactory(cb -> new ListCell<>() {
             @Override
@@ -1308,9 +1281,6 @@ public class VehicleTableController {
         });
     }
 
-    /**
-     * Настраивает локализацию для ComboBox типов топлива
-     */
     private void setupFilterFuelLocalization() {
         filterFuel.setCellFactory(cb -> new ListCell<>() {
             @Override
@@ -1337,8 +1307,8 @@ public class VehicleTableController {
     }
 
     private void setupColumns() {
-        String headerStyle = "-fx-background-color: linear-gradient(to bottom, #ffb6c1, #ff69b4); " +
-                "-fx-text-fill: white; -fx-font-weight: bold;";
+        String headerStyle = "-fx-background-color: linear-gradient(to bottom, #C8E6C9, #A5D6A7); " +
+                "-fx-text-fill: #1B5E20; -fx-font-weight: bold;";
 
         TableColumn<Vehicle, Number> colId = new TableColumn<>(localization.get("col.id"));
         colId.setStyle(headerStyle);
@@ -1409,17 +1379,13 @@ public class VehicleTableController {
     }
 
     public void updateLocalization() {
-        // Обновляем заголовки столбцов
         tableView.getColumns().clear();
         setupColumns();
 
-        // Обновляем фильтры
         HBox filterPanel = (HBox) ((VBox) tableView.getParent()).getChildren().get(0);
         filterPanel.getChildren().clear();
-
         Label filterLabel = new Label(localization.get("table.filter") + ":");
-        filterLabel.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
-
+        filterLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
         filterPanel.getChildren().addAll(
                 filterLabel,
                 filterId, filterName, filterOwner,
@@ -1427,7 +1393,6 @@ public class VehicleTableController {
                 filterType, filterFuel
         );
 
-        // Обновляем prompt text
         filterId.setPromptText(localization.get("filter.id"));
         filterName.setPromptText(localization.get("filter.name"));
         filterOwner.setPromptText(localization.get("filter.owner"));
@@ -1436,15 +1401,10 @@ public class VehicleTableController {
         filterType.setPromptText(localization.get("filter.type"));
         filterFuel.setPromptText(localization.get("filter.fuel"));
 
-        // Обновляем локализацию ComboBox'ов
         setupFilterTypeLocalization();
         setupFilterFuelLocalization();
     }
 
-    /**
-     * Применяет фильтры и сортировку используя STREAMS API.
-     * Это ключевое требование ТЗ.
-     */
     private void applyFilters() {
         String idStr = filterId.getText().trim();
         String nameStr = filterName.getText().trim().toLowerCase();
@@ -1454,59 +1414,63 @@ public class VehicleTableController {
         VehicleType typeVal = filterType.getValue();
         FuelType fuelVal = filterFuel.getValue();
 
-        // STREAMS API CHAIN
         List<Vehicle> result = allVehicles.stream()
                 .filter(v -> {
-                    // Фильтр по ID
                     if (!idStr.isEmpty()) {
-                        try {
-                            if (v.getId() != Long.parseLong(idStr)) return false;
-                        } catch (NumberFormatException e) { return false; }
+                        try { if (v.getId() != Long.parseLong(idStr)) return false; } catch (NumberFormatException e) { return false; }
                     }
-                    // Фильтр по Имени (частичное совпадение)
                     if (!nameStr.isEmpty() && !v.getName().toLowerCase().contains(nameStr)) return false;
-                    // Фильтр по Владельцу
                     if (!ownerStr.isEmpty() && (v.getOwnerLogin() == null || !v.getOwnerLogin().toLowerCase().contains(ownerStr))) return false;
-                    // Фильтр по Типу
                     if (typeVal != null && v.getType() != typeVal) return false;
-                    // Фильтр по Топливу
                     if (fuelVal != null && v.getFuelType() != fuelVal) return false;
-                    // Фильтр по Цене (Диапазон)
                     if (!minPriceStr.isEmpty()) {
-                        try {
-                            if (v.getPrice() < Double.parseDouble(minPriceStr)) return false;
-                        } catch (NumberFormatException e) { return false; }
+                        try { if (v.getPrice() < Double.parseDouble(minPriceStr)) return false; } catch (NumberFormatException e) { return false; }
                     }
                     if (!maxPriceStr.isEmpty()) {
-                        try {
-                            if (v.getPrice() > Double.parseDouble(maxPriceStr)) return false;
-                        } catch (NumberFormatException e) { return false; }
+                        try { if (v.getPrice() > Double.parseDouble(maxPriceStr)) return false; } catch (NumberFormatException e) { return false; }
                     }
                     return true;
                 })
-                .sorted((v1, v2) -> {
-                    // Сортировка по умолчанию: по ID возрастанию
-                    return Long.compare(v1.getId(), v2.getId());
-                })
+                .sorted((v1, v2) -> Long.compare(v1.getId(), v2.getId()))
                 .collect(Collectors.toList());
 
-        // Обновляем ObservableList таблицы
         filteredVehicles.setAll(result);
     }
 
     /**
      * Обновляет исходные данные извне (после получения ответа от сервера).
+     * Сохраняет выделение строки, чтобы оно не сбрасывалось при автообновлении.
      */
     public void updateData(List<Vehicle> vehicles) {
+        // 1. Запоминаем ID выбранного элемента ДО замены данных
+        Long selectedId = null;
+        Vehicle currentSelection = tableView.getSelectionModel().getSelectedItem();
+        if (currentSelection != null) {
+            selectedId = currentSelection.getId();
+        }
+
         if (vehicles == null) {
             allVehicles.clear();
             filteredVehicles.clear();
+            tableView.getSelectionModel().clearSelection();
             return;
         }
-        // Заменяем содержимое исходного списка
+
+        // 2. Обновляем данные
         allVehicles.setAll(vehicles);
-        // Переприменяем фильтры
         applyFilters();
+
+        // 3. Восстанавливаем выделение по сохранённому ID (если элемент ещё есть в таблице)
+        if (selectedId != null) {
+            final Long finalSelectedId = selectedId; // Делаем final для использования в lambda
+            Vehicle toSelect = filteredVehicles.stream()
+                    .filter(v -> v.getId() == finalSelectedId) // Используем == для примитивов
+                    .findFirst()
+                    .orElse(null);
+            if (toSelect != null) {
+                tableView.getSelectionModel().select(toSelect);
+            }
+        }
     }
 
     public List<Vehicle> getAllVehicles() {
@@ -1535,19 +1499,18 @@ public class CommandDialogHandler {
     private final String password;
     private VehicleTableController tableController;
 
-    // Стили для розовой темы
-    private static final String DIALOG_STYLE = "-fx-background-color: linear-gradient(to bottom, #fff0f5, #ffe4e8); " +
-            "-fx-border-color: #ff69b4; -fx-border-width: 2;";
+    private static final String DIALOG_STYLE = "-fx-background-color: linear-gradient(to bottom, #F1F8E9, #E8F5E9); " +
+            "-fx-border-color: #A5D6A7; -fx-border-width: 2;";
     private static final String HEADER_LABEL_STYLE = "-fx-font-size: 18px; -fx-font-weight: bold; " +
-            "-fx-text-fill: #ff1493;";
-    private static final String BTN_PINK_STYLE = "-fx-background-color: linear-gradient(to bottom, #ffc0cb, #ff69b4); " +
-            "-fx-text-fill: white; " +
+            "-fx-text-fill: #2E7D32;";
+    private static final String BTN_GREEN_STYLE = "-fx-background-color: linear-gradient(to bottom, #C8E6C9, #A5D6A7); " +
+            "-fx-text-fill: #1B5E20; " +
             "-fx-font-weight: bold; " +
             "-fx-background-radius: 5; " +
             "-fx-border-radius: 5; " +
-            "-fx-border-color: #ff1493; " +
+            "-fx-border-color: #81C784; " +
             "-fx-border-width: 1; " +
-            "-fx-effect: dropshadow(gaussian, rgba(255,105,180,0.4), 3, 0, 0, 1); " +
+            "-fx-effect: dropshadow(gaussian, rgba(129,199,132,0.3), 3, 0, 0, 1); " +
             "-fx-cursor: hand;";
 
     public CommandDialogHandler(NetworkService networkService, LocalizationManager localization,
@@ -1562,17 +1525,11 @@ public class CommandDialogHandler {
         this.tableController = tableController;
     }
 
-    // ==================== ПУБЛИЧНЫЕ МЕТОДЫ КОМАНД ====================
-
-    // ... (остальные методы без изменений) ...
-
-    // === НОВЫЙ МЕТОД: Удаляет сразу по ID без диалога ===
     public void executeRemoveById(Long id) {
         if (id == null) return;
         sendCommand("remove_by_id", List.of("remove_by_id", String.valueOf(id)), null);
     }
 
-    // Старый метод (если вдруг понадобится ручной ввод)
     public void executeRemoveByIdManual() {
         TextInputDialog dialog = new TextInputDialog();
         styleDialog(dialog, localization.get("dialog.remove_by_id.title"));
@@ -1580,7 +1537,7 @@ public class CommandDialogHandler {
         dialog.setContentText(localization.get("dialog.remove_by_id.prompt"));
         dialog.showAndWait().ifPresent(id -> {
             try {
-                Long.parseLong(id); // валидация
+                Long.parseLong(id);
                 sendCommand("remove_by_id", List.of("remove_by_id", id), null);
             } catch (NumberFormatException e) {
                 showError(localization.get("dialog.error.invalid_id"));
@@ -1763,11 +1720,6 @@ public class CommandDialogHandler {
         });
     }
 
-    /**
-     * Отправляет команду на сервер и обрабатывает ответ:
-     * - если в data есть List<Vehicle> → обновляет таблицу
-     * - если есть текстовое сообщение → показывает в прокручиваемом окне
-     */
     private void sendCommand(String commandName, List<String> args, Vehicle vehicle) {
         new Thread(() -> {
             try {
@@ -1777,7 +1729,6 @@ public class CommandDialogHandler {
                 Platform.runLater(() -> {
                     if (response != null) {
                         if (response.isSuccess()) {
-                            // Для команды show ТОЛЬКО обновляем таблицу (без диалога)
                             if ("show".equals(commandName)) {
                                 String message = response.getMessage();
                                 if (message != null && !message.trim().isEmpty()) {
@@ -1787,7 +1738,6 @@ public class CommandDialogHandler {
                                     }
                                 }
                             } else {
-                                // Для остальных команд - как было
                                 Object data = response.getData();
                                 if (data instanceof List) {
                                     List<?> dataList = (List<?>) data;
@@ -1803,7 +1753,6 @@ public class CommandDialogHandler {
                                 if (message != null && !message.trim().isEmpty()) {
                                     showScrollableInfo(message);
                                 }
-                                // Автоматическое обновление после изменений
                                 if ("update".equals(commandName) ||
                                         "add".equals(commandName) ||
                                         "remove_by_id".equals(commandName) ||
@@ -1824,7 +1773,6 @@ public class CommandDialogHandler {
         }).start();
     }
 
-    /** Прокручиваемое окно для текстовых результатов */
     private void showScrollableInfo(String message) {
         Dialog<Void> dialog = new Dialog<>();
         styleDialog(dialog, localization.get("dialog.result.title"));
@@ -1835,7 +1783,7 @@ public class CommandDialogHandler {
         TextArea textArea = new TextArea(message);
         textArea.setEditable(false);
         textArea.setWrapText(true);
-        textArea.setStyle("-fx-font-size: 13px; -fx-background-color: transparent; -fx-control-inner-background: #fff0f5;");
+        textArea.setStyle("-fx-font-size: 13px; -fx-background-color: transparent; -fx-control-inner-background: #F1F8E9;");
         ScrollPane scrollPane = new ScrollPane(textArea);
         scrollPane.setFitToWidth(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
@@ -1844,7 +1792,6 @@ public class CommandDialogHandler {
         dialog.showAndWait();
     }
 
-    /** Окно ошибки (компактное, без скролла) */
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         styleDialog(alert, localization.get("app.title"));
@@ -1854,7 +1801,6 @@ public class CommandDialogHandler {
         alert.showAndWait();
     }
 
-    /** Диалог добавления/редактирования Vehicle */
     private Vehicle showVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
         styleDialog(dialog, existing == null ? localization.get("dialog.add_vehicle") : localization.get("dialog.edit_vehicle"));
@@ -1864,16 +1810,15 @@ public class CommandDialogHandler {
         ButtonType cancelButtonType = new ButtonType(localization.get("dialog.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, cancelButtonType);
 
-        // Стилизация кнопок диалога
-        dialog.getDialogPane().lookupButton(saveButtonType).setStyle(BTN_PINK_STYLE);
-        dialog.getDialogPane().lookupButton(cancelButtonType).setStyle(BTN_PINK_STYLE);
+        dialog.getDialogPane().lookupButton(saveButtonType).setStyle(BTN_GREEN_STYLE);
+        dialog.getDialogPane().lookupButton(cancelButtonType).setStyle(BTN_GREEN_STYLE);
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
 
-        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1; -fx-prompt-text-fill: #ff69b4;";
-        String labelStyle = "-fx-text-fill: #ff1493; -fx-font-weight: bold;";
+        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9; -fx-prompt-text-fill: #66BB6A;";
+        String labelStyle = "-fx-text-fill: #2E7D32; -fx-font-weight: bold;";
 
         TextField nameField = new TextField(existing != null ? existing.getName() : "");
         nameField.setPromptText(localization.get("dialog.prompt.name"));
@@ -1982,12 +1927,10 @@ public class CommandDialogHandler {
         sendCommand("show", List.of("show"), null);
     }
 
-    /** Тихий вызов show (без диалоговых окон) для автообновления */
     public void executeShowSilent() {
         sendCommand("show", List.of("show"), null);
     }
 
-    /** Редактирование существующего объекта (вызывается из таблицы или канваса) */
     public void executeEdit(Vehicle existingVehicle) {
         if (existingVehicle == null) return;
         Vehicle vehicleToSave = showVehicleDialog(existingVehicle);
@@ -2016,9 +1959,6 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import java.util.List;
 
-/**
- * Сцена авторизации и регистрации.
- */
 public class AuthScene {
     private final NetworkService networkService;
     private final LocalizationManager localization;
@@ -2027,16 +1967,13 @@ public class AuthScene {
     private Button actionButton;
     private ToggleGroup modeToggle;
     private Label errorLabel;
-
-    // Callback для перехода на главную сцену
     private Runnable onLoginSuccess;
 
-    // Стили для розовой темы
-    private static final String BTN_PINK_STYLE = "-fx-background-color: linear-gradient(to bottom, #ff69b4, #ff1493); " +
+    private static final String BTN_GREEN_STYLE = "-fx-background-color: linear-gradient(to bottom, #A5D6A7, #81C784); " +
             "-fx-text-fill: white; -fx-padding: 12 25; " +
             "-fx-font-weight: bold; -fx-background-radius: 10; " +
             "-fx-border-radius: 10; " +
-            "-fx-effect: dropshadow(gaussian, rgba(255,20,147,0.5), 8, 0, 0, 2); " +
+            "-fx-effect: dropshadow(gaussian, rgba(102,187,106,0.4), 8, 0, 0, 2); " +
             "-fx-cursor: hand;";
 
     public AuthScene(Stage stage, NetworkService networkService, LocalizationManager localization) {
@@ -2052,13 +1989,12 @@ public class AuthScene {
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
         root.setAlignment(Pos.CENTER);
-        // Розовый градиентный фон
-        root.setStyle("-fx-background-color: linear-gradient(to bottom right, #ffe4e8, #ffc0cb, #ffb6c1);");
+        root.setStyle("-fx-background-color: linear-gradient(to bottom right, #F1F8E9, #E8F5E9, #C8E6C9);");
 
         Label titleLabel = new Label(localization.get("app.title"));
         titleLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; " +
-                "-fx-text-fill: #ff1493; " +
-                "-fx-effect: dropshadow(gaussian, rgba(255,20,147,0.4), 5, 0, 0, 1);");
+                "-fx-text-fill: #2E7D32; " +
+                "-fx-effect: dropshadow(gaussian, rgba(46,125,50,0.2), 5, 0, 0, 1);");
 
         RadioButton rbLogin = new RadioButton(localization.get("auth.login.button"));
         RadioButton rbRegister = new RadioButton(localization.get("auth.register.button"));
@@ -2066,10 +2002,8 @@ public class AuthScene {
         rbLogin.setToggleGroup(modeToggle);
         rbRegister.setToggleGroup(modeToggle);
         rbLogin.setSelected(true);
-
-        // Стилизация кнопок
-        rbLogin.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
-        rbRegister.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
+        rbLogin.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
+        rbRegister.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
 
         HBox modeBox = new HBox(10, rbLogin, rbRegister);
         modeBox.setAlignment(Pos.CENTER);
@@ -2079,17 +2013,15 @@ public class AuthScene {
         grid.setVgap(10);
         grid.setAlignment(Pos.CENTER);
 
-        // Стилизация полей ввода
-        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #ffb6c1; -fx-padding: 5;";
-
+        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9; -fx-padding: 5;";
         Label loginLabel = new Label(localization.get("auth.login"));
-        loginLabel.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
+        loginLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
         loginField = new TextField();
         loginField.setPromptText("login");
         loginField.setStyle(fieldStyle);
 
         Label passLabel = new Label(localization.get("auth.password"));
-        passLabel.setStyle("-fx-text-fill: #ff1493; -fx-font-weight: bold;");
+        passLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
         passwordField = new PasswordField();
         passwordField.setStyle(fieldStyle);
         passLabel.setLabelFor(passwordField);
@@ -2100,8 +2032,7 @@ public class AuthScene {
         grid.add(passwordField, 1, 1);
 
         actionButton = new Button(localization.get("auth.login.button"));
-        actionButton.setStyle(BTN_PINK_STYLE);
-
+        actionButton.setStyle(BTN_GREEN_STYLE);
         modeToggle.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal == rbLogin) {
                 actionButton.setText(localization.get("auth.login.button"));
@@ -2109,11 +2040,10 @@ public class AuthScene {
                 actionButton.setText(localization.get("auth.register.button"));
             }
         });
-
         actionButton.setOnAction(e -> handleAction());
 
         errorLabel = new Label();
-        errorLabel.setStyle("-fx-text-fill: #d80000; -fx-font-size: 12px; -fx-font-weight: bold;");
+        errorLabel.setStyle("-fx-text-fill: #C62828; -fx-font-size: 12px; -fx-font-weight: bold;");
         errorLabel.setVisible(false);
 
         root.getChildren().addAll(titleLabel, modeBox, grid, actionButton, errorLabel);
@@ -2127,15 +2057,12 @@ public class AuthScene {
             showError(localization.get("auth.error.empty"));
             return;
         }
-
         boolean isRegister = modeToggle.getSelectedToggle() instanceof RadioButton &&
                 ((RadioButton) modeToggle.getSelectedToggle()).getText().equals(localization.get("auth.register.button"));
 
-        // Блокируем UI во время запроса
         setControlsDisabled(true);
         errorLabel.setVisible(false);
 
-        // Выполняем сетевой запрос в фоновом потоке
         Thread authThread = new Thread(() -> {
             try {
                 CommandResponse response;
@@ -2144,7 +2071,6 @@ public class AuthScene {
                 } else {
                     response = sendLoginRequest(login, password);
                 }
-                // Возвращаемся в JavaFX Thread для обновления UI
                 Platform.runLater(() -> {
                     setControlsDisabled(false);
                     if (response != null && response.isSuccess()) {
@@ -2169,7 +2095,6 @@ public class AuthScene {
     }
 
     private CommandResponse sendRegisterRequest(String login, String password) throws Exception {
-        // Команда register требует аргументы: ["register", login, password]
         List<String> args = List.of("register", login, password);
         CommandRequest request = new CommandRequest("register", args, null, true, "", "");
         networkService.send(request);
@@ -2960,6 +2885,7 @@ import common.Serializer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.SocketChannel;
 
 public class NetworkService {
@@ -2989,21 +2915,18 @@ public class NetworkService {
     public boolean send(CommandRequest request) {
         try {
             byte[] data = Serializer.serialize(request);
-
             // Отправляем размер данных (4 байта) + сами данные
             ByteBuffer sizeBuffer = ByteBuffer.allocate(4);
+            sizeBuffer.order(ByteOrder.BIG_ENDIAN); // ← ДОБАВИТЬ
             sizeBuffer.putInt(data.length);
             sizeBuffer.flip();
-
             while (sizeBuffer.hasRemaining()) {
                 channel.write(sizeBuffer);
             }
-
             ByteBuffer buffer = ByteBuffer.wrap(data);
             while (buffer.hasRemaining()) {
                 channel.write(buffer);
             }
-
             return true;
         } catch (IOException e) {
             System.out.println("Ошибка отправки: " + e.getMessage());
@@ -4586,11 +4509,6 @@ public class UpdateElementID implements Command {
     private final CommandType type = CommandType.WITHARGSMODEL;
     public UpdateElementID(IVehicleManager vehicleManager) { this.vehicleManager = vehicleManager; }
     @Override public ReturnCode execute(CommandParams params) {
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
         if (params.args().size() != 2) return ReturnCode.FAILED;
         try {
             long id = Long.parseLong(params.args().get(1));
@@ -5550,6 +5468,7 @@ import server.commands.CommandsList;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -5686,13 +5605,16 @@ public class ServerNetworkService {
                     if (bytesRead == 0) return null; // Данные не готовы, вернёмся при следующем OP_READ
                 }
                 data.sizeBuffer.flip();
+                data.sizeBuffer.order(ByteOrder.BIG_ENDIAN);
                 data.expectedSize = data.sizeBuffer.getInt();
                 data.sizeBuffer.clear();
 
                 if (data.expectedSize <= 0 || data.expectedSize > data.maxpack) {
                     System.out.println("Некорректный размер сообщения: " + data.expectedSize);
-                    removeClient(clientChannel); return null;
+                    removeClient(clientChannel);
+                    return null;
                 }
+
                 data.dataBuffer = ByteBuffer.allocate(data.expectedSize);
                 data.readingSize = false;
             }
