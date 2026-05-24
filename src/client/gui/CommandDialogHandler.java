@@ -213,14 +213,28 @@ public class CommandDialogHandler {
                                     "buy".equals(commandName) || "set_price".equals(commandName)) {
                                 executeShowSilent();
                             }
-                        }
-                    } else {
+                        } else {
+// === ИСПРАВЛЕНИЕ 1: Уведомление о недостатке средств ===
+                            if ("buy".equals(commandName)) {
+                                String errorMsg = response.getMessage();
+                                if (errorMsg != null && !errorMsg.trim().isEmpty()) {
+// Показываем красное уведомление о проблеме с покупкой
+                                    if (tableController != null) {
+                                        VBox notificationContainer = findNotificationContainer();
+                                        if (notificationContainer != null) {
+                                            ModernNotifications.showError(notificationContainer, errorMsg);
+                                        }
+                                    }
+                                }
+                            } else {
 // Ошибка сервера - показываем красное toast
-                        if (tableController != null) {
-                            VBox notificationContainer = findNotificationContainer();
-                            if (notificationContainer != null) {
-                                ModernNotifications.showError(notificationContainer,
-                                        response.getMessage() != null ? response.getMessage() : "Ошибка сервера");
+                                if (tableController != null) {
+                                    VBox notificationContainer = findNotificationContainer();
+                                    if (notificationContainer != null) {
+                                        ModernNotifications.showError(notificationContainer,
+                                                response.getMessage() != null ? response.getMessage() : "Ошибка сервера");
+                                    }
+                                }
                             }
                         }
                     }
@@ -239,7 +253,6 @@ public class CommandDialogHandler {
             }
         }).start();
     }
-
     // Вспомогательный метод для поиска контейнера уведомлений
     private VBox findNotificationContainer() {
         try {

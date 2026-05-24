@@ -202,6 +202,7 @@ public class ModernDialog {
 
         Button confirmButton = new Button("Подтвердить");
         confirmButton.setStyle(BTN_PRIMARY);
+        confirmButton.setDefaultButton(true);
 
         final boolean[] result = {false};
 

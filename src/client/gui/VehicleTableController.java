@@ -4,9 +4,11 @@ import common.Vehicle;
 import common.VehicleType;
 import common.FuelType;
 import javafx.animation.*;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.layout.HBox;
@@ -430,74 +432,157 @@ public class VehicleTableController {
             return;
         }
 
-        // Определяем тип изменения для анимации
+// Определяем тип изменения для анимации
         List<Vehicle> oldList = new ArrayList<>(allVehicles);
         List<Vehicle> newList = vehicles;
 
         allVehicles.setAll(vehicles);
         applyFilters();
 
-        // Анимация изменений
-        animateTableChanges(oldList, newList);
-
-        // Восстанавливаем выделение
+// === ИСПРАВЛЕНИЕ 4: Сохраняем выделение ДО анимации ===
         if (selectedId != null) {
             final Long finalSelectedId = selectedId;
+// Сначала восстанавливаем выделение
             Vehicle toSelect = filteredVehicles.stream()
                     .filter(v -> v.getId() == finalSelectedId)
                     .findFirst()
                     .orElse(null);
             if (toSelect != null) {
-                tableView.getSelectionModel().select(toSelect);
+// Используем Platform.runLater чтобы выделение точно применилось
+                Platform.runLater(() -> {
+                    tableView.getSelectionModel().select(toSelect);
+                    tableView.scrollTo(toSelect);
+                });
             }
         }
+
+// Анимация изменений
+        animateTableChanges(oldList, newList);
     }
 
     /**
      * Анимация изменений в таблице
      */
     private void animateTableChanges(List<Vehicle> oldList, List<Vehicle> newList) {
-        if (oldList.size() == newList.size()) {
-            // Перемешивание - анимируем все строки
-            if (!oldList.containsAll(newList) || !newList.containsAll(oldList)) {
-                animateShuffle();
+        if (oldList.size() < newList.size()) {
+// Добавление - ищем новые элементы
+            List<Vehicle> addedVehicles = newList.stream()
+                    .filter(v -> oldList.stream().noneMatch(ov -> ov.getId() == v.getId()))
+                    .collect(Collectors.toList());
+            if (!addedVehicles.isEmpty()) {
+                Platform.runLater(() -> animateAddedRows(addedVehicles));
             }
-        } else if (newList.size() > oldList.size()) {
-            // Добавление - анимируем новые строки
-            animateAddition(newList.size() - oldList.size());
-        } else if (newList.size() < oldList.size()) {
-            // Удаление - анимируем удаление
-            animateDeletion(oldList.size() - newList.size());
+        } else if (oldList.size() > newList.size()) {
+// Удаление - ищем удалённые элементы
+            List<Vehicle> removedVehicles = oldList.stream()
+                    .filter(v -> newList.stream().noneMatch(nv -> nv.getId() == v.getId()))
+                    .collect(Collectors.toList());
+            if (!removedVehicles.isEmpty()) {
+                Platform.runLater(() -> animateRemovedRows(removedVehicles));
+            }
         }
     }
+
+    /**
+     * === ИСПРАВЛЕНИЕ 3: Анимация добавления строк (Fade In) ===
+     */
+    private void animateAddedRows(List<Vehicle> addedVehicles) {
+// Находим индексы добавленных элементов
+        for (Vehicle addedVehicle : addedVehicles) {
+            int index = filteredVehicles.indexOf(addedVehicle);
+            if (index >= 0) {
+// Ищем строку по индексу
+                TableRow<Vehicle> row = getRowByIndex(index);
+                if (row != null) {
+// Начальное состояние
+                    row.setOpacity(0);
+                    row.setTranslateY(-30);
+
+// Анимация появления
+                    FadeTransition fadeIn = new FadeTransition(Duration.millis(600), row);
+                    fadeIn.setFromValue(0);
+                    fadeIn.setToValue(1);
+                    fadeIn.setInterpolator(Interpolator.EASE_OUT);
+
+                    TranslateTransition slideDown = new TranslateTransition(Duration.millis(600), row);
+                    slideDown.setFromY(-30);
+                    slideDown.setToY(0);
+                    slideDown.setInterpolator(Interpolator.EASE_OUT);
+
+                    ParallelTransition appear = new ParallelTransition(fadeIn, slideDown);
+                    appear.play();
+                }
+            }
+        }
+    }
+
+    /**
+     * === ИСПРАВЛЕНИЕ 4: Анимация удаления строк (Fade Out) ===
+     */
+    private void animateRemovedRows(List<Vehicle> removedVehicles) {
+// Анимация для всей таблицы - более явный fade out/in
+        FadeTransition fadeOut = new FadeTransition(Duration.millis(300), tableView);
+        fadeOut.setFromValue(1.0);
+        fadeOut.setToValue(0.6);
+        fadeOut.setInterpolator(Interpolator.EASE_IN);
+
+        PauseTransition pause = new PauseTransition(Duration.millis(150));
+        pause.setOnFinished(e -> {
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(300), tableView);
+            fadeIn.setFromValue(0.6);
+            fadeIn.setToValue(1.0);
+            fadeIn.setInterpolator(Interpolator.EASE_OUT);
+            fadeIn.play();
+        });
+
+        fadeOut.play();
+        pause.play();
+    }
+
+    /**
+     * Вспомогательный метод для получения строки по индексу
+     */
+
+    private TableRow<Vehicle> getRowByIndex(int index) {
+
+        try {
+            String selector = ".table-row-cell:index(" + index + ")";
+            Node node = tableView.lookup(selector);
+
+            if (node instanceof TableRow) {
+                return (TableRow<Vehicle>) node;
+            }
+        } catch (Exception e) {
+            // Игнорируем ошибки поиска
+        }
+        return null;
+    }
+
 
     /**
      * Анимация добавления новых строк
      */
     private void animateAddition(int newRowsCount) {
-        for (int i = 0; i < Math.min(newRowsCount, 10); i++) { // Анимируем максимум 10 строк
-            TableRow<Vehicle> row = (TableRow<Vehicle>) tableView.lookup(".table-row-cell");
-            if (row != null) {
-                row.setOpacity(0);
-                row.setTranslateY(-20);
+        // Используем Platform.runLater с небольшой задержкой, чтобы таблица успела отрисоваться
+        Platform.runLater(() -> {
+            // Анимируем всю таблицу - эффект появления
+            tableView.setOpacity(0);
+            tableView.setTranslateY(-10);
 
-                FadeTransition fadeIn = new FadeTransition(Duration.millis(400), row);
-                fadeIn.setFromValue(0);
-                fadeIn.setToValue(1);
-                fadeIn.setInterpolator(Interpolator.EASE_OUT);
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(400), tableView);
+            fadeIn.setFromValue(0);
+            fadeIn.setToValue(1);
+            fadeIn.setInterpolator(Interpolator.EASE_OUT);
 
-                TranslateTransition slideDown = new TranslateTransition(Duration.millis(400), row);
-                slideDown.setFromY(-20);
-                slideDown.setToY(0);
-                slideDown.setInterpolator(Interpolator.EASE_OUT);
+            TranslateTransition slideDown = new TranslateTransition(Duration.millis(400), tableView);
+            slideDown.setFromY(-10);
+            slideDown.setToY(0);
+            slideDown.setInterpolator(Interpolator.EASE_OUT);
 
-                ParallelTransition appear = new ParallelTransition(fadeIn, slideDown);
-                appear.setDelay(Duration.millis(i * 50)); // Каскадная задержка
-                appear.play();
-            }
-        }
+            ParallelTransition appear = new ParallelTransition(fadeIn, slideDown);
+            appear.play();
+        });
     }
-
     /**
      * Анимация удаления строк
      */

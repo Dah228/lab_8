@@ -90,14 +90,15 @@ public class GuiApp extends Application {
 
         // Обработка закрытия окна
         stage.setOnCloseRequest(e -> {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle(localization.get("app.title"));
-            alert.setHeaderText(null);
-            alert.setContentText(localization.get("confirm.exit"));
-            if (alert.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
-                e.consume();
+            boolean confirmed = ModernDialog.showConfirmation(
+                    localization.get("app.title"),
+                    localization.get("confirm.exit")
+            );
+
+            if (!confirmed) {
+                e.consume(); // Отменяем закрытие, если нажали "Отмена"
             } else {
-                cleanup();
+                cleanup(); // Выполняем очистку и закрываем
             }
         });
     }
