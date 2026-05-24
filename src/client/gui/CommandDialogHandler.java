@@ -2,6 +2,7 @@ package client.gui;
 
 import client.logic.NetworkService;
 import common.*;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -9,6 +10,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
 import java.util.Collections;
 import java.util.Date;
@@ -23,28 +25,28 @@ public class CommandDialogHandler {
     private final String password;
     private VehicleTableController tableController;
 
+    // Для отслеживания изменений при автообновлении
+    private String previousDataHash = "";
+    private boolean isFirstLoad = true;
+
     // Современные стили для диалога
     private static final String DIALOG_BG = "-fx-background-color: #FFFFFF; " +
             "-fx-background-radius: 15; " +
             "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 20, 0, 0, 5);";
-
     private static final String INPUT_FIELD_STYLE = "-fx-background-color: #F5F5F5; " +
             "-fx-background-radius: 8; " +
             "-fx-border-color: transparent; " +
             "-fx-padding: 10; " +
             "-fx-font-size: 14px;";
-
     private static final String LABEL_STYLE = "-fx-text-fill: #555555; " +
             "-fx-font-weight: bold; " +
             "-fx-font-size: 14px;";
-
     private static final String BTN_SAVE_STYLE = "-fx-background-color: #4CAF50; " +
             "-fx-text-fill: white; " +
             "-fx-font-weight: bold; " +
             "-fx-background-radius: 8; " +
             "-fx-padding: 10 20; " +
             "-fx-cursor: hand;";
-
     private static final String BTN_CANCEL_STYLE = "-fx-background-color: #EEEEEE; " +
             "-fx-text-fill: #333333; " +
             "-fx-font-weight: bold; " +
@@ -81,31 +83,54 @@ public class CommandDialogHandler {
         }
     }
 
+    public void executeInfo() {
+        sendCommand("info", List.of("info"), null);
+    }
 
+    public void executeSort() {
+        sendCommand("sort", List.of("sort"), null);
+    }
 
-    public void executeInfo() { sendCommand("info", List.of("info"), null); }
-    public void executeSort() { sendCommand("sort", List.of("sort"), null); }
-    public void executePrintDescending() { sendCommand("print_descending", List.of("print_descending"), null); }
+    public void executePrintDescending() {
+        sendCommand("print_descending", List.of("print_descending"), null);
+    }
 
+    /**
+     * Перемешивает список на 4 секунды, затем возвращает в исходное состояние.
+     */
     public void executeShuffle() {
         if (tableController == null) return;
-        // 1. Получаем текущий список всех объектов из контроллера таблицы
-        List<Vehicle> vehicles = tableController.getAllVehicles();
-        if (vehicles == null || vehicles.isEmpty()) {
+
+        // 1. Получаем текущий список
+        List<Vehicle> originalVehicles = tableController.getAllVehicles();
+        if (originalVehicles == null || originalVehicles.isEmpty()) {
             showError("Коллекция пуста, нечего перемешивать.");
             return;
         }
-        // 2. Создаем копию списка и перемешиваем
-        List<Vehicle> shuffledVehicles = new java.util.ArrayList<>(vehicles);
+
+        // 2. Создаем копию для перемешивания
+        List<Vehicle> shuffledVehicles = new java.util.ArrayList<>(originalVehicles);
         Collections.shuffle(shuffledVehicles);
 
-        // 3. Обновляем таблицу в JavaFX потоке БЕЗ сортировки
+        // 3. Отображаем перемешанный список
         Platform.runLater(() -> {
             tableController.updateDataWithoutSorting(shuffledVehicles);
         });
-    }
-    public void executeHelp() { sendCommand("help", List.of("help"), null); }
 
+        // 4. Запускаем таймер возврата через 4 секунды
+        PauseTransition returnTimer = new PauseTransition(Duration.seconds(4));
+        returnTimer.setOnFinished(event -> {
+            Platform.runLater(() -> {
+                // Возвращаем оригинальный (отсортированный) список
+                tableController.updateData(originalVehicles);
+            });
+        });
+        returnTimer.play();
+    }
+
+    public void executeHelp() {
+        sendCommand("help", List.of("help"), null);
+    }
 
     public void executeFilterLessThanType() {
         ComboBox<VehicleType> comboBox = new ComboBox<>();
@@ -144,9 +169,9 @@ public class CommandDialogHandler {
         }
     }
 
-    public void executeShowBalance() { sendCommand("show_balance", List.of("show_balance"), null); }
-
-
+    public void executeShowBalance() {
+        sendCommand("show_balance", List.of("show_balance"), null);
+    }
 
     private void sendCommand(String commandName, List<String> args, Vehicle vehicle) {
         new Thread(() -> {
@@ -157,12 +182,12 @@ public class CommandDialogHandler {
                 Platform.runLater(() -> {
                     if (response != null) {
                         if (response.isSuccess()) {
-// Успешные операции - показываем toast вместо диалога
+                            // Успешные операции - показываем toast вместо диалога
                             if ("add".equals(commandName) || "update".equals(commandName) ||
                                     "remove_by_id".equals(commandName) || "clear".equals(commandName)) {
                                 String message = response.getMessage();
                                 if (message != null && !message.trim().isEmpty()) {
-// Показываем зеленое toast-уведомление
+                                    // Показываем зеленое toast-уведомление
                                     if (tableController != null) {
                                         VBox notificationContainer = findNotificationContainer();
                                         if (notificationContainer != null) {
@@ -171,13 +196,17 @@ public class CommandDialogHandler {
                                     }
                                 }
                             }
-// Для show и других команд, возвращающих список
+
+                            // === ИЗМЕНЕНО: Для show обновляем таблицу и сбрасываем хеш ===
                             if ("show".equals(commandName)) {
                                 String message = response.getMessage();
                                 if (message != null && !message.trim().isEmpty()) {
                                     List<Vehicle> vehicles = VehicleTextParser.parseVehicleList(message);
                                     if (tableController != null && !vehicles.isEmpty()) {
                                         tableController.updateData(vehicles);
+                                        // Сбрасываем хеш после явного вызова show (добавление/удаление)
+                                        previousDataHash = calculateDataHash(vehicles);
+                                        isFirstLoad = false;
                                     }
                                 }
                             } else {
@@ -192,13 +221,13 @@ public class CommandDialogHandler {
                                         tableController.updateData(vehicles);
                                     }
                                 }
-// Для остальных успешных операций с сообщением
+                                // Для остальных успешных операций с сообщением
                                 String message = response.getMessage();
                                 if (message != null && !message.trim().isEmpty() &&
                                         !"show".equals(commandName) && !"add".equals(commandName) &&
                                         !"update".equals(commandName) && !"remove_by_id".equals(commandName) &&
                                         !"clear".equals(commandName)) {
-// Показываем информационное toast
+                                    // Показываем информационное toast
                                     if (tableController != null) {
                                         VBox notificationContainer = findNotificationContainer();
                                         if (notificationContainer != null) {
@@ -207,18 +236,20 @@ public class CommandDialogHandler {
                                     }
                                 }
                             }
-// Авто-обновление после изменений
+                            // ================================================================
+
+                            // Авто-обновление после изменений
                             if ("update".equals(commandName) || "add".equals(commandName) ||
                                     "remove_by_id".equals(commandName) || "clear".equals(commandName) ||
                                     "buy".equals(commandName) || "set_price".equals(commandName)) {
                                 executeShowSilent();
                             }
                         } else {
-// === ИСПРАВЛЕНИЕ 1: Уведомление о недостатке средств ===
+                            // === ИСПРАВЛЕНИЕ 1: Уведомление о недостатке средств ===
                             if ("buy".equals(commandName)) {
                                 String errorMsg = response.getMessage();
                                 if (errorMsg != null && !errorMsg.trim().isEmpty()) {
-// Показываем красное уведомление о проблеме с покупкой
+                                    // Показываем красное уведомление о проблеме с покупкой
                                     if (tableController != null) {
                                         VBox notificationContainer = findNotificationContainer();
                                         if (notificationContainer != null) {
@@ -227,7 +258,7 @@ public class CommandDialogHandler {
                                     }
                                 }
                             } else {
-// Ошибка сервера - показываем красное toast
+                                // Ошибка сервера - показываем красное toast
                                 if (tableController != null) {
                                     VBox notificationContainer = findNotificationContainer();
                                     if (notificationContainer != null) {
@@ -240,7 +271,7 @@ public class CommandDialogHandler {
                     }
                 });
             } catch (Exception e) {
-// Ошибка сети - показываем красное toast
+                // Ошибка сети - показываем красное toast
                 Platform.runLater(() -> {
                     if (tableController != null) {
                         VBox notificationContainer = findNotificationContainer();
@@ -253,6 +284,7 @@ public class CommandDialogHandler {
             }
         }).start();
     }
+
     // Вспомогательный метод для поиска контейнера уведомлений
     private VBox findNotificationContainer() {
         try {
@@ -278,13 +310,10 @@ public class CommandDialogHandler {
                 }
             }
         } catch (Exception e) {
-// Игнорируем ошибки поиска
+            // Игнорируем ошибки поиска
         }
         return null;
     }
-
-
-
 
     private Vehicle showModernVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
@@ -401,11 +430,8 @@ public class CommandDialogHandler {
 
         dialog.getDialogPane().setContent(grid);
         validate.run(); // Начальная валидация
-
         return dialog.showAndWait().orElse(null);
     }
-
-
 
     private TextField createStyledTextField(String text, String prompt) {
         TextField tf = new TextField(text);
@@ -420,8 +446,44 @@ public class CommandDialogHandler {
         return l;
     }
 
-    public void executeShow() { sendCommand("show", List.of("show"), null); }
-    public void executeShowSilent() { sendCommand("show", List.of("show"), null); }
+    public void executeShow() {
+        sendCommand("show", List.of("show"), null);
+    }
+
+    public void executeShowSilent() {
+        new Thread(() -> {
+            try {
+                CommandRequest request = new CommandRequest("show", List.of("show"), null, true, login, password);
+                networkService.send(request);
+                CommandResponse response = networkService.receive();
+                Platform.runLater(() -> {
+                    if (response != null && response.isSuccess()) {
+                        String message = response.getMessage();
+                        if (message != null && !message.trim().isEmpty()) {
+                            List<Vehicle> vehicles = VehicleTextParser.parseVehicleList(message);
+                            if (tableController != null && !vehicles.isEmpty()) {
+                                // === НОВОЕ: Проверяем, изменились ли данные ===
+                                String currentHash = calculateDataHash(vehicles);
+
+                                // Обновляем таблицу ТОЛЬКО если данные изменились
+                                if (!currentHash.equals(previousDataHash) || isFirstLoad) {
+                                    tableController.updateData(vehicles);
+                                    previousDataHash = currentHash;
+                                    isFirstLoad = false;
+                                    System.out.println("[✓] Данные обновлены (hash: " + currentHash.substring(0, Math.min(8, currentHash.length())) + ")");
+                                } else {
+                                    System.out.println("[=] Данные не изменились, обновление пропущено");
+                                }
+                                // ================================================
+                            }
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                System.err.println("[!] Ошибка при тихом обновлении: " + e.getMessage());
+            }
+        }).start();
+    }
 
     public void executeEdit(Vehicle existingVehicle) {
         if (existingVehicle == null) return;
@@ -431,8 +493,6 @@ public class CommandDialogHandler {
             sendCommand("update", List.of("update", String.valueOf(existingVehicle.getId())), vehicleToSave);
         }
     }
-
-
 
     private void showError(String message) {
         // Используем Alert как fallback
@@ -450,7 +510,6 @@ public class CommandDialogHandler {
                 "Очистка коллекции",
                 "Вы уверены, что хотите удалить ВСЕ свои объекты? Это действие нельзя отменить."
         );
-
         if (confirmed) {
             sendCommand("clear", List.of("clear"), null);
         }
@@ -463,7 +522,6 @@ public class CommandDialogHandler {
                 "Введите сумму пополнения:",
                 "Например: 1000"
         );
-
         result.ifPresent(amount -> {
             try {
                 double amountDouble = Double.parseDouble(amount);
@@ -487,7 +545,6 @@ public class CommandDialogHandler {
                     "Введите ID для обновления:",
                     "Например: 11"
             );
-
             result.ifPresent(id -> {
                 try {
                     long idLong = Long.parseLong(id);
@@ -507,17 +564,14 @@ public class CommandDialogHandler {
                 "Введите ID транспортного средства:",
                 "Например: 11"
         );
-
         idResult.ifPresent(id -> {
             try {
                 Long.parseLong(id);
-
                 Optional<String> priceResult = ModernDialog.showInput(
                         "Новая цена",
                         "Введите новую цену для ID " + id + ":",
                         "Например: 15000"
                 );
-
                 priceResult.ifPresent(price -> {
                     try {
                         double priceDouble = Double.parseDouble(price);
@@ -543,7 +597,6 @@ public class CommandDialogHandler {
                 "Введите минимальную мощность двигателя:",
                 "Например: 100"
         );
-
         result.ifPresent(power -> {
             try {
                 Float.parseFloat(power);
@@ -553,5 +606,31 @@ public class CommandDialogHandler {
                 showError("Некорректное число");
             }
         });
+    }
+
+    private String calculateDataHash(List<Vehicle> vehicles) {
+        if (vehicles == null || vehicles.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        // Сортируем по ID для консистентности
+        List<Vehicle> sortedVehicles = new java.util.ArrayList<>(vehicles);
+        sortedVehicles.sort((v1, v2) -> Long.compare(v1.getId(), v2.getId()));
+
+        for (Vehicle v : sortedVehicles) {
+            sb.append(v.getId()).append("|")
+                    .append(v.getName() != null ? v.getName() : "").append("|")
+                    .append(v.getCoordinates() != null ? v.getCoordinates().getX() : 0).append("|")
+                    .append(v.getCoordinates() != null ? v.getCoordinates().getY() : 0).append("|")
+                    .append(v.getEnginePower() != 0 ? v.getEnginePower() : 0f).append("|")
+                    .append(v.getDistanceTravelled() != 0 ? v.getDistanceTravelled() : 0f).append("|")
+                    .append(v.getType() != null ? v.getType() : "").append("|")
+                    .append(v.getFuelType() != null ? v.getFuelType() : "").append("|")
+                    .append(v.getPrice() != 0 ? v.getPrice() : 0.0).append("|")
+                    .append(v.getOwnerLogin() != null ? v.getOwnerLogin() : "").append("|")
+                    .append(v.getCreationDate() != null ? v.getCreationDate().getTime() : 0)
+                    .append(";");
+        }
+        return String.valueOf(sb.toString().hashCode());
     }
 }
