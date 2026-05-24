@@ -256,12 +256,20 @@ public class MainScene {
         tableContainer.setStyle(CARD_STYLE + "-fx-padding: 15;");
         if (commandHandler != null) commandHandler.setTableController(tableController);
 
+        // === ИЗМЕНЕНИЕ ЗДЕСЬ ===
         tableController.getTable().setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
                 if (selected != null) commandHandler.executeEdit(selected);
+            } else if (event.getClickCount() == 1) {
+                // При одиночном клике фокусируемся на объекте в визуализации
+                Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
+                if (selected != null && canvasController != null) {
+                    canvasController.focusOnVehicle(selected);
+                }
             }
         });
+        // =======================
 
         // ПРАВАЯ ЧАСТЬ: Визуализация
         if (canvasController == null) {
@@ -269,12 +277,18 @@ public class MainScene {
         }
         javafx.scene.canvas.Canvas canvas = canvasController.createCanvas(600, 600);
 
+        // Обработчик клика по канвасу (если кликнули в пустоту - сброс вида)
         canvasController.setOnVehicleClicked(vehicle -> {
             if (vehicle != null) {
                 Platform.runLater(() -> {
                     tableController.getTable().getSelectionModel().select(vehicle);
+                    // При клике на канвас тоже фокусируемся (хотя он уже должен быть в фокусе, если мы кликнули на него)
+                    canvasController.focusOnVehicle(vehicle);
                     commandHandler.executeEdit(vehicle);
                 });
+            } else {
+                // Если кликнули в пустое место канваса - сброс вида
+                canvasController.resetView();
             }
         });
 
@@ -282,17 +296,16 @@ public class MainScene {
         canvasContainer.setStyle(CARD_STYLE + "-fx-padding: 15;");
         Label visualTitle = new Label("Визуализация координат");
         visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #424242;");
-
         Pane canvasPane = new Pane(canvas);
         canvas.widthProperty().bind(canvasPane.widthProperty());
         canvas.heightProperty().bind(canvasPane.heightProperty());
-
         canvasContainer.getChildren().addAll(visualTitle, canvasPane);
         VBox.setVgrow(canvasPane, Priority.ALWAYS);
 
         splitPane.getItems().addAll(tableContainer, canvasContainer);
         return splitPane;
     }
+
 
     private HBox createBottomPanel() {
         HBox hbox = new HBox(15);
@@ -405,7 +418,9 @@ public class MainScene {
 
     public void updateVisualization() {
         if (tableController != null && canvasController != null) {
-            canvasController.updateData(tableController.getAllVehicles());
+            List<Vehicle> currentVehicles = tableController.getAllVehicles();
+            canvasController.updateData(currentVehicles);
+            canvasController.resetView();
         }
     }
 }

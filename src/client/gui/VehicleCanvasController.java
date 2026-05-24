@@ -347,4 +347,66 @@ public class VehicleCanvasController {
             drawAll();
         }
     }
+
+
+    /**
+     * Приближает камеру к указанному транспортному средству.
+     * Объект оказывается в центре canvas с увеличенным масштабом.
+     */
+    public void focusOnVehicle(Vehicle vehicle) {
+        if (vehicle == null || canvas == null) return;
+
+        // Целевой масштаб (крупный план)
+        double targetZoom = 2.5;
+
+        // Координаты объекта в логической системе
+        double logicX = vehicle.getCoordinates().getX();
+        double logicY = vehicle.getCoordinates().getY();
+
+        // Размеры canvas
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+
+        // Вычисляем, где должен быть центр экрана в логических координатах при текущем базовом масштабировании
+        // Формула обратного преобразования: pixel = (logic * baseScale + baseOffset) * zoom + pan
+        // Мы хотим, чтобы logicX/Y оказались в центре экрана (w/2, h/2) при targetZoom
+
+        // 1. Сначала сбрасываем pan, чтобы расчеты были чище, или рассчитываем новый pan относительно текущего baseScale
+        // Проще всего рассчитать новые panX и panY так, чтобы:
+        // w/2 = (logicX * baseScaleX + baseOffsetX) * targetZoom + newPanX
+        // h/2 = (canvasHeight - (logicY * baseScaleY + baseOffsetY)) * targetZoom + newPanY
+
+        double projectedX = (logicX * baseScaleX + baseOffsetX);
+        double projectedY = (h - (logicY * baseScaleY + baseOffsetY)); // Инверсия Y уже учтена в toPixelY, но здесь мы работаем с "экранной" проекцией до зума
+
+        // Новые значения панорамирования
+        this.panX = (w / 2) - (projectedX * targetZoom);
+        this.panY = (h / 2) - (projectedY * targetZoom);
+
+        // Устанавливаем зум
+        this.zoom = targetZoom;
+
+        // Обновляем выбранный элемент для подсветки
+        this.selectedVehicle = vehicle;
+
+        drawAll();
+    }
+
+    /**
+     * Сбрасывает вид к исходному состоянию (вместить все объекты).
+     */
+    public void resetView() {
+        this.zoom = 1.0;
+        this.panX = 0.0;
+        this.panY = 0.0;
+        this.selectedVehicle = null; // Снимаем выделение при сбросе вида, если нужно
+        // Пересчитываем базовое масштабирование, чтобы вместить все элементы
+        if (vehicles.size() > 1) {
+            calculateBaseScaling();
+        } else if (vehicles.size() == 1) {
+            // Если один элемент, можно тоже отцентровать его, но с меньшим зумом, или оставить как есть
+            calculateBaseScaling();
+        }
+        drawAll();
+    }
 }
