@@ -59,6 +59,18 @@ public class MainScene {
             "-fx-background-radius: 8; -fx-cursor: hand;";
     private static final String BTN_DANGER_HOVER = "-fx-background-color: #FFEBEE; -fx-border-color: #D32F2F;";
 
+    private static final String MODERN_CARD = "-fx-background-color: white; " +
+            "-fx-background-radius: 16; " +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 20, 0, 0, 5);";
+
+    private static final String MODERN_INPUT = "-fx-background-color: #F9FAFB; " +
+            "-fx-background-radius: 10; " +
+            "-fx-border-color: #E5E7EB; " +
+            "-fx-border-radius: 10; " +
+            "-fx-border-width: 1.5; " +
+            "-fx-padding: 12 16; " +
+            "-fx-font-size: 14px;";
+
     public MainScene(Stage stage, LocalizationManager localization, NetworkService networkService,
                      String currentUserLogin, String currentUserPassword) {
         this.stage = stage;

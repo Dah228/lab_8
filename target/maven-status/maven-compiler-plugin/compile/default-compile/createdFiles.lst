@@ -70,6 +70,7 @@ client/gui/VehicleTableController.class
 client/gui/GuiApp.class
 server/commands/CompareByEnginePowerCommand.class
 common/CommandRequest.class
+client/gui/ModernDialog.class
 server/collection/VehicleManagerProxy.class
 server/commands/Invoker.class
 server/commands/BuyCommand.class

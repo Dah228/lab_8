@@ -12,6 +12,7 @@ import javafx.scene.layout.HBox;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class CommandDialogHandler {
@@ -79,35 +80,7 @@ public class CommandDialogHandler {
         }
     }
 
-    public void executeClear() {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Подтверждение");
-        alert.setHeaderText(null);
-        alert.setContentText("Вы уверены, что хотите удалить ВСЕ свои объекты?");
-        alert.getDialogPane().setStyle(DIALOG_BG);
-        alert.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
-                sendCommand("clear", List.of("clear"), null);
-            }
-        });
-    }
 
-    public void executeUpdate() {
-        Vehicle vehicle = showModernVehicleDialog(null);
-        if (vehicle != null) {
-            TextInputDialog dialog = new TextInputDialog();
-            dialog.setHeaderText("Введите ID для обновления");
-            dialog.showAndWait().ifPresent(id -> {
-                try {
-                    long idLong = Long.parseLong(id);
-                    vehicle.setId(idLong);
-                    sendCommand("update", List.of("update", id), vehicle);
-                } catch (NumberFormatException e) {
-                    showError("Некорректный ID");
-                }
-            });
-        }
-    }
 
     public void executeInfo() { sendCommand("info", List.of("info"), null); }
     public void executeSort() { sendCommand("sort", List.of("sort"), null); }
@@ -132,18 +105,6 @@ public class CommandDialogHandler {
     }
     public void executeHelp() { sendCommand("help", List.of("help"), null); }
 
-    public void executeFilterByEnginePower() {
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setHeaderText("Фильтр по мощности (минимум)");
-        dialog.showAndWait().ifPresent(power -> {
-            try {
-                Float.parseFloat(power);
-                sendCommand("filter_greater_than_engine_power", List.of("filter_greater_than_engine_power", power), null);
-            } catch (NumberFormatException e) {
-                showError("Некорректное число");
-            }
-        });
-    }
 
     public void executeFilterLessThanType() {
         ComboBox<VehicleType> comboBox = new ComboBox<>();
@@ -184,48 +145,7 @@ public class CommandDialogHandler {
 
     public void executeShowBalance() { sendCommand("show_balance", List.of("show_balance"), null); }
 
-    public void executeDeposit() {
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setHeaderText("Пополнение баланса");
-        dialog.showAndWait().ifPresent(amount -> {
-            try {
-                double amountDouble = Double.parseDouble(amount);
-                if (amountDouble > 0) {
-                    sendCommand("deposit", List.of("deposit", amount), null);
-                } else {
-                    showError("Сумма должна быть > 0");
-                }
-            } catch (NumberFormatException e) {
-                showError("Некорректная сумма");
-            }
-        });
-    }
 
-    public void executeSetPrice() {
-        TextInputDialog idDialog = new TextInputDialog();
-        idDialog.setHeaderText("Установка цены: Введите ID");
-        idDialog.showAndWait().ifPresent(id -> {
-            try {
-                Long.parseLong(id);
-                TextInputDialog priceDialog = new TextInputDialog();
-                priceDialog.setHeaderText("Введите новую цену");
-                priceDialog.showAndWait().ifPresent(price -> {
-                    try {
-                        double priceDouble = Double.parseDouble(price);
-                        if (priceDouble >= 0) {
-                            sendCommand("set_price", List.of("set_price", id, price), null);
-                        } else {
-                            showError("Цена не может быть отрицательной");
-                        }
-                    } catch (NumberFormatException e) {
-                        showError("Некорректная цена");
-                    }
-                });
-            } catch (NumberFormatException e) {
-                showError("Некорректный ID");
-            }
-        });
-    }
 
     private void sendCommand(String commandName, List<String> args, Vehicle vehicle) {
         new Thread(() -> {
@@ -282,30 +202,9 @@ public class CommandDialogHandler {
         }).start();
     }
 
-    private void showScrollableInfo(String message) {
-        Dialog<Void> dialog = new Dialog<>();
-        dialog.getDialogPane().setStyle(DIALOG_BG);
-        dialog.setTitle("Результат");
-        dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
-        dialog.setResizable(true);
-        TextArea textArea = new TextArea(message);
-        textArea.setEditable(false);
-        textArea.setWrapText(true);
-        ScrollPane scrollPane = new ScrollPane(textArea);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setPrefSize(600, 350);
-        dialog.getDialogPane().setContent(scrollPane);
-        dialog.showAndWait();
-    }
 
-    private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.getDialogPane().setStyle(DIALOG_BG);
-        alert.setTitle("Ошибка");
-        alert.setHeaderText(null);
-        alert.setContentText(message != null ? message : "Произошла ошибка");
-        alert.showAndWait();
-    }
+
+
 
     private Vehicle showModernVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
@@ -455,5 +354,128 @@ public class CommandDialogHandler {
             vehicleToSave.setId(existingVehicle.getId());
             sendCommand("update", List.of("update", String.valueOf(existingVehicle.getId())), vehicleToSave);
         }
+    }
+
+
+
+    // Замените метод showError на:
+    private void showError(String message) {
+        ModernDialog.showError("Ошибка", message);
+    }
+
+    // Замените метод showScrollableInfo на:
+    private void showScrollableInfo(String message) {
+        ModernDialog.showInfo("Результат выполнения", message);
+    }
+
+    // В executeClear замените Alert на:
+    public void executeClear() {
+        boolean confirmed = ModernDialog.showConfirmation(
+                "Очистка коллекции",
+                "Вы уверены, что хотите удалить ВСЕ свои объекты? Это действие нельзя отменить."
+        );
+
+        if (confirmed) {
+            sendCommand("clear", List.of("clear"), null);
+        }
+    }
+
+    // В executeDeposit замените TextInputDialog на:
+    public void executeDeposit() {
+        Optional<String> result = ModernDialog.showInput(
+                "Пополнение баланса",
+                "Введите сумму пополнения:",
+                "Например: 1000"
+        );
+
+        result.ifPresent(amount -> {
+            try {
+                double amountDouble = Double.parseDouble(amount);
+                if (amountDouble > 0) {
+                    sendCommand("deposit", List.of("deposit", amount), null);
+                } else {
+                    showError("Сумма должна быть больше 0");
+                }
+            } catch (NumberFormatException e) {
+                showError("Некорректная сумма");
+            }
+        });
+    }
+
+    // В executeUpdate замените TextInputDialog на:
+    public void executeUpdate() {
+        Vehicle vehicle = showModernVehicleDialog(null);
+        if (vehicle != null) {
+            Optional<String> result = ModernDialog.showInput(
+                    "Обновление элемента",
+                    "Введите ID для обновления:",
+                    "Например: 11"
+            );
+
+            result.ifPresent(id -> {
+                try {
+                    long idLong = Long.parseLong(id);
+                    vehicle.setId(idLong);
+                    sendCommand("update", List.of("update", id), vehicle);
+                } catch (NumberFormatException e) {
+                    showError("Некорректный ID");
+                }
+            });
+        }
+    }
+
+    // В executeSetPrice замените TextInputDialog на:
+    public void executeSetPrice() {
+        Optional<String> idResult = ModernDialog.showInput(
+                "Установка цены",
+                "Введите ID транспортного средства:",
+                "Например: 11"
+        );
+
+        idResult.ifPresent(id -> {
+            try {
+                Long.parseLong(id);
+
+                Optional<String> priceResult = ModernDialog.showInput(
+                        "Новая цена",
+                        "Введите новую цену для ID " + id + ":",
+                        "Например: 15000"
+                );
+
+                priceResult.ifPresent(price -> {
+                    try {
+                        double priceDouble = Double.parseDouble(price);
+                        if (priceDouble >= 0) {
+                            sendCommand("set_price", List.of("set_price", id, price), null);
+                        } else {
+                            showError("Цена не может быть отрицательной");
+                        }
+                    } catch (NumberFormatException e) {
+                        showError("Некорректная цена");
+                    }
+                });
+            } catch (NumberFormatException e) {
+                showError("Некорректный ID");
+            }
+        });
+    }
+
+    // В executeFilterByEnginePower замените TextInputDialog на:
+    public void executeFilterByEnginePower() {
+        Optional<String> result = ModernDialog.showInput(
+                "Фильтр по мощности",
+                "Введите минимальную мощность двигателя:",
+                "Например: 100"
+        );
+
+        result.ifPresent(power -> {
+            try {
+                Float.parseFloat(power);
+                sendCommand("filter_greater_than_engine_power",
+                        List.of("filter_greater_than_engine_power", power), null);
+            } catch (NumberFormatException e) {
+                showError("Некорректное число");
+            }
+        });
     }
 }

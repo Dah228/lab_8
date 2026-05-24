@@ -64,6 +64,7 @@
 /home/dashalin/IdeaProjects/lab8/src/server/commands/Command.java
 /home/dashalin/IdeaProjects/lab8/src/client/logic/DataValidator.java
 /home/dashalin/IdeaProjects/lab8/src/server/commands/CommandsList.java
+/home/dashalin/IdeaProjects/lab8/src/client/gui/ModernDialog.java
 /home/dashalin/IdeaProjects/lab8/src/client/logic/ConnectionInitializer.java
 /home/dashalin/IdeaProjects/lab8/src/server/database/AuthService.java
 /home/dashalin/IdeaProjects/lab8/src/server/commands/ClearCommand.java
