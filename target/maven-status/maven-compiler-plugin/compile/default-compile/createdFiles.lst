@@ -2,6 +2,7 @@ server/commands/ShowBalanceCommand.class
 server/collection/ValidateParams.class
 common/Coordinates.class
 client/gui/VehicleTableController$3.class
+client/gui/VehicleCanvasController$1.class
 client/gui/GuiApp$1.class
 server/commands/RemoveByID.class
 server/database/DBManager.class

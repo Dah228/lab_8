@@ -20,6 +20,7 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
@@ -42,6 +43,7 @@ public class MainScene {
     private Button balanceButton;
     private ComboBox<Locale> langComboBox;
     private VBox notificationContainer;
+    private List<Vehicle> lastCanvasVehicles = List.of();
 
     private ScheduledExecutorService refreshScheduler;
 
@@ -262,14 +264,13 @@ public class MainScene {
                 Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
                 if (selected != null) commandHandler.executeEdit(selected);
             } else if (event.getClickCount() == 1) {
-                // При одиночном клике фокусируемся на объекте в визуализации
+                // При одиночном клике по таблице -> плавно фокусируемся на объекте
                 Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
                 if (selected != null && canvasController != null) {
                     canvasController.focusOnVehicle(selected);
                 }
             }
         });
-        // =======================
 
         // ПРАВАЯ ЧАСТЬ: Визуализация
         if (canvasController == null) {
@@ -282,15 +283,15 @@ public class MainScene {
             if (vehicle != null) {
                 Platform.runLater(() -> {
                     tableController.getTable().getSelectionModel().select(vehicle);
-                    // При клике на канвас тоже фокусируемся (хотя он уже должен быть в фокусе, если мы кликнули на него)
-                    canvasController.focusOnVehicle(vehicle);
+                    canvasController.focusOnVehicle(vehicle); // Фокус при клике на канвас
                     commandHandler.executeEdit(vehicle);
                 });
             } else {
-                // Если кликнули в пустое место канваса - сброс вида
-                canvasController.resetView();
+                // Клик в пустое место -> сброс вида
+                Platform.runLater(() -> canvasController.resetView());
             }
         });
+
 
         VBox canvasContainer = new VBox(10);
         canvasContainer.setStyle(CARD_STYLE + "-fx-padding: 15;");
@@ -419,8 +420,35 @@ public class MainScene {
     public void updateVisualization() {
         if (tableController != null && canvasController != null) {
             List<Vehicle> currentVehicles = tableController.getAllVehicles();
-            canvasController.updateData(currentVehicles);
-            canvasController.resetView();
+
+            // Сбрасываем вид ТОЛЬКО если данные действительно изменились
+            if (hasDataChanged(lastCanvasVehicles, currentVehicles)) {
+                canvasController.updateData(currentVehicles);
+                canvasController.resetView();
+                // Сохраняем копию для следующего сравнения
+                lastCanvasVehicles = new ArrayList<>(currentVehicles);
+            } else {
+                // Данные не менялись, просто обновляем ссылки (на случай ресайза окна)
+                canvasController.updateData(currentVehicles);
+            }
         }
+    }
+
+    private boolean hasDataChanged(List<Vehicle> oldList, List<Vehicle> newList) {
+        if (oldList == null && newList == null) return false;
+        if (oldList == null || newList == null) return true;
+        if (oldList.size() != newList.size()) return true;
+
+        for (int i = 0; i < oldList.size(); i++) {
+            Vehicle ov = oldList.get(i);
+            Vehicle nv = newList.get(i);
+            // Проверяем ключевые поля, влияющие на визуализацию
+            if (ov.getId() != nv.getId() ||
+                    ov.getCoordinates().getX() != nv.getCoordinates().getX() ||
+                    ov.getCoordinates().getY() != nv.getCoordinates().getY()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

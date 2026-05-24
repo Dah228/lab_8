@@ -2,6 +2,7 @@ package client.gui;
 
 import common.Vehicle;
 import common.VehicleType;
+import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
@@ -34,6 +35,13 @@ public class VehicleCanvasController {
     private double baseScaleY = 1.0;
     private double baseOffsetX = 0.0;
     private double baseOffsetY = 0.0;
+
+
+    private AnimationTimer animationTimer;
+    private double animStartZoom, animStartPanX, animStartPanY;
+    private double animTargetZoom, animTargetPanX, animTargetPanY;
+    private long animStartTime;
+    private static final long ANIM_DURATION_MS = 350;
 
     private List<Vehicle> vehicles = List.of();
     private Vehicle hoveredVehicle = null;
@@ -349,64 +357,91 @@ public class VehicleCanvasController {
     }
 
 
-    /**
-     * Приближает камеру к указанному транспортному средству.
-     * Объект оказывается в центре canvas с увеличенным масштабом.
-     */
-    public void focusOnVehicle(Vehicle vehicle) {
-        if (vehicle == null || canvas == null) return;
-
-        // Целевой масштаб (крупный план)
-        double targetZoom = 2.5;
-
-        // Координаты объекта в логической системе
-        double logicX = vehicle.getCoordinates().getX();
-        double logicY = vehicle.getCoordinates().getY();
-
-        // Размеры canvas
-        double w = canvas.getWidth();
-        double h = canvas.getHeight();
-
-        // Вычисляем, где должен быть центр экрана в логических координатах при текущем базовом масштабировании
-        // Формула обратного преобразования: pixel = (logic * baseScale + baseOffset) * zoom + pan
-        // Мы хотим, чтобы logicX/Y оказались в центре экрана (w/2, h/2) при targetZoom
-
-        // 1. Сначала сбрасываем pan, чтобы расчеты были чище, или рассчитываем новый pan относительно текущего baseScale
-        // Проще всего рассчитать новые panX и panY так, чтобы:
-        // w/2 = (logicX * baseScaleX + baseOffsetX) * targetZoom + newPanX
-        // h/2 = (canvasHeight - (logicY * baseScaleY + baseOffsetY)) * targetZoom + newPanY
-
-        double projectedX = (logicX * baseScaleX + baseOffsetX);
-        double projectedY = (h - (logicY * baseScaleY + baseOffsetY)); // Инверсия Y уже учтена в toPixelY, но здесь мы работаем с "экранной" проекцией до зума
-
-        // Новые значения панорамирования
-        this.panX = (w / 2) - (projectedX * targetZoom);
-        this.panY = (h / 2) - (projectedY * targetZoom);
-
-        // Устанавливаем зум
-        this.zoom = targetZoom;
-
-        // Обновляем выбранный элемент для подсветки
-        this.selectedVehicle = vehicle;
-
-        drawAll();
-    }
 
     /**
      * Сбрасывает вид к исходному состоянию (вместить все объекты).
      */
+
+    public List<Vehicle> getVehicles() { return vehicles; }
+
+
+
+    /**
+     * Плавно приближает камеру к выбранному транспортному средству.
+     */
+    public void focusOnVehicle(Vehicle vehicle) {
+        if (vehicle == null || canvas == null) return;
+        this.selectedVehicle = vehicle;
+
+        double targetZoom = 2.5;
+        double w = canvas.getWidth();
+        double h = canvas.getHeight();
+
+        double logicX = vehicle.getCoordinates().getX();
+        double logicY = vehicle.getCoordinates().getY();
+
+        // Вычисляем экранные координаты центра объекта при текущем базовом масштабе
+        double projectedX = (logicX * baseScaleX + baseOffsetX);
+        double projectedY = (h - (logicY * baseScaleY + baseOffsetY)); // Y инвертирован в toPixelY
+
+        // Рассчитываем pan так, чтобы объект оказался ровно в центре при targetZoom
+        double targetPanX = (w / 2.0) - (projectedX * targetZoom);
+        double targetPanY = (h / 2.0) - (projectedY * targetZoom);
+
+        startAnimation(targetZoom, targetPanX, targetPanY);
+    }
+
+    /**
+     * Плавно возвращает камеру в исходное состояние (все объекты в кадре).
+     */
     public void resetView() {
-        this.zoom = 1.0;
-        this.panX = 0.0;
-        this.panY = 0.0;
-        this.selectedVehicle = null; // Снимаем выделение при сбросе вида, если нужно
-        // Пересчитываем базовое масштабирование, чтобы вместить все элементы
-        if (vehicles.size() > 1) {
-            calculateBaseScaling();
-        } else if (vehicles.size() == 1) {
-            // Если один элемент, можно тоже отцентровать его, но с меньшим зумом, или оставить как есть
-            calculateBaseScaling();
+        this.selectedVehicle = null;
+        calculateBaseScaling(); // Пересчитываем базовый масштаб, чтобы вместить все элементы
+        startAnimation(1.0, 0.0, 0.0);
+    }
+
+    /**
+     * Универсальный метод анимации pan & zoom.
+     */
+    private void startAnimation(double targetZoom, double targetPanX, double targetPanY) {
+        // Прерываем предыдущую анимацию, если она есть
+        if (animationTimer != null) {
+            animationTimer.stop();
         }
-        drawAll();
+
+        animStartZoom = this.zoom;
+        animStartPanX = this.panX;
+        animStartPanY = this.panY;
+        animTargetZoom = targetZoom;
+        animTargetPanX = targetPanX;
+        animTargetPanY = targetPanY;
+        animStartTime = System.nanoTime();
+
+        animationTimer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                long elapsed = (now - animStartTime) / 1_000_000;
+                double t = Math.min(1.0, (double) elapsed / ANIM_DURATION_MS);
+
+                // Ease-Out Cubic для плавного замедления в конце
+                double ease = 1 - Math.pow(1 - t, 3);
+
+                zoom = animStartZoom + (animTargetZoom - animStartZoom) * ease;
+                panX = animStartPanX + (animTargetPanX - animStartPanX) * ease;
+                panY = animStartPanY + (animTargetPanY - animStartPanY) * ease;
+
+                drawAll();
+
+                if (t >= 1.0) {
+                    zoom = animTargetZoom;
+                    panX = animTargetPanX;
+                    panY = animTargetPanY;
+                    drawAll();
+                    this.stop();
+                    animationTimer = null;
+                }
+            }
+        };
+        animationTimer.start();
     }
 }
