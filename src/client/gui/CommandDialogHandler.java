@@ -8,6 +8,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 
 import java.util.Collections;
 import java.util.Date;
@@ -153,11 +154,24 @@ public class CommandDialogHandler {
                 CommandRequest request = new CommandRequest(commandName, args, vehicle, true, login, password);
                 networkService.send(request);
                 CommandResponse response = networkService.receive();
-
                 Platform.runLater(() -> {
                     if (response != null) {
                         if (response.isSuccess()) {
-                            // Стандартная логика для show и других команд, возвращающих список
+// Успешные операции - показываем toast вместо диалога
+                            if ("add".equals(commandName) || "update".equals(commandName) ||
+                                    "remove_by_id".equals(commandName) || "clear".equals(commandName)) {
+                                String message = response.getMessage();
+                                if (message != null && !message.trim().isEmpty()) {
+// Показываем зеленое toast-уведомление
+                                    if (tableController != null) {
+                                        VBox notificationContainer = findNotificationContainer();
+                                        if (notificationContainer != null) {
+                                            ModernNotifications.showSuccess(notificationContainer, message);
+                                        }
+                                    }
+                                }
+                            }
+// Для show и других команд, возвращающих список
                             if ("show".equals(commandName)) {
                                 String message = response.getMessage();
                                 if (message != null && !message.trim().isEmpty()) {
@@ -178,30 +192,83 @@ public class CommandDialogHandler {
                                         tableController.updateData(vehicles);
                                     }
                                 }
-
+// Для остальных успешных операций с сообщением
                                 String message = response.getMessage();
-                                if (message != null && !message.trim().isEmpty()) {
-                                    showScrollableInfo(message);
-                                }
-
-                                // Авто-обновление после изменений
-                                if ("update".equals(commandName) || "add".equals(commandName) ||
-                                        "remove_by_id".equals(commandName) || "clear".equals(commandName) ||
-                                        "buy".equals(commandName) || "set_price".equals(commandName)) {
-                                    executeShowSilent();
+                                if (message != null && !message.trim().isEmpty() &&
+                                        !"show".equals(commandName) && !"add".equals(commandName) &&
+                                        !"update".equals(commandName) && !"remove_by_id".equals(commandName) &&
+                                        !"clear".equals(commandName)) {
+// Показываем информационное toast
+                                    if (tableController != null) {
+                                        VBox notificationContainer = findNotificationContainer();
+                                        if (notificationContainer != null) {
+                                            ModernNotifications.showInfo(notificationContainer, message);
+                                        }
+                                    }
                                 }
                             }
-                        } else {
-                            showError(response.getMessage());
+// Авто-обновление после изменений
+                            if ("update".equals(commandName) || "add".equals(commandName) ||
+                                    "remove_by_id".equals(commandName) || "clear".equals(commandName) ||
+                                    "buy".equals(commandName) || "set_price".equals(commandName)) {
+                                executeShowSilent();
+                            }
+                        }
+                    } else {
+// Ошибка сервера - показываем красное toast
+                        if (tableController != null) {
+                            VBox notificationContainer = findNotificationContainer();
+                            if (notificationContainer != null) {
+                                ModernNotifications.showError(notificationContainer,
+                                        response.getMessage() != null ? response.getMessage() : "Ошибка сервера");
+                            }
                         }
                     }
                 });
             } catch (Exception e) {
-                Platform.runLater(() -> showError("Ошибка сети: " + e.getMessage()));
+// Ошибка сети - показываем красное toast
+                Platform.runLater(() -> {
+                    if (tableController != null) {
+                        VBox notificationContainer = findNotificationContainer();
+                        if (notificationContainer != null) {
+                            ModernNotifications.showError(notificationContainer,
+                                    "Ошибка сети: " + e.getMessage());
+                        }
+                    }
+                });
             }
         }).start();
     }
 
+    // Вспомогательный метод для поиска контейнера уведомлений
+    private VBox findNotificationContainer() {
+        try {
+            if (tableController != null && tableController.getTable() != null) {
+                javafx.scene.Node node = tableController.getTable();
+                while (node != null) {
+                    if (node.getParent() != null) {
+                        if (node.getParent() instanceof javafx.scene.layout.StackPane) {
+                            javafx.scene.layout.StackPane parent = (javafx.scene.layout.StackPane) node.getParent();
+                            for (javafx.scene.Node child : parent.getChildren()) {
+                                if (child instanceof VBox) {
+                                    VBox vbox = (VBox) child;
+                                    if (vbox.getStyle().contains("-fx-background-color: transparent")) {
+                                        return vbox;
+                                    }
+                                }
+                            }
+                        }
+                        node = node.getParent();
+                    } else {
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+// Игнорируем ошибки поиска
+        }
+        return null;
+    }
 
 
 
@@ -366,31 +433,6 @@ public class CommandDialogHandler {
         alert.setHeaderText(null);
         alert.setContentText(message != null ? message : "Произошла ошибка");
         alert.showAndWait();
-    }
-
-    private void showScrollableInfo(String message) {
-        Dialog<Void> dialog = new Dialog<>();
-        dialog.getDialogPane().setStyle(DIALOG_BG);
-        dialog.setTitle("Результат");
-        dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
-        dialog.setResizable(true);
-
-        TextArea textArea = new TextArea(message);
-        textArea.setEditable(false);
-        textArea.setWrapText(true);
-        textArea.setStyle("-fx-background-color: #F9FAFB; " +
-                "-fx-background-radius: 8; " +
-                "-fx-border-color: #E5E7EB; " +
-                "-fx-border-radius: 8; " +
-                "-fx-font-size: 13px; " +
-                "-fx-padding: 12;");
-
-        ScrollPane scrollPane = new ScrollPane(textArea);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setPrefSize(600, 350);
-
-        dialog.getDialogPane().setContent(scrollPane);
-        dialog.showAndWait();
     }
 
     // В executeClear замените Alert на:
