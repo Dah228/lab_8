@@ -1,7 +1,7 @@
 package client.gui;
+
 import client.logic.NetworkService;
 import common.Vehicle;
-import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -12,11 +12,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.stage.StageStyle;
 import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +32,6 @@ public class MainScene {
     private VehicleCanvasController canvasController;
     private CommandDialogHandler commandHandler;
 
-    // Ссылки на основные контейнеры для обновления тем
     private BorderPane root;
     private HBox topPanel;
     private VBox tableContainer;
@@ -45,7 +40,6 @@ public class MainScene {
     private Label visualTitle;
     private List<Button> themeAwareButtons = new ArrayList<>();
 
-    // Элементы верхней панели
     private Label userLabel;
     private Button balanceButton;
     private Button depositButton;
@@ -55,24 +49,23 @@ public class MainScene {
     private List<Vehicle> lastCanvasVehicles = List.of();
     private ScheduledExecutorService refreshScheduler;
 
-    // Состояние темы
     private boolean isDarkMode = false;
 
-    // === СТИЛИ СВЕТЛОЙ ТЕМЫ ===
-    private static final String L_BG = "-fx-background-color: #F4F6F8;";
-    private static final String L_CARD = "-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 12, 0, 0, 2);";
-    private static final String L_BTN_P = "-fx-background-color: #2979FF; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;";
-    private static final String L_BTN_P_H = "-fx-background-color: #1565C0;";
-    private static final String L_BTN_S = "-fx-background-color: white; -fx-text-fill: #424242; -fx-border-color: #E0E0E0; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
-    private static final String L_BTN_S_H = "-fx-background-color: #FAFAFA; -fx-border-color: #BDBDBD;";
-    private static final String L_BTN_D = "-fx-background-color: white; -fx-text-fill: #D32F2F; -fx-border-color: #EF9A9A; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
-    private static final String L_BTN_D_H = "-fx-background-color: #FFEBEE; -fx-border-color: #D32F2F;";
+    // === СВЕТЛАЯ ТЕМА ===
+    private static final String L_BG = "-fx-background-color: #F8FAFC;";
+    private static final String L_CARD = "-fx-background-color: #FFFFFF; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 10, 0, 0, 2);";
+    private static final String L_BTN_P = "-fx-background-color: linear-gradient(to right, #3B82F6, #2563EB); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;";
+    private static final String L_BTN_P_H = "-fx-background-color: linear-gradient(to right, #2563EB, #1D4ED8);";
+    private static final String L_BTN_S = "-fx-background-color: #F1F5F9; -fx-text-fill: #334155; -fx-border-color: #E2E8F0; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
+    private static final String L_BTN_S_H = "-fx-background-color: #E2E8F0; -fx-border-color: #CBD5E1;";
+    private static final String L_BTN_D = "-fx-background-color: #F1F5F9; -fx-text-fill: #EF4444; -fx-border-color: #FECACA; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
+    private static final String L_BTN_D_H = "-fx-background-color: #FEE2E2; -fx-border-color: #FCA5A5;";
 
-    // === СТИЛИ ТЕМНОЙ ТЕМЫ ===
-    private static final String D_BG = "-fx-background-color: #0F1419;";
+    // === ТЁМНАЯ ТЕМА ===
+    private static final String D_BG = "-fx-background-color: #0B1120;";
     private static final String D_CARD = "-fx-background-color: #1E293B; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 2);";
-    private static final String D_BTN_P = "-fx-background-color: linear-gradient(to right, #9333EA, #7C3AED); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;";
-    private static final String D_BTN_P_H = "-fx-background-color: linear-gradient(to right, #A855F7, #8B5CF6);";
+    private static final String D_BTN_P = "-fx-background-color: linear-gradient(to right, #8B5CF6, #7C3AED); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;";
+    private static final String D_BTN_P_H = "-fx-background-color: linear-gradient(to right, #A78BFA, #8B5CF6);";
     private static final String D_BTN_S = "-fx-background-color: #334155; -fx-text-fill: #E2E8F0; -fx-border-color: #475569; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
     private static final String D_BTN_S_H = "-fx-background-color: #475569; -fx-border-color: #64748B;";
     private static final String D_BTN_D = "-fx-background-color: linear-gradient(to right, #DC2626, #B91C1C); -fx-text-fill: white; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
@@ -85,15 +78,13 @@ public class MainScene {
         this.networkService = networkService;
         this.currentUserLogin = currentUserLogin;
         this.currentUserPassword = currentUserPassword;
-        this.commandHandler = new CommandDialogHandler(networkService, localization,
-                currentUserLogin, currentUserPassword);
+        this.commandHandler = new CommandDialogHandler(networkService, localization, currentUserLogin, currentUserPassword);
     }
 
     public Scene createScene() {
         root = new BorderPane();
         root.setPadding(new Insets(15));
 
-        // Контейнер для уведомлений
         notificationContainer = new VBox(10);
         notificationContainer.setAlignment(Pos.TOP_RIGHT);
         notificationContainer.setPadding(new Insets(15));
@@ -117,12 +108,9 @@ public class MainScene {
         KeyCombination exitKey = new KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN);
         scene.getAccelerators().put(exitKey, () -> handleExit());
 
-        // Применяем начальную тему
         applyThemeStyles();
-
         Platform.runLater(() -> commandHandler.executeShow());
         startAutoRefresh();
-
         return scene;
     }
 
@@ -143,9 +131,7 @@ public class MainScene {
     }
 
     public void stopAutoRefresh() {
-        if (refreshScheduler != null && !refreshScheduler.isShutdown()) {
-            refreshScheduler.shutdownNow();
-        }
+        if (refreshScheduler != null && !refreshScheduler.isShutdown()) refreshScheduler.shutdownNow();
     }
 
     private HBox createTopPanel() {
@@ -153,16 +139,14 @@ public class MainScene {
         hbox.setPadding(new Insets(12, 20, 12, 20));
         hbox.setAlignment(Pos.CENTER_LEFT);
 
-        // === КНОПКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ ===
         themeToggleButton = new Button("🌙");
-        themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: #1F2937;");
+        themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: #0F172A;");
         themeToggleButton.setOnAction(e -> {
             isDarkMode = !isDarkMode;
             themeToggleButton.setText(isDarkMode ? "☀️" : "🌙");
-            themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#1F2937") + ";");
+            themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: " + (isDarkMode ? "#F8FAFC" : "#0F172A") + ";");
             applyThemeStyles();
         });
-        // ==============================
 
         userLabel = new Label(localization.get("main.user.label") + " " + currentUserLogin);
 
@@ -175,32 +159,22 @@ public class MainScene {
             balanceButton.setDisable(true);
             new Thread(() -> {
                 try {
-                    common.CommandRequest req = new common.CommandRequest("show_balance",
-                            java.util.List.of("show_balance"), null, true, currentUserLogin, currentUserPassword);
+                    common.CommandRequest req = new common.CommandRequest("show_balance", java.util.List.of("show_balance"), null, true, currentUserLogin, currentUserPassword);
                     networkService.send(req);
                     common.CommandResponse resp = networkService.receive();
                     Platform.runLater(() -> {
                         if (resp != null && resp.isSuccess()) {
-                            String msg = resp.getMessage();
-                            balanceButton.setText(msg.replace("Ваш баланс: ", "").trim() + " ₽");
-                        } else {
-                            balanceButton.setText("Ошибка");
-                        }
+                            balanceButton.setText(resp.getMessage().replace("Ваш баланс: ", "").trim() + " ₽");
+                        } else { balanceButton.setText("Ошибка"); }
                         PauseTransition pause = new PauseTransition(Duration.seconds(3));
-                        pause.setOnFinished(event -> {
-                            balanceButton.setText(originalText);
-                            balanceButton.setDisable(false);
-                        });
+                        pause.setOnFinished(event -> { balanceButton.setText(originalText); balanceButton.setDisable(false); });
                         pause.play();
                     });
                 } catch (Exception ex) {
                     Platform.runLater(() -> {
                         balanceButton.setText("Ошибка сети");
                         PauseTransition pause = new PauseTransition(Duration.seconds(3));
-                        pause.setOnFinished(event -> {
-                            balanceButton.setText(originalText);
-                            balanceButton.setDisable(false);
-                        });
+                        pause.setOnFinished(event -> { balanceButton.setText(originalText); balanceButton.setDisable(false); });
                         pause.play();
                     });
                 }
@@ -210,9 +184,7 @@ public class MainScene {
         depositButton = new Button(localization.get("btn.deposit"));
         themeAwareButtons.add(depositButton);
         setupButtonHover(depositButton, false);
-        depositButton.setOnAction(e -> {
-            if (commandHandler != null) commandHandler.executeDeposit();
-        });
+        depositButton.setOnAction(e -> { if (commandHandler != null) commandHandler.executeDeposit(); });
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -237,13 +209,9 @@ public class MainScene {
         langComboBox.setValue(localization.getCurrentLocale());
         langComboBox.setOnAction(e -> {
             Locale selected = langComboBox.getValue();
-            if (selected != null) {
-                localization.setLocale(selected);
-                updateUITexts();
-            }
+            if (selected != null) { localization.setLocale(selected); updateUITexts(); }
         });
 
-        // Порядок добавления: Тема -> Имя -> Кнопки -> Пробел -> Язык
         hbox.getChildren().addAll(themeToggleButton, userLabel, balanceButton, depositButton, spacer, langLabel, langComboBox);
         return hbox;
     }
@@ -253,47 +221,32 @@ public class MainScene {
         splitPane.setOrientation(javafx.geometry.Orientation.HORIZONTAL);
         splitPane.setStyle("-fx-background-color: transparent;");
 
-        // 1. ИНИЦИАЛИЗИРУЕМ КОНТРОЛЛЕР ТАБЛИЦЫ ПЕРВЫМ ДЕЛОМ
         tableController = new VehicleTableController(localization);
-
-        // 2. Теперь можно безопасно вызывать методы
         VBox tableContainer = tableController.createTablePane();
         tableContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
+        if (commandHandler != null) commandHandler.setTableController(tableController);
 
-        if (commandHandler != null) {
-            commandHandler.setTableController(tableController);
-        }
-
-        // Обработчик кликов по таблице
         tableController.getTable().setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
                 if (selected != null) commandHandler.executeEdit(selected);
             } else if (event.getClickCount() == 1) {
-                // При одиночном клике по таблице -> плавно фокусируемся на объекте
                 Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
-                if (selected != null && canvasController != null) {
-                    canvasController.focusOnVehicle(selected);
-                }
+                if (selected != null && canvasController != null) canvasController.focusOnVehicle(selected);
             }
         });
 
-        // ПРАВАЯ ЧАСТЬ: Визуализация
-        if (canvasController == null) {
-            canvasController = new VehicleCanvasController(localization);
-        }
+        if (canvasController == null) canvasController = new VehicleCanvasController(localization);
         javafx.scene.canvas.Canvas canvas = canvasController.createCanvas(600, 600);
 
-        // Обработчик клика по канвасу
         canvasController.setOnVehicleClicked(vehicle -> {
             if (vehicle != null) {
                 Platform.runLater(() -> {
                     tableController.getTable().getSelectionModel().select(vehicle);
-                    canvasController.focusOnVehicle(vehicle); // Фокус при клике на канвас
+                    canvasController.focusOnVehicle(vehicle);
                     commandHandler.executeEdit(vehicle);
                 });
             } else {
-                // Клик в пустое место -> сброс вида
                 Platform.runLater(() -> canvasController.resetView());
             }
         });
@@ -301,7 +254,7 @@ public class MainScene {
         VBox canvasContainer = new VBox(10);
         canvasContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
         Label visualTitle = new Label("Визуализация координат");
-        visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#424242") + ";");
+        visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#334155") + ";");
         Pane canvasPane = new Pane(canvas);
         canvas.widthProperty().bind(canvasPane.widthProperty());
         canvas.heightProperty().bind(canvasPane.heightProperty());
@@ -351,7 +304,6 @@ public class MainScene {
         return hbox;
     }
 
-    // === УПРАВЛЕНИЕ СТИЛЯМИ КНОПОК С УЧЕТОМ ТЕМЫ ===
     private Button createStyledButton(String text, boolean isPrimary) {
         Button btn = new Button(text);
         btn.setStyle(getBaseStyle(isPrimary));
@@ -367,19 +319,21 @@ public class MainScene {
     }
 
     private String getBaseStyle(boolean isPrimary) {
-        return isDarkMode ? (isPrimary ? D_BTN_P : D_BTN_S) : (isPrimary ? L_BTN_P : L_BTN_S);
+        if (isDarkMode) return isPrimary ? D_BTN_P : D_BTN_S;
+        return isPrimary ? L_BTN_P : L_BTN_S;
     }
 
     private String getHoverStyle(boolean isPrimary) {
-        return isDarkMode ? (isPrimary ? D_BTN_P_H : D_BTN_S_H) : (isPrimary ? L_BTN_P_H : L_BTN_S_H);
+        if (isDarkMode) return isPrimary ? D_BTN_P_H : D_BTN_S_H;
+        return isPrimary ? L_BTN_P_H : L_BTN_S_H;
     }
 
     private String getBaseStyle(String type) {
-        return isDarkMode ? (D_BTN_D) : (L_BTN_D);
+        return isDarkMode ? D_BTN_D : L_BTN_D;
     }
 
     private String getHoverStyle(String type) {
-        return isDarkMode ? (D_BTN_D_H) : (L_BTN_D_H);
+        return isDarkMode ? D_BTN_D_H : L_BTN_D_H;
     }
 
     private void setupButtonHover(Button btn, boolean isPrimary) {
@@ -392,56 +346,44 @@ public class MainScene {
         btn.setOnMouseExited(e -> btn.setStyle(getBaseStyle(type)));
     }
 
-    // === ПРИМЕНЕНИЕ ТЕМЫ КО ВСЕМ КОНТЕЙНЕРАМ ===
     private void applyThemeStyles() {
         if (root == null) return;
 
-        // Фоновые стили
         root.setStyle(isDarkMode ? D_BG : L_BG);
         if (topPanel != null) topPanel.setStyle(isDarkMode ? D_CARD : L_CARD);
         if (tableContainer != null) tableContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
         if (canvasContainer != null) canvasContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
         if (bottomPanel != null) bottomPanel.setStyle("-fx-background-color: transparent;");
 
-        // Цвета текста
-        String txtColor = isDarkMode ? "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #A855F7;"
-                : "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2979FF;";
+        String txtColor = isDarkMode ? "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #8B5CF6;"
+                : "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2563EB;";
         if (userLabel != null) userLabel.setStyle(txtColor);
-        if (visualTitle != null) visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#424242") + ";");
+        if (visualTitle != null) visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#334155") + ";");
 
-        // Обновляем кнопки
         for (Button btn : themeAwareButtons) {
-            if (btn.getStyle().contains(D_BTN_P) || btn.getStyle().contains(L_BTN_P) || btn.getStyle().contains(D_BTN_S) || btn.getStyle().contains(L_BTN_S)) {
-                // Определяем, является ли кнопка "Primary" по текущему тексту или стилю
-                // Для простоты, просто сбрасываем базовый стиль. Hover-листнеры подхватят тему динамически.
-                btn.setStyle(btn.getText().equals("Очистить") ?
-                        getBaseStyle("danger") :
-                        (btn.getText().equals(localization.get("btn.add")) ? getBaseStyle(true) : getBaseStyle(false)));
+            if (btn.getStyle().contains(D_BTN_P) || btn.getStyle().contains(L_BTN_P) ||
+                    btn.getStyle().contains(D_BTN_S) || btn.getStyle().contains(L_BTN_S)) {
+                if (btn.getText().equals("Очистить")) {
+                    btn.setStyle(getBaseStyle("danger"));
+                } else if (btn.getText().equals(localization.get("btn.add"))) {
+                    btn.setStyle(getBaseStyle(true));
+                } else {
+                    btn.setStyle(getBaseStyle(false));
+                }
             }
         }
-        // Явно обновляем кнопки баланса и депозита
         if (balanceButton != null) balanceButton.setStyle(getBaseStyle(false));
         if (depositButton != null) depositButton.setStyle(getBaseStyle(false));
 
-        // Стиль кнопки темы
-        if (themeToggleButton != null) {
-            themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#1F2937") + ";");
-        }
-
-        // Комбобокс языка
         if (langComboBox != null) {
-            langComboBox.setStyle("-fx-background-color: " + (isDarkMode ? "#334155" : "white") +
-                    "; -fx-border-color: " + (isDarkMode ? "#475569" : "#E0E0E0") +
+            langComboBox.setStyle("-fx-background-color: " + (isDarkMode ? "#334155" : "#F1F5F9") +
+                    "; -fx-border-color: " + (isDarkMode ? "#475569" : "#E2E8F0") +
                     "; -fx-border-radius: 6; -fx-background-radius: 6;");
         }
 
-        // Применяем тему к таблице и канвасу
-        if (tableController != null) {
-            tableController.setDarkMode(isDarkMode);
-        }
-        if (canvasController != null) {
-            canvasController.setDarkMode(isDarkMode);
-        }
+        if (tableController != null) tableController.setDarkMode(isDarkMode);
+        if (canvasController != null) canvasController.setDarkMode(isDarkMode);
+        commandHandler.setDarkMode(isDarkMode);
     }
 
     private void handleExit() {
@@ -464,7 +406,6 @@ public class MainScene {
                 balanceButton.setText(localization.get("btn.balance"));
             }
         }
-        // При смене языка иногда нужно обновить кнопки
         applyThemeStyles();
     }
 

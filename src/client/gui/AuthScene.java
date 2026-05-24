@@ -228,7 +228,7 @@ public class AuthScene {
         String password = passwordField.getText().trim();
 
         if (login.isEmpty() || password.isEmpty()) {
-            ModernNotifications.showWarning(notificationContainer, localization.get("auth.error.empty"));
+            ModernNotifications.showWarning(notificationContainer, localization.get("auth.error.empty"), false);
             return;
         }
 
@@ -249,7 +249,7 @@ public class AuthScene {
                 Platform.runLater(() -> {
                     setControlsDisabled(false);
                     if (response != null && response.isSuccess()) {
-                        ModernNotifications.showSuccess(notificationContainer, "✓ Авторизация успешна!");
+                        ModernNotifications.showSuccess(notificationContainer, "✓ Авторизация успешна!", false);
                         if (onLoginSuccess != null) {
                             // Небольшая задержка перед переходом
                             javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(Duration.millis(500));
@@ -257,15 +257,14 @@ public class AuthScene {
                             pause.play();
                         }
                     } else {
-                        String msg = response != null ? response.getMessage() : localization.get("error.network");
                         ModernNotifications.showError(notificationContainer, isRegister ?
-                                localization.get("auth.error.register") : localization.get("auth.error.auth"));
+                                localization.get("auth.error.register") : localization.get("auth.error.auth"), false);
                     }
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     setControlsDisabled(false);
-                    ModernNotifications.showError(notificationContainer, localization.get("error.network"));
+                    ModernNotifications.showError(notificationContainer, localization.get("error.network"), false);
                 });
             }
         });
