@@ -1,5 +1,4 @@
 package client.gui;
-
 import common.Vehicle;
 import common.VehicleType;
 import javafx.animation.AnimationTimer;
@@ -35,6 +34,7 @@ public class VehicleCanvasController {
     private final Map<String, Color> ownerColors = new ConcurrentHashMap<>();
     private final Map<VehicleType, Image> vehicleImages = new HashMap<>();
     private boolean isDarkMode = false;
+
     private static final Color[] MODERN_COLORS = { Color.rgb(41, 121, 255), Color.rgb(76, 175, 80), Color.rgb(255, 152, 0), Color.rgb(233, 30, 99), Color.rgb(156, 39, 176), Color.rgb(0, 188, 212), Color.rgb(255, 87, 34), Color.rgb(63, 81, 181) };
 
     public VehicleCanvasController(LocalizationManager localization) {
@@ -95,6 +95,7 @@ public class VehicleCanvasController {
     }
 
     public void setOnVehicleClicked(Consumer<Vehicle> callback) { this.onVehicleClicked = callback; }
+
     public void updateData(List<Vehicle> vehicles) { if (vehicles == null) return; this.vehicles = vehicles; if (vehicles.size() > 1) calculateBaseScaling(); drawAll(); }
 
     private void calculateBaseScaling() {
@@ -113,16 +114,31 @@ public class VehicleCanvasController {
 
     private void drawAll() {
         if (gc == null || canvas == null) return;
-        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        // Очистка фона в зависимости от темы
+        if (isDarkMode) {
+            gc.setFill(Color.rgb(30, 41, 59)); // Цвет D_CARD (#1E293B)
+        } else {
+            gc.setFill(Color.WHITE);
+        }
+        gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+
         drawGridAndAxes();
         for (Vehicle v : vehicles) drawVehicle(v);
     }
 
     private void drawGridAndAxes() {
         double w = canvas.getWidth(), h = canvas.getHeight();
-        Color gridColor = isDarkMode ? Color.rgb(51, 65, 85) : Color.rgb(235, 235, 235);
-        Color axisColor = isDarkMode ? Color.rgb(100, 116, 139) : Color.rgb(150, 150, 150);
-        Color textColor = isDarkMode ? Color.rgb(226, 232, 240) : Color.DARKGRAY;
+        Color gridColor, axisColor, textColor;
+
+        if (isDarkMode) {
+            gridColor = Color.WHITE.deriveColor(0, 0, 1, 0.1); // Очень тонкая сетка
+            axisColor = Color.rgb(148, 163, 184); // Светлые оси
+            textColor = Color.rgb(168, 85, 247); // Фиолетовые координаты
+        } else {
+            gridColor = Color.rgb(235, 235, 235);
+            axisColor = Color.rgb(150, 150, 150);
+            textColor = Color.DARKGRAY;
+        }
 
         gc.setStroke(gridColor); gc.setLineWidth(1);
         double step = Math.max(25, 50 * zoom);
@@ -159,6 +175,7 @@ public class VehicleCanvasController {
         gc.setFill(isSelected ? Color.RED : (isDarkMode ? Color.rgb(226, 232, 240) : Color.rgb(80, 80, 80)));
         gc.setFont(Font.font("System Bold", 11 * Math.max(0.8, zoom)));
         gc.fillText(String.valueOf(v.getId()), px - 6, py + size/2 + 16);
+
         if (isHovered) {
             gc.setFill(isDarkMode ? Color.WHITE : Color.rgb(40, 40, 40));
             gc.setFont(Font.font("System Bold", 13 * Math.max(0.8, zoom)));
@@ -208,6 +225,7 @@ public class VehicleCanvasController {
     }
 
     public List<Vehicle> getVehicles() { return vehicles; }
+
     public void focusOnVehicle(Vehicle vehicle) {
         if (vehicle == null || canvas == null) return;
         this.selectedVehicle = vehicle;

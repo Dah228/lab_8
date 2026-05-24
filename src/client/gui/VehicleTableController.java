@@ -1,5 +1,4 @@
 package client.gui;
-
 import common.Vehicle;
 import common.VehicleType;
 import common.FuelType;
@@ -43,52 +42,94 @@ public class VehicleTableController {
     private void updateTableTheme() {
         if (tableView == null) return;
 
-        tableView.setStyle(isDarkMode ?
-                "-fx-background-color: #1E293B; -fx-control-inner-background: #1E293B; -fx-table-cell-border-color: #334155;" :
-                "-fx-background-color: transparent; -fx-control-inner-background: white; -fx-table-cell-border-color: #F0F0F0;");
+        if (!isDarkMode) {
+            // === СВЕТЛАЯ ТЕМА: Полностью белая ===
+            tableView.setStyle(
+                    "-fx-background-color: white; " +
+                            "-fx-control-inner-background: white; " + // Фон строк
+                            "-fx-table-cell-border-color: #E5E7EB; " + // Серые тонкие границы
+                            "-fx-text-fill: #374151;" // Темный текст
+            );
 
-        tableView.setRowFactory(tv -> {
-            TableRow<Vehicle> row = new TableRow<>();
-            row.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
-                if (isNowSelected && !row.isEmpty()) {
-                    if (isDarkMode) {
-                        row.setStyle("-fx-background-color: linear-gradient(to bottom, #7C3AED, #6D28D9); -fx-text-fill: white; -fx-font-weight: bold; -fx-effect: dropshadow(gaussian, rgba(124,58,237,0.5), 15, 0, 0, 2);");
-                    } else {
-                        row.setStyle("-fx-background-color: linear-gradient(to bottom, #2979FF, #1565C0); -fx-text-fill: white; -fx-font-weight: bold; -fx-effect: dropshadow(gaussian, rgba(41,121,255,0.6), 20, 0, 0, 2);");
+            // Стиль заголовков (белый фон, темный текст)
+            for (TableColumn<Vehicle, ?> col : tableView.getColumns()) {
+                col.setStyle(
+                        "-fx-background-color: white; " +
+                                "-fx-text-fill: #374151; " +
+                                "-fx-font-weight: bold; " +
+                                "-fx-border-color: #E5E7EB;"
+                );
+            }
+
+            // Стиль строк (всегда белый)
+            tableView.setRowFactory(tv -> {
+                TableRow<Vehicle> row = new TableRow<>();
+                row.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
+                    if (isNowSelected && !row.isEmpty()) {
+                        row.setStyle(
+                                "-fx-background-color: linear-gradient(to bottom, #60A5FA, #3B82F6); " +
+                                        "-fx-text-fill: #FFFFFF; " +
+                                        "-fx-font-weight: bold; " +
+                                        "-fx-background-insets: 3, 4, 5; " +
+                                        "-fx-background-radius: 10; " +
+                                        "-fx-effect: dropshadow(gaussian, rgba(59,130,246,0.4), 10, 0, 0, 2);"
+                        );
+                    } else if (!row.isEmpty()) {
+                        row.setStyle("-fx-background-color: white;"); // Принудительно белый
                     }
-                    row.getStyleClass().add("selected-row");
-                } else if (!row.isEmpty()) {
-                    row.getStyleClass().remove("selected-row");
-                    if (isDarkMode) {
-                        row.setStyle(((int)row.getIndex() % 2 == 0) ? "-fx-background-color: #1E293B;" : "-fx-background-color: #0F172A;");
-                    } else {
-                        row.setStyle(((int)row.getIndex() % 2 == 0) ? "-fx-background-color: #FAFAFA;" : "-fx-background-color: white;");
+                });
+                row.hoverProperty().addListener((obs, wasHovered, isNowHovered) -> {
+                    if (!row.isSelected() && !row.isEmpty()) {
+                        row.setStyle(isNowHovered ? "-fx-background-color: #F3F4F6;" : "-fx-background-color: white;");
                     }
-                }
+                });
+                return row;
             });
 
-            row.hoverProperty().addListener((obs, wasHovered, isNowHovered) -> {
-                if (!row.isSelected() && !row.isEmpty()) {
-                    if (isNowHovered) {
-                        row.setStyle(isDarkMode ?
-                                "-fx-background-color: #334155; -fx-effect: dropshadow(gaussian, rgba(124,58,237,0.3), 10, 0, 0, 1);" :
-                                "-fx-background-color: #E3F2FD; -fx-effect: dropshadow(gaussian, rgba(41,121,255,0.2), 10, 0, 0, 1);");
-                    } else {
-                        if (isDarkMode) {
-                            row.setStyle(((int)row.getIndex() % 2 == 0) ? "-fx-background-color: #1E293B;" : "-fx-background-color: #0F172A;");
-                        } else {
-                            row.setStyle(((int)row.getIndex() % 2 == 0) ? "-fx-background-color: #FAFAFA;" : "-fx-background-color: white;");
-                        }
-                    }
-                }
-            });
-            return row;
-        });
+        } else {
+            // === ТЁМНАЯ ТЕМА: ЧЕРНЫЙ ФОН, ФИОЛЕТОВЫЙ ТЕКСТ, СИНИЕ ГРАНИЦЫ ===
+            tableView.setStyle(
+                    "-fx-background-color: #000000; " + // Чистый черный фон таблицы
+                            "-fx-control-inner-background: #000000; " + // Черный фон ячеек
+                            "-fx-table-cell-border-color: #3B82F6; " + // Ярко-синие границы
+                            "-fx-text-fill: #D8B4FE;" // Фиолетовый текст
+            );
 
-        for (TableColumn<Vehicle, ?> col : tableView.getColumns()) {
-            col.setStyle(isDarkMode ?
-                    "-fx-background-color: #334155; -fx-text-fill: #A855F7; -fx-font-weight: bold; -fx-border-width: 0 0 1 0; -fx-border-color: #475569;" :
-                    "-fx-background-color: #FAFAFA; -fx-text-fill: #424242; -fx-font-weight: bold; -fx-border-width: 0 0 1 0; -fx-border-color: #E0E0E0;");
+            // Стиль заголовков (черный фон, фиолетовый текст)
+            for (TableColumn<Vehicle, ?> col : tableView.getColumns()) {
+                col.setStyle(
+                        "-fx-background-color: #000000; " + // Черный фон заголовка
+                                "-fx-text-fill: #D8B4FE; " + // Фиолетовый текст
+                                "-fx-font-weight: bold; " +
+                                "-fx-border-color: #3B82F6;" // Синие линии
+                );
+            }
+
+            // Стиль строк
+            tableView.setRowFactory(tv -> {
+                TableRow<Vehicle> row = new TableRow<>();
+                row.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
+                    if (isNowSelected && !row.isEmpty()) {
+                        row.setStyle(
+                                "-fx-background-color: linear-gradient(to bottom, #8B5CF6, #6D28D9); " + // Фиолетовый градиент
+                                        "-fx-text-fill: #FFFFFF; " +
+                                        "-fx-font-weight: bold; " +
+                                        "-fx-background-insets: 3, 4, 5; " +
+                                        "-fx-background-radius: 10; " +
+                                        "-fx-effect: dropshadow(gaussian, rgba(139,92,246,0.8), 15, 0, 0, 4);" // Фиолетовое свечение
+                        );
+                    } else if (!row.isEmpty()) {
+                        row.setStyle("-fx-background-color: #000000;"); // Черный фон строк
+                    }
+                });
+                row.hoverProperty().addListener((obs, wasHovered, isNowHovered) -> {
+                    if (!row.isSelected() && !row.isEmpty()) {
+                        // При наведении чуть светлее черного
+                        row.setStyle(isNowHovered ? "-fx-background-color: #1a1a1a;" : "-fx-background-color: #000000;");
+                    }
+                });
+                return row;
+            });
         }
     }
 
@@ -112,10 +153,10 @@ public class VehicleTableController {
         Label filterLabel = new Label("Фильтры:");
         filterLabel.setStyle("-fx-text-fill: #757575; -fx-font-weight: 500;");
 
-        String fieldStyle = "-fx-background-color: " + (isDarkMode ? "#334155" : "white") + "; " +
+        String fieldStyle = "-fx-background-color: " + (isDarkMode ? "#111111" : "white") + "; " +
                 "-fx-background-radius: 6; -fx-border-color: " + (isDarkMode ? "#475569" : "#E0E0E0") + "; " +
                 "-fx-border-radius: 6; -fx-border-width: 1; -fx-prompt-text-fill: " + (isDarkMode ? "#94A3B8" : "#9E9E9E") + "; -fx-padding: 5 8;";
-        String comboStyle = "-fx-background-color: " + (isDarkMode ? "#334155" : "white") + "; " +
+        String comboStyle = "-fx-background-color: " + (isDarkMode ? "#111111" : "white") + "; " +
                 "-fx-border-color: " + (isDarkMode ? "#475569" : "#E0E0E0") + "; -fx-border-radius: 6; -fx-background-radius: 6;";
 
         filterId = new TextField(); filterId.setPromptText("ID"); filterId.setPrefWidth(50); filterId.setStyle(fieldStyle);
@@ -185,6 +226,7 @@ public class VehicleTableController {
         TableColumn<Vehicle, Double> colPrice = new TableColumn<>(localization.get("col.price")); colPrice.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getPrice()));
         colPrice.setCellFactory(tc -> new TableCell<>() { @Override protected void updateItem(Double price, boolean empty) { super.updateItem(price, empty); if (empty || price == null) setText(null); else setText(PRICE_FORMAT.format(price)); }});
         colPrice.setPrefWidth(90);
+
         tableView.getColumns().addAll(colId, colName, colCoords, colDate, colPower, colDist, colType, colFuel, colOwner, colPrice);
         updateTableTheme();
     }
@@ -195,6 +237,7 @@ public class VehicleTableController {
         String idStr = filterId.getText().trim(), nameStr = filterName.getText().trim().toLowerCase(), ownerStr = filterOwner.getText().trim().toLowerCase();
         String minPriceStr = filterMinPrice.getText().trim(), maxPriceStr = filterMaxPrice.getText().trim();
         VehicleType typeVal = filterType.getValue(); FuelType fuelVal = filterFuel.getValue();
+
         List<Vehicle> result = allVehicles.stream().filter(v -> {
             if (!idStr.isEmpty()) { try { if (v.getId() != Long.parseLong(idStr)) return false; } catch (NumberFormatException e) { return false; } }
             if (!nameStr.isEmpty() && !v.getName().toLowerCase().contains(nameStr)) return false;
@@ -205,6 +248,7 @@ public class VehicleTableController {
             if (!maxPriceStr.isEmpty()) { try { if (v.getPrice() > Double.parseDouble(maxPriceStr)) return false; } catch (NumberFormatException e) { return false; } }
             return true;
         }).sorted((v1, v2) -> Long.compare(v1.getId(), v2.getId())).collect(Collectors.toList());
+
         filteredVehicles.setAll(result);
     }
 
@@ -227,6 +271,7 @@ public class VehicleTableController {
         String idStr = filterId.getText().trim(), nameStr = filterName.getText().trim().toLowerCase(), ownerStr = filterOwner.getText().trim().toLowerCase();
         String minPriceStr = filterMinPrice.getText().trim(), maxPriceStr = filterMaxPrice.getText().trim();
         VehicleType typeVal = filterType.getValue(); FuelType fuelVal = filterFuel.getValue();
+
         List<Vehicle> result = allVehicles.stream().filter(v -> {
             if (!idStr.isEmpty()) { try { if (v.getId() != Long.parseLong(idStr)) return false; } catch (NumberFormatException e) { return false; } }
             if (!nameStr.isEmpty() && !v.getName().toLowerCase().contains(nameStr)) return false;

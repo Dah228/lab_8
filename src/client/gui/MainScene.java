@@ -1,5 +1,4 @@
 package client.gui;
-
 import client.logic.NetworkService;
 import common.Vehicle;
 import javafx.animation.PauseTransition;
@@ -27,11 +26,9 @@ public class MainScene {
     private final String currentUserLogin;
     private final String currentUserPassword;
     private final NetworkService networkService;
-
     private VehicleTableController tableController;
     private VehicleCanvasController canvasController;
     private CommandDialogHandler commandHandler;
-
     private BorderPane root;
     private HBox topPanel;
     private VBox tableContainer;
@@ -39,7 +36,6 @@ public class MainScene {
     private HBox bottomPanel;
     private Label visualTitle;
     private List<Button> themeAwareButtons = new ArrayList<>();
-
     private Label userLabel;
     private Button balanceButton;
     private Button depositButton;
@@ -48,7 +44,6 @@ public class MainScene {
     private VBox notificationContainer;
     private List<Vehicle> lastCanvasVehicles = List.of();
     private ScheduledExecutorService refreshScheduler;
-
     private boolean isDarkMode = false;
 
     // === СВЕТЛАЯ ТЕМА ===
@@ -111,6 +106,7 @@ public class MainScene {
         applyThemeStyles();
         Platform.runLater(() -> commandHandler.executeShow());
         startAutoRefresh();
+
         return scene;
     }
 
@@ -139,12 +135,16 @@ public class MainScene {
         hbox.setPadding(new Insets(12, 20, 12, 20));
         hbox.setAlignment(Pos.CENTER_LEFT);
 
+        // Кнопка смены темы - исправлена для черной иконки/текста
         themeToggleButton = new Button("🌙");
-        themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: #0F172A;");
+        themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: #000000; -fx-font-weight: bold;");
+
         themeToggleButton.setOnAction(e -> {
             isDarkMode = !isDarkMode;
             themeToggleButton.setText(isDarkMode ? "☀️" : "🌙");
-            themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: " + (isDarkMode ? "#F8FAFC" : "#0F172A") + ";");
+            // В темной теме делаем иконку светлой, в светлой - черной
+            String textColor = isDarkMode ? "#F8FAFC" : "#000000";
+            themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: " + textColor + "; -fx-font-weight: bold;");
             applyThemeStyles();
         });
 
@@ -238,7 +238,6 @@ public class MainScene {
 
         if (canvasController == null) canvasController = new VehicleCanvasController(localization);
         javafx.scene.canvas.Canvas canvas = canvasController.createCanvas(600, 600);
-
         canvasController.setOnVehicleClicked(vehicle -> {
             if (vehicle != null) {
                 Platform.runLater(() -> {
@@ -251,13 +250,17 @@ public class MainScene {
             }
         });
 
-        VBox canvasContainer = new VBox(10);
+        canvasContainer = new VBox(10);
+        // Фон контейнера канваса теперь меняется
         canvasContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
-        Label visualTitle = new Label("Визуализация координат");
+
+        visualTitle = new Label("Визуализация координат");
         visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#334155") + ";");
+
         Pane canvasPane = new Pane(canvas);
         canvas.widthProperty().bind(canvasPane.widthProperty());
         canvas.heightProperty().bind(canvasPane.heightProperty());
+
         canvasContainer.getChildren().addAll(visualTitle, canvasPane);
         VBox.setVgrow(canvasPane, Priority.ALWAYS);
 
@@ -348,8 +351,8 @@ public class MainScene {
 
     private void applyThemeStyles() {
         if (root == null) return;
-
         root.setStyle(isDarkMode ? D_BG : L_BG);
+
         if (topPanel != null) topPanel.setStyle(isDarkMode ? D_CARD : L_CARD);
         if (tableContainer != null) tableContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
         if (canvasContainer != null) canvasContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
@@ -358,7 +361,9 @@ public class MainScene {
         String txtColor = isDarkMode ? "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #8B5CF6;"
                 : "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2563EB;";
         if (userLabel != null) userLabel.setStyle(txtColor);
-        if (visualTitle != null) visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#334155") + ";");
+
+        // Обновляем цвет заголовка визуализации
+        if (visualTitle != null) visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#8B5CF6" : "#2563EB") + ";");
 
         for (Button btn : themeAwareButtons) {
             if (btn.getStyle().contains(D_BTN_P) || btn.getStyle().contains(L_BTN_P) ||
@@ -372,6 +377,7 @@ public class MainScene {
                 }
             }
         }
+
         if (balanceButton != null) balanceButton.setStyle(getBaseStyle(false));
         if (depositButton != null) depositButton.setStyle(getBaseStyle(false));
 
