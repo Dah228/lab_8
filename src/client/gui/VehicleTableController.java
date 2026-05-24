@@ -633,4 +633,76 @@ public class VehicleTableController {
         flash.setCycleCount(2);
         flash.play();
     }
+
+
+    private boolean isDarkMode = false;
+
+    public void setDarkMode(boolean darkMode) {
+        this.isDarkMode = darkMode;
+        updateTableTheme();
+    }
+
+    private void updateTableTheme() {
+        if (tableView == null) return;
+
+        if (isDarkMode) {
+            tableView.setStyle("-fx-background-color: #1E293B; " +
+                    "-fx-control-inner-background: #1E293B; " +
+                    "-fx-table-cell-border-color: #334155;");
+
+            // Обновляем стиль строк
+            tableView.setRowFactory(tv -> {
+                TableRow<Vehicle> row = new TableRow<>();
+                row.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
+                    if (isNowSelected && !row.isEmpty()) {
+                        row.setStyle("-fx-background-color: linear-gradient(to bottom, #7C3AED, #6D28D9); " +
+                                "-fx-text-fill: white; " +
+                                "-fx-font-weight: bold; " +
+                                "-fx-effect: dropshadow(gaussian, rgba(124,58,237,0.6), 20, 0, 0, 2);");
+                        row.getStyleClass().add("selected-row");
+                    } else if (!row.isEmpty()) {
+                        row.getStyleClass().remove("selected-row");
+                        if ((int)row.getIndex() % 2 == 0){
+                            row.setStyle("-fx-background-color: #1E293B;");
+                        } else {
+                            row.setStyle("-fx-background-color: #0F172A;");
+                        }
+                    }
+                });
+
+                row.hoverProperty().addListener((obs, wasHovered, isNowHovered) -> {
+                    if (!row.isSelected() && !row.isEmpty()) {
+                        if (isNowHovered) {
+                            row.setStyle("-fx-background-color: #334155; " +
+                                    "-fx-effect: dropshadow(gaussian, rgba(124,58,237,0.2), 10, 0, 0, 1);");
+                        } else {
+                            if ((int)row.getIndex() % 2 == 0){
+                                row.setStyle("-fx-background-color: #1E293B;");
+                            } else {
+                                row.setStyle("-fx-background-color: #0F172A;");
+                            }
+                        }
+                    }
+                });
+                return row;
+            });
+
+            // Обновляем цвет текста в заголовках
+            for (TableColumn<Vehicle, ?> col : tableView.getColumns()) {
+                col.setStyle("-fx-background-color: #334155; " +
+                        "-fx-text-fill: #A855F7; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-border-width: 0 0 1 0; " +
+                        "-fx-border-color: #475569;");
+            }
+        } else {
+            // Светлая тема (оригинальный стиль)
+            tableView.setStyle("-fx-background-color: transparent; " +
+                    "-fx-control-inner-background: white; " +
+                    "-fx-table-cell-border-color: #F0F0F0;");
+            // ... (восстановите оригинальный row factory для светлой темы)
+        }
+    }
+
+
 }

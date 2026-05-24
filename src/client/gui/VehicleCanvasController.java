@@ -204,30 +204,6 @@ public class VehicleCanvasController {
         for (Vehicle v : vehicles) drawVehicle(v);
     }
 
-    private void drawGridAndAxes() {
-        double w = canvas.getWidth(), h = canvas.getHeight();
-        gc.setStroke(Color.rgb(235, 235, 235));
-        gc.setLineWidth(1);
-        double step = Math.max(25, 50 * zoom);
-
-        for (double x = 0; x <= w; x += step) gc.strokeLine(x, 0, x, h);
-        for (double y = 0; y <= h; y += step) gc.strokeLine(0, y, w, y);
-
-        double zeroX = toPixelX(0), zeroY = toPixelY(0);
-        gc.setStroke(Color.rgb(150, 150, 150));
-        gc.setLineWidth(2);
-        if (zeroY >= 0 && zeroY <= h) {
-            gc.strokeLine(0, zeroY, w, zeroY);
-            gc.setFill(Color.DARKGRAY);
-            gc.setFont(Font.font(11 * Math.max(0.8, zoom)));
-            gc.fillText("X", w - 15, zeroY - 5);
-        }
-        if (zeroX >= 0 && zeroX <= w) {
-            gc.strokeLine(zeroX, 0, zeroX, h);
-            gc.fillText("Y", zeroX + 5, 15);
-            gc.fillText("0", zeroX + 5, zeroY + 15);
-        }
-    }
 
     private void drawVehicle(Vehicle v) {
         double px = toPixelX(v.getCoordinates().getX());
@@ -447,5 +423,46 @@ public class VehicleCanvasController {
             }
         };
         animationTimer.start();
+    }
+
+
+
+
+    private boolean isDarkMode = false;
+
+    public void setDarkMode(boolean darkMode) {
+        this.isDarkMode = darkMode;
+        drawAll();
+    }
+
+    // Измените метод drawGridAndAxes для поддержки темной темы:
+    private void drawGridAndAxes() {
+        double w = canvas.getWidth(), h = canvas.getHeight();
+
+        // Цвета для темной/светлой темы
+        Color gridColor = isDarkMode ? Color.rgb(51, 65, 85) : Color.rgb(235, 235, 235);
+        Color axisColor = isDarkMode ? Color.rgb(100, 116, 139) : Color.rgb(150, 150, 150);
+        Color textColor = isDarkMode ? Color.rgb(226, 232, 240) : Color.DARKGRAY;
+
+        gc.setStroke(gridColor);
+        gc.setLineWidth(1);
+        double step = Math.max(25, 50 * zoom);
+        for (double x = 0; x <= w; x += step) gc.strokeLine(x, 0, x, h);
+        for (double y = 0; y <= h; y += step) gc.strokeLine(0, y, w, y);
+
+        double zeroX = toPixelX(0), zeroY = toPixelY(0);
+        gc.setStroke(axisColor);
+        gc.setLineWidth(2);
+        if (zeroY >= 0 && zeroY <= h) {
+            gc.strokeLine(0, zeroY, w, zeroY);
+            gc.setFill(textColor);
+            gc.setFont(Font.font(11 * Math.max(0.8, zoom)));
+            gc.fillText("X", w - 15, zeroY - 5);
+        }
+        if (zeroX >= 0 && zeroX <= w) {
+            gc.strokeLine(zeroX, 0, zeroX, h);
+            gc.fillText("Y", zeroX + 5, 15);
+            gc.fillText("0", zeroX + 5, zeroY + 15);
+        }
     }
 }

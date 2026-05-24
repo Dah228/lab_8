@@ -1,5 +1,4 @@
 package client.gui;
-
 import client.logic.NetworkService;
 import common.Vehicle;
 import javafx.animation.FadeTransition;
@@ -25,7 +24,6 @@ import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
 
 public class MainScene {
     private final Stage stage;
@@ -71,35 +69,14 @@ public class MainScene {
     private static final String L_BTN_D_H = "-fx-background-color: #FFEBEE; -fx-border-color: #D32F2F;";
 
     // === СТИЛИ ТЕМНОЙ ТЕМЫ ===
-    private static final String D_BG = "-fx-background-color: #121212;";
-    private static final String D_CARD = "-fx-background-color: #1E1E1E; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 2);";
-    private static final String D_BTN_P = "-fx-background-color: #BB86FC; -fx-text-fill: #121212; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;";
-    private static final String D_BTN_P_H = "-fx-background-color: #9C64E6;";
-    private static final String D_BTN_S = "-fx-background-color: #2C2C2C; -fx-text-fill: #E0E0E0; -fx-border-color: #444; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
-    private static final String D_BTN_S_H = "-fx-background-color: #383838; -fx-border-color: #666;";
-    private static final String D_BTN_D = "-fx-background-color: #2C2C2C; -fx-text-fill: #FF5252; -fx-border-color: #D32F2F; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
-    private static final String D_BTN_D_H = "-fx-background-color: #3A0000; -fx-border-color: #FF5252;";
-
-
-    // Стили
-    private static final String BG_COLOR = "-fx-background-color: #F4F6F8;";
-    private static final String CARD_STYLE = "-fx-background-color: white; " +
-            "-fx-background-radius: 12; " +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 12, 0, 0, 2);";
-    private static final String BTN_PRIMARY = "-fx-background-color: #2979FF; " +
-            "-fx-text-fill: white; -fx-font-weight: bold; " +
-            "-fx-background-radius: 8; -fx-cursor: hand;";
-    private static final String BTN_PRIMARY_HOVER = "-fx-background-color: #1565C0;";
-    private static final String BTN_SECONDARY = "-fx-background-color: white; " +
-            "-fx-text-fill: #424242; " +
-            "-fx-border-color: #E0E0E0; -fx-border-radius: 8; " +
-            "-fx-background-radius: 8; -fx-cursor: hand;";
-    private static final String BTN_SECONDARY_HOVER = "-fx-background-color: #FAFAFA; -fx-border-color: #BDBDBD;";
-    private static final String BTN_DANGER = "-fx-background-color: white; " +
-            "-fx-text-fill: #D32F2F; " +
-            "-fx-border-color: #EF9A9A; -fx-border-radius: 8; " +
-            "-fx-background-radius: 8; -fx-cursor: hand;";
-    private static final String BTN_DANGER_HOVER = "-fx-background-color: #FFEBEE; -fx-border-color: #D32F2F;";
+    private static final String D_BG = "-fx-background-color: #0F1419;";
+    private static final String D_CARD = "-fx-background-color: #1E293B; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 2);";
+    private static final String D_BTN_P = "-fx-background-color: linear-gradient(to right, #9333EA, #7C3AED); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;";
+    private static final String D_BTN_P_H = "-fx-background-color: linear-gradient(to right, #A855F7, #8B5CF6);";
+    private static final String D_BTN_S = "-fx-background-color: #334155; -fx-text-fill: #E2E8F0; -fx-border-color: #475569; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
+    private static final String D_BTN_S_H = "-fx-background-color: #475569; -fx-border-color: #64748B;";
+    private static final String D_BTN_D = "-fx-background-color: linear-gradient(to right, #DC2626, #B91C1C); -fx-text-fill: white; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
+    private static final String D_BTN_D_H = "-fx-background-color: linear-gradient(to right, #EF4444, #DC2626);";
 
     public MainScene(Stage stage, LocalizationManager localization, NetworkService networkService,
                      String currentUserLogin, String currentUserPassword) {
@@ -178,10 +155,11 @@ public class MainScene {
 
         // === КНОПКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ ===
         themeToggleButton = new Button("🌙");
-        themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5;");
+        themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: #1F2937;");
         themeToggleButton.setOnAction(e -> {
             isDarkMode = !isDarkMode;
             themeToggleButton.setText(isDarkMode ? "☀️" : "🌙");
+            themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#1F2937") + ";");
             applyThemeStyles();
         });
         // ==============================
@@ -280,7 +258,7 @@ public class MainScene {
 
         // 2. Теперь можно безопасно вызывать методы
         VBox tableContainer = tableController.createTablePane();
-        tableContainer.setStyle(CARD_STYLE + "-fx-padding: 15;");
+        tableContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
 
         if (commandHandler != null) {
             commandHandler.setTableController(tableController);
@@ -321,9 +299,9 @@ public class MainScene {
         });
 
         VBox canvasContainer = new VBox(10);
-        canvasContainer.setStyle(CARD_STYLE + "-fx-padding: 15;");
+        canvasContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
         Label visualTitle = new Label("Визуализация координат");
-        visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #424242;");
+        visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#424242") + ";");
         Pane canvasPane = new Pane(canvas);
         canvas.widthProperty().bind(canvasPane.widthProperty());
         canvas.heightProperty().bind(canvasPane.heightProperty());
@@ -333,7 +311,6 @@ public class MainScene {
         splitPane.getItems().addAll(tableContainer, canvasContainer);
         return splitPane;
     }
-
 
     private HBox createBottomPanel() {
         HBox hbox = new HBox(15);
@@ -427,10 +404,10 @@ public class MainScene {
         if (bottomPanel != null) bottomPanel.setStyle("-fx-background-color: transparent;");
 
         // Цвета текста
-        String txtColor = isDarkMode ? "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #BB86FC;"
+        String txtColor = isDarkMode ? "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #A855F7;"
                 : "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2979FF;";
         if (userLabel != null) userLabel.setStyle(txtColor);
-        if (visualTitle != null) visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E0E0E0" : "#424242") + ";");
+        if (visualTitle != null) visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#424242") + ";");
 
         // Обновляем кнопки
         for (Button btn : themeAwareButtons) {
@@ -448,14 +425,22 @@ public class MainScene {
 
         // Стиль кнопки темы
         if (themeToggleButton != null) {
-            themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: " + (isDarkMode ? "#E0E0E0" : "#424242") + ";");
+            themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#1F2937") + ";");
         }
 
         // Комбобокс языка
         if (langComboBox != null) {
-            langComboBox.setStyle("-fx-background-color: " + (isDarkMode ? "#2C2C2C" : "white") +
-                    "; -fx-border-color: " + (isDarkMode ? "#444" : "#E0E0E0") +
+            langComboBox.setStyle("-fx-background-color: " + (isDarkMode ? "#334155" : "white") +
+                    "; -fx-border-color: " + (isDarkMode ? "#475569" : "#E0E0E0") +
                     "; -fx-border-radius: 6; -fx-background-radius: 6;");
+        }
+
+        // Применяем тему к таблице и канвасу
+        if (tableController != null) {
+            tableController.setDarkMode(isDarkMode);
+        }
+        if (canvasController != null) {
+            canvasController.setDarkMode(isDarkMode);
         }
     }
 
@@ -465,10 +450,10 @@ public class MainScene {
         stage.close();
     }
 
-    private void showWarning(String msg) { ModernNotifications.showWarning(notificationContainer, msg); }
-    public void showSuccessNotification(String msg) { ModernNotifications.showSuccess(notificationContainer, msg); }
-    public void showErrorNotification(String msg) { ModernNotifications.showError(notificationContainer, msg); }
-    public void showInfoNotification(String msg) { ModernNotifications.showInfo(notificationContainer, msg); }
+    private void showWarning(String msg) { ModernNotifications.showWarning(notificationContainer, msg, isDarkMode); }
+    public void showSuccessNotification(String msg) { ModernNotifications.showSuccess(notificationContainer, msg, isDarkMode); }
+    public void showErrorNotification(String msg) { ModernNotifications.showError(notificationContainer, msg, isDarkMode); }
+    public void showInfoNotification(String msg) { ModernNotifications.showInfo(notificationContainer, msg, isDarkMode); }
 
     private void updateUITexts() {
         userLabel.setText(localization.get("main.user.label") + " " + currentUserLogin);
