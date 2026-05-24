@@ -40,6 +40,17 @@
     <build>
         <sourceDirectory>src</sourceDirectory>
 
+        <resources>
+            <resource>
+                <directory>src/resources</directory>
+                <includes>
+                    <include>**/*.png</include>
+                    <include>**/*.jpg</include>
+                    <include>**/*.jpeg</include>
+                </includes>
+            </resource>
+        </resources>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

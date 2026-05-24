@@ -4,12 +4,12 @@ import common.Vehicle;
 import common.VehicleType;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.text.Font;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,12 +22,14 @@ public class VehicleCanvasController {
     private GraphicsContext gc;
     private Consumer<Vehicle> onVehicleClicked;
 
+    // Pan & Zoom
     private double zoom = 1.0;
     private double panX = 0.0;
     private double panY = 0.0;
     private boolean isPanning = false;
     private double lastMouseX, lastMouseY;
 
+    // Масштабирование координат
     private double baseScaleX = 1.0;
     private double baseScaleY = 1.0;
     private double baseOffsetX = 0.0;
@@ -38,6 +40,9 @@ public class VehicleCanvasController {
     private Vehicle selectedVehicle = null;
     private final Map<String, Color> ownerColors = new ConcurrentHashMap<>();
 
+    // Кэш изображений
+    private final Map<VehicleType, Image> vehicleImages = new HashMap<>();
+
     private static final Color[] MODERN_COLORS = {
             Color.rgb(41, 121, 255), Color.rgb(76, 175, 80), Color.rgb(255, 152, 0),
             Color.rgb(233, 30, 99), Color.rgb(156, 39, 176), Color.rgb(0, 188, 212),
@@ -46,61 +51,91 @@ public class VehicleCanvasController {
 
     public VehicleCanvasController(LocalizationManager localization) {
         this.localization = localization;
+        loadVehicleImages();
+    }
+
+    /**
+     * Загружает изображения ТС.
+     * 6-й параметр `false` в конструкторе Image включает СИНХРОННУЮ загрузку,
+     * что гарантирует доступность картинки сразу после вызова конструктора.
+     */
+    private void loadVehicleImages() {
+        loadAndCache(VehicleType.BOAT,       "/003-boat.png",      48, 48);  // БЫЛО: /resources/003-boat.png
+        loadAndCache(VehicleType.SHIP,       "/002-ship.png",      64, 64);  // БЫЛО: /resources/002-ship.png
+        loadAndCache(VehicleType.HELICOPTER, "/005-helicopter.png",48, 48);  // БЫЛО: /resources/005-helicopter.png
+        loadAndCache(VehicleType.PLANE,      "/004-plane.png",     64, 64);  // БЫЛО: /resources/004-plane.png
+        loadAndCache(VehicleType.HOVERBOARD, "/001-hoverboard.png",48, 48);  // БЫЛО: /resources/001-hoverboard.png
+    }
+
+    private void loadAndCache(VehicleType type, String resourcePath, double reqW, double reqH) {
+        try {
+            var url = getClass().getResource(resourcePath);
+            if (url != null) {
+                Image img = new Image(url.toExternalForm(), reqW, reqH, true, true, false);
+                if (!img.isError() && img.getWidth() > 0 && img.getHeight() > 0) {
+                    vehicleImages.put(type, img);
+                    System.out.println("[✓] Изображение загружено: " + resourcePath);
+                } else {
+                    System.err.println("[!] Ошибка изображения: " + resourcePath);
+                }
+            } else {
+                System.err.println("[!] Ресурс не найден: " + resourcePath);
+            }
+        } catch (Exception e) {
+            System.err.println("[!] Исключение при загрузке " + resourcePath + ": " + e.getMessage());
+        }
     }
 
     public Canvas createCanvas(double width, double height) {
         canvas = new Canvas(width, height);
         gc = canvas.getGraphicsContext2D();
         gc.setLineCap(StrokeLineCap.ROUND);
+        setupMouseHandlers();
 
+        // Пересчитываем масштаб при изменении размера Canvas
+        canvas.widthProperty().addListener((obs, oldW, newW) -> { if (vehicles.size() > 1) calculateBaseScaling(); drawAll(); });
+        canvas.heightProperty().addListener((obs, oldH, newH) -> { if (vehicles.size() > 1) calculateBaseScaling(); drawAll(); });
+
+        return canvas;
+    }
+
+    private void setupMouseHandlers() {
         canvas.setOnMouseClicked(this::handleMouseClick);
         canvas.setOnMouseMoved(this::handleMouseMove);
         canvas.setOnMouseExited(e -> {
             hoveredVehicle = null;
             drawAll();
         });
-
         canvas.setOnMousePressed(e -> {
             isPanning = true;
             lastMouseX = e.getX();
             lastMouseY = e.getY();
             canvas.setCursor(javafx.scene.Cursor.MOVE);
         });
-
         canvas.setOnMouseDragged(e -> {
             if (isPanning) {
-                double dx = e.getX() - lastMouseX;
-                double dy = e.getY() - lastMouseY;
-                panX += dx;
-                panY += dy;
+                panX += e.getX() - lastMouseX;
+                panY += e.getY() - lastMouseY;
                 lastMouseX = e.getX();
                 lastMouseY = e.getY();
                 drawAll();
             }
         });
-
         canvas.setOnMouseReleased(e -> {
             isPanning = false;
             canvas.setCursor(javafx.scene.Cursor.DEFAULT);
         });
-
         canvas.setOnScroll((ScrollEvent e) -> {
-            double zoomFactor = 1.1;
-            if (e.getDeltaY() < 0) zoomFactor = 1 / 1.1;
-
+            double zoomFactor = e.getDeltaY() > 0 ? 1.1 : 1.0 / 1.1;
             double mouseX = e.getX();
             double mouseY = e.getY();
 
+            // Зум к курсору
             panX = mouseX - (mouseX - panX) * zoomFactor;
             panY = mouseY - (mouseY - panY) * zoomFactor;
-
-            zoom *= zoomFactor;
-            zoom = Math.max(0.1, Math.min(zoom, 10.0));
-
+            zoom = Math.max(0.1, Math.min(zoom * zoomFactor, 10.0));
             drawAll();
         });
-
-        return canvas;
     }
 
     public void setOnVehicleClicked(Consumer<Vehicle> callback) {
@@ -110,10 +145,7 @@ public class VehicleCanvasController {
     public void updateData(List<Vehicle> vehicles) {
         if (vehicles == null) return;
         this.vehicles = vehicles;
-
-        if (baseScaleX == 1.0 && baseScaleY == 1.0 && vehicles.size() > 0) {
-            calculateBaseScaling();
-        }
+        if (vehicles.size() > 1) calculateBaseScaling();
         drawAll();
     }
 
@@ -122,30 +154,22 @@ public class VehicleCanvasController {
             baseScaleX = 1.0; baseScaleY = 1.0; baseOffsetX = 0; baseOffsetY = 0;
             return;
         }
-
-        double minX = Double.MAX_VALUE, maxX = Double.MIN_VALUE;
-        double minY = Double.MAX_VALUE, maxY = Double.MIN_VALUE;
-
+        double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
         for (Vehicle v : vehicles) {
             double x = v.getCoordinates().getX();
             double y = v.getCoordinates().getY();
             if (x < minX) minX = x; if (x > maxX) maxX = x;
             if (y < minY) minY = y; if (y > maxY) maxY = y;
         }
-
-        double padding = 60;
-        double rangeX = maxX - minX + 2 * padding;
-        double rangeY = maxY - minY + 2 * padding;
-
-        if (rangeX == 0) rangeX = 1; if (rangeY == 0) rangeY = 1;
-
-        double w = canvas.getWidth();
-        double h = canvas.getHeight();
-        if (w == 0) w = 600; if (h == 0) h = 400;
+        double padding = 80;
+        double rangeX = Math.max(maxX - minX, 1) + 2 * padding;
+        double rangeY = Math.max(maxY - minY, 1) + 2 * padding;
+        double w = canvas.getWidth() > 0 ? canvas.getWidth() : 600;
+        double h = canvas.getHeight() > 0 ? canvas.getHeight() : 400;
 
         baseScaleX = (w - 2 * padding) / rangeX;
         baseScaleY = (h - 2 * padding) / rangeY;
-
         baseOffsetX = padding - minX * baseScaleX;
         baseOffsetY = padding - minY * baseScaleY;
     }
@@ -155,257 +179,151 @@ public class VehicleCanvasController {
     }
 
     private double toPixelY(double logicalY) {
+        // Инвертируем Y для декартовой системы координат
         return (canvas.getHeight() - (logicalY * baseScaleY + baseOffsetY)) * zoom + panY;
     }
 
     private Color getOwnerColor(String ownerLogin) {
         if (ownerLogin == null || ownerLogin.isEmpty()) return MODERN_COLORS[0];
-        return ownerColors.computeIfAbsent(ownerLogin, login -> {
-            int index = Math.abs(login.hashCode()) % MODERN_COLORS.length;
-            return MODERN_COLORS[index];
-        });
+        return ownerColors.computeIfAbsent(ownerLogin, login ->
+                MODERN_COLORS[Math.abs(login.hashCode()) % MODERN_COLORS.length]);
     }
 
     private void drawAll() {
-        if (gc == null) return;
-
+        if (gc == null || canvas == null) return;
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
         drawGridAndAxes();
-
-        for (Vehicle v : vehicles) {
-            drawVehicle(v);
-        }
+        for (Vehicle v : vehicles) drawVehicle(v);
     }
 
     private void drawGridAndAxes() {
-        double w = canvas.getWidth();
-        double h = canvas.getHeight();
-
-        gc.setStroke(Color.rgb(240, 240, 240));
+        double w = canvas.getWidth(), h = canvas.getHeight();
+        gc.setStroke(Color.rgb(235, 235, 235));
         gc.setLineWidth(1);
-
-        double step = 50 * zoom;
-        if (step < 10) step = 10;
+        double step = Math.max(25, 50 * zoom);
 
         for (double x = 0; x <= w; x += step) gc.strokeLine(x, 0, x, h);
         for (double y = 0; y <= h; y += step) gc.strokeLine(0, y, w, y);
 
-        double zeroX = toPixelX(0);
-        double zeroY = toPixelY(0);
-
+        double zeroX = toPixelX(0), zeroY = toPixelY(0);
         gc.setStroke(Color.rgb(150, 150, 150));
         gc.setLineWidth(2);
-
         if (zeroY >= 0 && zeroY <= h) {
             gc.strokeLine(0, zeroY, w, zeroY);
-            gc.setFill(Color.rgb(100, 100, 100));
-            gc.setFont(Font.font(12 * Math.max(0.8, zoom)));
-            gc.fillText("X", w - 20 * zoom, zeroY - 5);
+            gc.setFill(Color.DARKGRAY);
+            gc.setFont(Font.font(11 * Math.max(0.8, zoom)));
+            gc.fillText("X", w - 15, zeroY - 5);
         }
-
         if (zeroX >= 0 && zeroX <= w) {
             gc.strokeLine(zeroX, 0, zeroX, h);
-            gc.setFill(Color.rgb(100, 100, 100));
-            gc.setFont(Font.font(12 * Math.max(0.8, zoom)));
-            gc.fillText("Y", zeroX + 5, 15 * zoom);
-            gc.fillText("0", zeroX + 5, zeroY + 15 * zoom);
+            gc.fillText("Y", zeroX + 5, 15);
+            gc.fillText("0", zeroX + 5, zeroY + 15);
         }
     }
 
     private void drawVehicle(Vehicle v) {
         double px = toPixelX(v.getCoordinates().getX());
         double py = toPixelY(v.getCoordinates().getY());
-
         double baseSize = 48 * zoom;
-        if (baseSize < 20) baseSize = 20;
-        if (baseSize > 80) baseSize = 80;
+        baseSize = Math.max(24, Math.min(baseSize, 96));
 
         boolean isHovered = (hoveredVehicle != null && hoveredVehicle.getId() == v.getId());
         boolean isSelected = (selectedVehicle != null && selectedVehicle.getId() == v.getId());
-
-        double size = isHovered ? baseSize * 1.2 : baseSize;
-
+        double size = isHovered ? baseSize * 1.25 : baseSize;
         Color baseColor = getOwnerColor(v.getOwnerLogin());
 
-        // Тень для выбранного
+        // Эффект свечения для выделенного/наведённого
         if (isSelected) {
-            gc.setGlobalAlpha(0.3);
+            gc.setGlobalAlpha(0.35);
             gc.setFill(Color.RED);
-            drawVehicleShape(v.getType(), px + 3, py + 3, size, baseColor);
+            gc.fillOval(px - size/2 + 3, py - size/2 + 3, size, size);
             gc.setGlobalAlpha(1.0);
-        }
-
-        // Свечение при наведении
-        if (isHovered) {
+        } else if (isHovered) {
             gc.setGlobalAlpha(0.2);
             gc.setFill(baseColor);
-            drawVehicleShape(v.getType(), px, py, size * 1.3, baseColor);
+            gc.fillOval(px - size/2, py - size/2, size * 1.2, size * 1.2);
             gc.setGlobalAlpha(1.0);
         }
 
-        // Основной объект
-        drawVehicleShape(v.getType(), px, py, size, baseColor);
+        // Рисуем картинку или фоллбэк
+        drawVehicleImage(v, px, py, size);
 
-        // ID
-        gc.setFill(Color.rgb(80, 80, 80));
-        gc.setFont(Font.font(11 * Math.max(0.8, zoom)));
-        gc.fillText(String.valueOf(v.getId()), px - 5, py + size/2 + 20 * zoom);
+        // Подписи
+        gc.setFill(isSelected ? Color.RED : Color.rgb(80, 80, 80));
+        gc.setFont(Font.font("System Bold", 11 * Math.max(0.8, zoom)));
+        gc.fillText(String.valueOf(v.getId()), px - 6, py + size/2 + 16);
 
-        // Имя при наведении
         if (isHovered) {
-            gc.setFill(Color.rgb(50, 50, 50));
-            gc.setFont(Font.font("System Bold", 12 * Math.max(0.8, zoom)));
-            gc.fillText(v.getName(), px - 30, py - size/2 - 8);
+            gc.setFill(Color.rgb(40, 40, 40));
+            gc.setFont(Font.font("System Bold", 13 * Math.max(0.8, zoom)));
+            double nameWidth = gc.getFont().getSize() * v.getName().length() * 0.6;
+            gc.fillText(v.getName(), px - nameWidth/2, py - size/2 - 8);
         }
 
-        // Рамка для выбранного
+        // Рамка выделения
         if (isSelected) {
             gc.setStroke(Color.RED);
-            gc.setLineWidth(3);
-            double rectSize = size * 1.3;
+            gc.setLineWidth(2.5);
+            double rectSize = size * 1.15;
             gc.strokeRect(px - rectSize/2, py - rectSize/2, rectSize, rectSize);
         }
     }
 
-    private void drawVehicleShape(VehicleType type, double cx, double cy, double size, Color color) {
-        gc.setFill(color);
-        gc.setStroke(Color.WHITE);
-        gc.setLineWidth(2);
+    private void drawVehicleImage(Vehicle v, double cx, double cy, double size) {
+        Image img = vehicleImages.get(v.getType());
+        if (img != null && !img.isError() && img.getWidth() > 0) {
+            // Рисуем PNG с сохранением прозрачности
+            gc.drawImage(img, cx - size/2, cy - size/2, size, size);
+        } else {
+            // Fallback: цветной круг с первой буквой типа
+            Color c = getOwnerColor(v.getOwnerLogin());
+            gc.setFill(c);
+            gc.fillOval(cx - size/2, cy - size/2, size, size);
+            gc.setStroke(Color.WHITE);
+            gc.setLineWidth(2);
+            gc.strokeOval(cx - size/2, cy - size/2, size, size);
 
-        switch (type) {
-            case BOAT -> drawBoat(cx, cy, size);
-            case SHIP -> drawShip(cx, cy, size);
-            case HELICOPTER -> drawHelicopter(cx, cy, size);
-            case PLANE -> drawPlane(cx, cy, size);
-            case HOVERBOARD -> drawHoverboard(cx, cy, size);
-            default -> drawCircle(cx, cy, size);
+            gc.setFill(Color.WHITE);
+            gc.setFont(Font.font("System Bold", size/2.5));
+            String letter = v.getType().toString().substring(0, 1);
+            // Центрируем текст по базовой линии
+            double yOffset = cy + gc.getFont().getSize() * 0.35;
+            gc.fillText(letter, cx - gc.getFont().getSize() * 0.3, yOffset);
         }
     }
 
-    private void drawCircle(double cx, double cy, double size) {
-        gc.fillOval(cx - size/2, cy - size/2, size, size);
-        gc.strokeOval(cx - size/2, cy - size/2, size, size);
-    }
-
-    private void drawBoat(double cx, double cy, double size) {
-        // Корпус лодки
-        gc.beginPath();
-        gc.moveTo(cx - size/2, cy + size/4);
-        gc.quadraticCurveTo(cx, cy + size/2, cx + size/2, cy + size/4);
-        gc.lineTo(cx + size/2, cy - size/4);
-        gc.quadraticCurveTo(cx, cy - size/6, cx - size/2, cy - size/4);
-        gc.closePath();
-        gc.fill();
-        gc.stroke();
-
-        // Парус
-        gc.beginPath();
-        gc.moveTo(cx, cy - size/4);
-        gc.lineTo(cx, cy - size/2);
-        gc.lineTo(cx + size/3, cy - size/6);
-        gc.closePath();
-        gc.setFill(Color.WHITE);
-        gc.fill();
-        gc.stroke();
-    }
-
-    private void drawShip(double cx, double cy, double size) {
-        // Корпус корабля
-        gc.fillRect(cx - size/2, cy - size/6, size, size/3);
-        gc.strokeRect(cx - size/2, cy - size/6, size, size/3);
-
-        // Кабина
-        gc.setFill(Color.WHITE);
-        gc.fillRect(cx - size/4, cy - size/3, size/2, size/4);
-        gc.strokeRect(cx - size/4, cy - size/3, size/2, size/4);
-
-        // Труба
-        gc.setFill(Color.rgb(100, 100, 100));
-        gc.fillRect(cx - size/8, cy - size/2, size/4, size/5);
-        gc.strokeRect(cx - size/8, cy - size/2, size/4, size/5);
-    }
-
-    private void drawHelicopter(double cx, double cy, double size) {
-        // Корпус
-        gc.fillOval(cx - size/3, cy - size/4, size/1.5, size/2);
-        gc.strokeOval(cx - size/3, cy - size/4, size/1.5, size/2);
-
-        // Кабина
-        gc.setFill(Color.rgb(200, 230, 255));
-        gc.fillOval(cx - size/4, cy - size/5, size/3, size/3);
-        gc.strokeOval(cx - size/4, cy - size/5, size/3, size/3);
-
-        // Винт
-        gc.setStroke(Color.rgb(80, 80, 80));
-        gc.setLineWidth(3);
-        gc.beginPath();
-        gc.moveTo(cx - size/2, cy - size/2);
-        gc.lineTo(cx + size/2, cy - size/2);
-        gc.stroke();
-
-        // Хвост
-        gc.beginPath();
-        gc.moveTo(cx - size/3, cy);
-        gc.lineTo(cx - size/2, cy - size/4);
-        gc.stroke();
-    }
-
-    private void drawPlane(double cx, double cy, double size) {
-        // Фюзеляж
-        gc.beginPath();
-        gc.moveTo(cx - size/2, cy);
-        gc.lineTo(cx + size/2, cy - size/6);
-        gc.lineTo(cx + size/2, cy + size/6);
-        gc.closePath();
-        gc.fill();
-        gc.stroke();
-
-        // Крылья
-        gc.beginPath();
-        gc.moveTo(cx - size/6, cy);
-        gc.lineTo(cx, cy - size/2);
-        gc.lineTo(cx + size/6, cy - size/2);
-        gc.lineTo(cx, cy);
-        gc.closePath();
-        gc.fill();
-        gc.stroke();
-
-        gc.beginPath();
-        gc.moveTo(cx - size/6, cy);
-        gc.lineTo(cx, cy + size/2);
-        gc.lineTo(cx + size/6, cy + size/2);
-        gc.lineTo(cx, cy);
-        gc.closePath();
-        gc.fill();
-        gc.stroke();
-    }
-
-    private void drawHoverboard(double cx, double cy, double size) {
-        // Платформа
-        gc.beginPath();
-        gc.rect(cx - size/2, cy - size/6, size, size/3);
-        gc.fill();
-        gc.stroke();
-
-        // Колеса
-        gc.setFill(Color.rgb(50, 50, 50));
-        gc.fillOval(cx - size/2 - size/4, cy - size/4, size/2, size/2);
-        gc.strokeOval(cx - size/2 - size/4, cy - size/4, size/2, size/2);
-
-        gc.fillOval(cx + size/4, cy - size/4, size/2, size/2);
-        gc.strokeOval(cx + size/4, cy - size/4, size/2, size/2);
-
-        // Спицы колес
-        gc.setStroke(Color.WHITE);
-        gc.setLineWidth(2);
-        gc.strokeLine(cx - size/2 - size/4, cy, cx, cy);
-        gc.strokeLine(cx + size/4, cy, cx + size/2, cy);
-    }
-
     private void handleMouseMove(MouseEvent event) {
-        double clickX = event.getX();
-        double clickY = event.getY();
+        if (isPanning) return;
+        double clickX = event.getX(), clickY = event.getY();
+        Vehicle closest = null;
+        double minDist = Double.MAX_VALUE;
+        double hitRadius = 35 * zoom;
 
+        for (Vehicle v : vehicles) {
+            double vx = toPixelX(v.getCoordinates().getX());
+            double vy = toPixelY(v.getCoordinates().getY());
+            double dist = Math.hypot(clickX - vx, clickY - vy);
+            if (dist < hitRadius && dist < minDist) {
+                minDist = dist;
+                closest = v;
+            }
+        }
+
+        boolean changed = (hoveredVehicle == null && closest != null) ||
+                (hoveredVehicle != null && closest == null) ||
+                (hoveredVehicle != null && closest != null && hoveredVehicle.getId() != closest.getId());
+        if (changed) {
+            hoveredVehicle = closest;
+            canvas.setCursor(closest != null ? javafx.scene.Cursor.HAND : javafx.scene.Cursor.DEFAULT);
+            drawAll();
+        }
+    }
+
+    private void handleMouseClick(MouseEvent event) {
+        // Игнорируем клик, если было перетаскивание
+        if (Math.abs(event.getX() - lastMouseX) > 5 || Math.abs(event.getY() - lastMouseY) > 5) return;
+
+        double clickX = event.getX(), clickY = event.getY();
         Vehicle closest = null;
         double minDist = Double.MAX_VALUE;
         double hitRadius = 30 * zoom;
@@ -413,37 +331,7 @@ public class VehicleCanvasController {
         for (Vehicle v : vehicles) {
             double vx = toPixelX(v.getCoordinates().getX());
             double vy = toPixelY(v.getCoordinates().getY());
-            double dist = Math.sqrt(Math.pow(clickX - vx, 2) + Math.pow(clickY - vy, 2));
-
-            if (dist < hitRadius && dist < minDist) {
-                minDist = dist;
-                closest = v;
-            }
-        }
-
-        if ((hoveredVehicle == null && closest != null) ||
-                (hoveredVehicle != null && closest == null) ||
-                (hoveredVehicle != null && closest != null && hoveredVehicle.getId() != closest.getId())) {
-            hoveredVehicle = closest;
-            drawAll();
-        }
-    }
-
-    private void handleMouseClick(MouseEvent event) {
-        if (Math.abs(event.getX() - lastMouseX) > 5 || Math.abs(event.getY() - lastMouseY) > 5) return;
-
-        double clickX = event.getX();
-        double clickY = event.getY();
-
-        Vehicle closest = null;
-        double minDist = Double.MAX_VALUE;
-        double hitRadius = 25 * zoom;
-
-        for (Vehicle v : vehicles) {
-            double vx = toPixelX(v.getCoordinates().getX());
-            double vy = toPixelY(v.getCoordinates().getY());
-            double dist = Math.sqrt(Math.pow(clickX - vx, 2) + Math.pow(clickY - vy, 2));
-
+            double dist = Math.hypot(clickX - vx, clickY - vy);
             if (dist < hitRadius && dist < minDist) {
                 minDist = dist;
                 closest = v;
@@ -451,11 +339,11 @@ public class VehicleCanvasController {
         }
 
         if (closest != null) {
-            this.selectedVehicle = closest;
+            selectedVehicle = closest;
             drawAll();
             if (onVehicleClicked != null) onVehicleClicked.accept(closest);
         } else {
-            this.selectedVehicle = null;
+            selectedVehicle = null;
             drawAll();
         }
     }
