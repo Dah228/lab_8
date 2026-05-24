@@ -58,6 +58,7 @@ public class MainScene {
 
     // === ТЁМНАЯ ТЕМА ===
     private static final String D_BG = "-fx-background-color: #0B1120;";
+    // Изменено: D_CARD теперь используется для остальных элементов, а таблица будет иметь свой стиль
     private static final String D_CARD = "-fx-background-color: #1E293B; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 2);";
     private static final String D_BTN_P = "-fx-background-color: linear-gradient(to right, #8B5CF6, #7C3AED); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;";
     private static final String D_BTN_P_H = "-fx-background-color: linear-gradient(to right, #A78BFA, #8B5CF6);";
@@ -135,14 +136,12 @@ public class MainScene {
         hbox.setPadding(new Insets(12, 20, 12, 20));
         hbox.setAlignment(Pos.CENTER_LEFT);
 
-        // Кнопка смены темы - исправлена для черной иконки/текста
         themeToggleButton = new Button("🌙");
         themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: #000000; -fx-font-weight: bold;");
 
         themeToggleButton.setOnAction(e -> {
             isDarkMode = !isDarkMode;
             themeToggleButton.setText(isDarkMode ? "☀️" : "🌙");
-            // В темной теме делаем иконку светлой, в светлой - черной
             String textColor = isDarkMode ? "#F8FAFC" : "#000000";
             themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: " + textColor + "; -fx-font-weight: bold;");
             applyThemeStyles();
@@ -222,8 +221,8 @@ public class MainScene {
         splitPane.setStyle("-fx-background-color: transparent;");
 
         tableController = new VehicleTableController(localization);
-        VBox tableContainer = tableController.createTablePane();
-        tableContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
+        tableContainer = tableController.createTablePane();
+        // Стиль применяется в applyThemeStyles
         if (commandHandler != null) commandHandler.setTableController(tableController);
 
         tableController.getTable().setOnMouseClicked(event -> {
@@ -251,8 +250,7 @@ public class MainScene {
         });
 
         canvasContainer = new VBox(10);
-        // Фон контейнера канваса теперь меняется
-        canvasContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
+        // Стиль применяется в applyThemeStyles
 
         visualTitle = new Label("Визуализация координат");
         visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#334155") + ";");
@@ -354,15 +352,23 @@ public class MainScene {
         root.setStyle(isDarkMode ? D_BG : L_BG);
 
         if (topPanel != null) topPanel.setStyle(isDarkMode ? D_CARD : L_CARD);
-        if (tableContainer != null) tableContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
-        if (canvasContainer != null) canvasContainer.setStyle((isDarkMode ? D_CARD : L_CARD) + " -fx-padding: 15;");
+
+        // Исправлено: фон контейнера таблицы теперь чёрный в тёмной теме
+        if (tableContainer != null) {
+            if (isDarkMode) {
+                tableContainer.setStyle("-fx-background-color: #050505; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 2); -fx-padding: 15;");
+            } else {
+                tableContainer.setStyle(L_CARD + " -fx-padding: 15;");
+            }
+        }
+
+        if (canvasContainer != null) canvasContainer.setStyle(isDarkMode ? D_CARD : L_CARD + " -fx-padding: 15;");
         if (bottomPanel != null) bottomPanel.setStyle("-fx-background-color: transparent;");
 
         String txtColor = isDarkMode ? "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #8B5CF6;"
                 : "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2563EB;";
         if (userLabel != null) userLabel.setStyle(txtColor);
 
-        // Обновляем цвет заголовка визуализации
         if (visualTitle != null) visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#8B5CF6" : "#2563EB") + ";");
 
         for (Button btn : themeAwareButtons) {

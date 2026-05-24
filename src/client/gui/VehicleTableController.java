@@ -43,15 +43,14 @@ public class VehicleTableController {
         if (tableView == null) return;
 
         if (!isDarkMode) {
-            // === СВЕТЛАЯ ТЕМА: Полностью белая ===
+            // === СВЕТЛАЯ ТЕМА ===
             tableView.setStyle(
                     "-fx-background-color: white; " +
-                            "-fx-control-inner-background: white; " + // Фон строк
-                            "-fx-table-cell-border-color: #E5E7EB; " + // Серые тонкие границы
-                            "-fx-text-fill: #374151;" // Темный текст
+                            "-fx-control-inner-background: white; " +
+                            "-fx-table-cell-border-color: #E5E7EB; " +
+                            "-fx-text-fill: #374151;"
             );
 
-            // Стиль заголовков (белый фон, темный текст)
             for (TableColumn<Vehicle, ?> col : tableView.getColumns()) {
                 col.setStyle(
                         "-fx-background-color: white; " +
@@ -61,7 +60,6 @@ public class VehicleTableController {
                 );
             }
 
-            // Стиль строк (всегда белый)
             tableView.setRowFactory(tv -> {
                 TableRow<Vehicle> row = new TableRow<>();
                 row.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
@@ -75,7 +73,7 @@ public class VehicleTableController {
                                         "-fx-effect: dropshadow(gaussian, rgba(59,130,246,0.4), 10, 0, 0, 2);"
                         );
                     } else if (!row.isEmpty()) {
-                        row.setStyle("-fx-background-color: white;"); // Принудительно белый
+                        row.setStyle("-fx-background-color: white;");
                     }
                 });
                 row.hoverProperty().addListener((obs, wasHovered, isNowHovered) -> {
@@ -87,51 +85,82 @@ public class VehicleTableController {
             });
 
         } else {
-            // === ТЁМНАЯ ТЕМА: ЧЕРНЫЙ ФОН, ФИОЛЕТОВЫЙ ТЕКСТ, СИНИЕ ГРАНИЦЫ ===
+            // === ТЁМНАЯ ТЕМА ===
             tableView.setStyle(
-                    "-fx-background-color: #000000; " + // Чистый черный фон таблицы
-                            "-fx-control-inner-background: #000000; " + // Черный фон ячеек
-                            "-fx-table-cell-border-color: #3B82F6; " + // Ярко-синие границы
-                            "-fx-text-fill: #D8B4FE;" // Фиолетовый текст
+                    "-fx-background-color: #0B132B; " +
+                            "-fx-control-inner-background: #0B132B; " +
+                            "-fx-table-cell-border-color: #1C2541; " +
+                            "-fx-text-fill: #D8B4FE; " +
+                            "-fx-border-color: #1C2541;"  // Добавлено: цвет внешней границы таблицы
             );
 
-            // Стиль заголовков (черный фон, фиолетовый текст)
             for (TableColumn<Vehicle, ?> col : tableView.getColumns()) {
                 col.setStyle(
-                        "-fx-background-color: #000000; " + // Черный фон заголовка
-                                "-fx-text-fill: #D8B4FE; " + // Фиолетовый текст
+                        "-fx-background-color: #0B132B; " +
+                                "-fx-text-fill: #D8B4FE; " +
                                 "-fx-font-weight: bold; " +
-                                "-fx-border-color: #3B82F6;" // Синие линии
+                                "-fx-border-color: #1C2541;"  // Темно-синие границы колонок
                 );
             }
 
-            // Стиль строк
             tableView.setRowFactory(tv -> {
                 TableRow<Vehicle> row = new TableRow<>();
                 row.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
                     if (isNowSelected && !row.isEmpty()) {
                         row.setStyle(
-                                "-fx-background-color: linear-gradient(to bottom, #8B5CF6, #6D28D9); " + // Фиолетовый градиент
+                                "-fx-background-color: linear-gradient(to bottom, #8B5CF6, #6D28D9); " +
                                         "-fx-text-fill: #FFFFFF; " +
                                         "-fx-font-weight: bold; " +
                                         "-fx-background-insets: 3, 4, 5; " +
                                         "-fx-background-radius: 10; " +
-                                        "-fx-effect: dropshadow(gaussian, rgba(139,92,246,0.8), 15, 0, 0, 4);" // Фиолетовое свечение
+                                        "-fx-effect: dropshadow(gaussian, rgba(139,92,246,0.8), 15, 0, 0, 4);"
                         );
                     } else if (!row.isEmpty()) {
-                        row.setStyle("-fx-background-color: #000000;"); // Черный фон строк
+                        row.setStyle("-fx-background-color: #0B132B;");
                     }
                 });
                 row.hoverProperty().addListener((obs, wasHovered, isNowHovered) -> {
                     if (!row.isSelected() && !row.isEmpty()) {
-                        // При наведении чуть светлее черного
-                        row.setStyle(isNowHovered ? "-fx-background-color: #1a1a1a;" : "-fx-background-color: #000000;");
+                        row.setStyle(isNowHovered ? "-fx-background-color: #1a1a1a;" : "-fx-background-color: #0B132B;");
                     }
                 });
                 return row;
             });
         }
+
+        // Принудительно обновляем таблицу
+        Platform.runLater(() -> tableView.refresh());
     }
+
+
+    private void updateRowStyle(TableRow<Vehicle> row) {
+        if (row.isEmpty()) {
+            row.setStyle("");
+            return;
+        }
+
+        if (row.isSelected()) {
+            row.setStyle(
+                    "-fx-background-color: linear-gradient(to bottom, #00E5FF, #0088AA); " +
+                            "-fx-text-fill: #FFFFFF; " +
+                            "-fx-font-weight: bold; " +
+                            "-fx-background-insets: 3, 4, 5; " +
+                            "-fx-background-radius: 10; " +
+                            "-fx-effect: dropshadow(gaussian, rgba(0,229,255,0.7), 20, 0.6, 0, 4);"
+            );
+        } else {
+            if (isDarkMode) {
+                row.setStyle(((int)row.getIndex() % 2 == 0)
+                        ? "-fx-background-color: #0F172A;"
+                        : "-fx-background-color: #0B132B;");
+            } else {
+                row.setStyle(((int)row.getIndex() % 2 == 0)
+                        ? "-fx-background-color: #FAFAFA;"
+                        : "-fx-background-color: white;");
+            }
+        }
+    }
+
 
     public VBox createTablePane(){
         VBox root = new VBox(15);
