@@ -50,40 +50,32 @@ public class VehicleTableController {
         tableView = new TableView<>();
         tableView.setItems(filteredVehicles);
         tableView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
-
         tableView.setStyle("-fx-background-color: transparent; " +
                 "-fx-control-inner-background: white; " +
                 "-fx-table-cell-border-color: #F0F0F0;");
 
-        // ИЗМЕНЕНИЕ 3: Кастомная фабрика строк для выделения
+        // Улучшенное выделение строк
         tableView.setRowFactory(tv -> {
             TableRow<Vehicle> row = new TableRow<>();
 
             // Слушатель изменения свойства selected
             row.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
-                if (isNowSelected) {
-                    // Выделенная строка: синий фон, белый текст, легкая тень
-                    row.setStyle("-fx-background-color: #2979FF; " +
+                if (isNowSelected && !row.isEmpty()) {
+                    // Выделенная строка: яркий синий фон, белый текст, тень и увеличение
+                    row.setStyle("-fx-background-color: linear-gradient(to bottom, #2979FF, #1565C0); " +
                             "-fx-text-fill: white; " +
                             "-fx-font-weight: bold; " +
-                            "-fx-effect: dropshadow(gaussian, rgba(41,121,255,0.4), 10, 0, 0, 0);");
+                            "-fx-effect: dropshadow(gaussian, rgba(41,121,255,0.6), 20, 0, 0, 2);");
 
-                    // Попытка увеличить масштаб (может влиять на соседей, поэтому осторожно)
-                    // Более безопасный вариант - просто изменить стиль выше.
-                    // Если нужно именно увеличение, раскомментируй ниже, но это может ломать верстку таблицы
-                    // row.setScaleX(1.02);
-                    // row.setScaleY(1.02);
-
-                } else {
+                    // Добавляем класс для стилизации ячеек через CSS
+                    row.getStyleClass().add("selected-row");
+                } else if (!row.isEmpty()) {
                     // Обычная строка: чередование цветов
-                    if (!row.isEmpty()) {
-                        if ((int)row.getIndex() % 2 == 0){
-                            row.setStyle("-fx-background-color: #FAFAFA;");
-                        } else {
-                            row.setStyle("-fx-background-color: white;");
-                        }
-                        // row.setScaleX(1.0);
-                        // row.setScaleY(1.0);
+                    row.getStyleClass().remove("selected-row");
+                    if ((int)row.getIndex() % 2 == 0){
+                        row.setStyle("-fx-background-color: #FAFAFA;");
+                    } else {
+                        row.setStyle("-fx-background-color: white;");
                     }
                 }
             });
@@ -92,7 +84,8 @@ public class VehicleTableController {
             row.hoverProperty().addListener((obs, wasHovered, isNowHovered) -> {
                 if (!row.isSelected() && !row.isEmpty()) {
                     if (isNowHovered) {
-                        row.setStyle("-fx-background-color: #E3F2FD;");
+                        row.setStyle("-fx-background-color: #E3F2FD; " +
+                                "-fx-effect: dropshadow(gaussian, rgba(41,121,255,0.2), 10, 0, 0, 1);");
                     } else {
                         if ((int)row.getIndex() % 2 == 0){
                             row.setStyle("-fx-background-color: #FAFAFA;");
@@ -109,6 +102,7 @@ public class VehicleTableController {
         setupColumns();
         root.getChildren().addAll(filterPanel, tableView);
         VBox.setVgrow(tableView, javafx.scene.layout.Priority.ALWAYS);
+
         return root;
     }
 

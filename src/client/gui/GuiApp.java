@@ -88,19 +88,7 @@ public class GuiApp extends Application {
         stage.setMinWidth(1200);
         stage.setMinHeight(800);
 
-        // Обработка закрытия окна
-        stage.setOnCloseRequest(e -> {
-            boolean confirmed = ModernDialog.showConfirmation(
-                    localization.get("app.title"),
-                    localization.get("confirm.exit")
-            );
 
-            if (!confirmed) {
-                e.consume(); // Отменяем закрытие, если нажали "Отмена"
-            } else {
-                cleanup(); // Выполняем очистку и закрываем
-            }
-        });
     }
 
     private void cleanup() {

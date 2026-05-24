@@ -288,16 +288,19 @@ public class CommandDialogHandler {
 
     private Vehicle showModernVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
-        dialog.getDialogPane().setStyle(DIALOG_BG);
-        dialog.setTitle(existing == null ? "Добавление ТС" : "Редактирование ТС");
+        dialog.setTitle(existing == null ? localization.get("dialog.add_vehicle") : localization.get("dialog.edit_vehicle"));
         dialog.setHeaderText(existing == null ? "Заполните данные нового транспортного средства" : "Измените данные ТС");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
+        dialog.getDialogPane().setStyle(DIALOG_BG);
+        dialog.getDialogPane().setPrefWidth(500);
 
-        dialog.getDialogPane().getButtonTypes().clear();
-
-        Button saveButton = new Button("Сохранить");
+        Button saveButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
         saveButton.setStyle(BTN_SAVE_STYLE);
-        Button cancelButton = new Button("Отмена");
+        saveButton.setText("Сохранить");
+
+        Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
         cancelButton.setStyle(BTN_CANCEL_STYLE);
+        cancelButton.setText("Отмена");
 
         GridPane grid = new GridPane();
         grid.setHgap(15);
@@ -305,6 +308,7 @@ public class CommandDialogHandler {
         grid.setPadding(new Insets(20, 30, 10, 30));
         grid.setAlignment(Pos.CENTER);
 
+        // ... (поля ввода остаются без изменений) ...
         TextField nameField = createStyledTextField(existing != null ? existing.getName() : "", "Название ТС");
         TextField xField = createStyledTextField(existing != null ? String.valueOf(existing.getCoordinates().getX()) : "0", "Координата X");
         TextField yField = createStyledTextField(existing != null ? String.valueOf(existing.getCoordinates().getY()) : "0", "Координата Y");
@@ -331,31 +335,25 @@ public class CommandDialogHandler {
         fuelCombo.setStyle(INPUT_FIELD_STYLE);
 
         int row = 0;
-        grid.add(createLabel("Название:"), 0, row);
+        grid.add(createLabel(localization.get("dialog.label.name")), 0, row);
         grid.add(nameField, 1, row++);
-
         grid.add(createLabel("Координаты (X, Y):"), 0, row);
         HBox coordsBox = new HBox(10, xField, yField);
         grid.add(coordsBox, 1, row++);
-
-        grid.add(createLabel("Дата создания:"), 0, row);
+        grid.add(createLabel(localization.get("dialog.label.creation_date")), 0, row);
         grid.add(datePicker, 1, row++);
-
-        grid.add(createLabel("Мощность:"), 0, row);
+        grid.add(createLabel(localization.get("dialog.label.power")), 0, row);
         grid.add(powerField, 1, row++);
-
-        grid.add(createLabel("Дистанция:"), 0, row);
+        grid.add(createLabel(localization.get("dialog.label.distance")), 0, row);
         grid.add(distanceField, 1, row++);
-
-        grid.add(createLabel("Тип ТС:"), 0, row);
+        grid.add(createLabel(localization.get("dialog.label.type")), 0, row);
         grid.add(typeCombo, 1, row++);
-
-        grid.add(createLabel("Тип топлива:"), 0, row);
+        grid.add(createLabel(localization.get("dialog.label.fuel")), 0, row);
         grid.add(fuelCombo, 1, row++);
-
-        grid.add(createLabel("Цена:"), 0, row);
+        grid.add(createLabel(localization.get("dialog.label.price")), 0, row);
         grid.add(priceField, 1, row++);
 
+        // Валидация
         Runnable validate = () -> {
             boolean valid = !nameField.getText().trim().isEmpty();
             try {
@@ -377,39 +375,37 @@ public class CommandDialogHandler {
         distanceField.textProperty().addListener((o, n, w) -> validate.run());
         priceField.textProperty().addListener((o, n, w) -> validate.run());
 
-        saveButton.setOnAction(e -> {
-            try {
-                Vehicle v = existing != null ? existing : new Vehicle();
-                v.setName(nameField.getText());
-                v.setCoordinates(Integer.parseInt(xField.getText()), Float.parseFloat(yField.getText()));
-                v.setEnginePower(Float.parseFloat(powerField.getText()));
-                v.setDistanceTravelled(Float.parseFloat(distanceField.getText()));
-                if (datePicker.getValue() != null) {
-                    Date creationDate = Date.from(datePicker.getValue().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
-                    v.setCreationDate(creationDate);
+        // Обработка кнопки Сохранить
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == ButtonType.OK) {
+                try {
+                    Vehicle v = existing != null ? existing : new Vehicle();
+                    v.setName(nameField.getText());
+                    v.setCoordinates(Integer.parseInt(xField.getText()), Float.parseFloat(yField.getText()));
+                    v.setEnginePower(Float.parseFloat(powerField.getText()));
+                    v.setDistanceTravelled(Float.parseFloat(distanceField.getText()));
+                    if (datePicker.getValue() != null) {
+                        Date creationDate = Date.from(datePicker.getValue().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+                        v.setCreationDate(creationDate);
+                    }
+                    v.setType(typeCombo.getValue());
+                    v.setFuelType(fuelCombo.getValue());
+                    v.setPrice(Double.parseDouble(priceField.getText()));
+                    return v;
+                } catch (NumberFormatException ex) {
+                    showError("Проверьте правильность ввода чисел");
                 }
-                v.setType(typeCombo.getValue());
-                v.setFuelType(fuelCombo.getValue());
-                v.setPrice(Double.parseDouble(priceField.getText()));
-
-                dialog.setResult(v);
-                dialog.close();
-            } catch (NumberFormatException ex) {
-                showError("Проверьте правильность ввода чисел");
             }
+            return null;
         });
 
-        cancelButton.setOnAction(e -> dialog.close());
-
-        HBox buttonBar = new HBox(15, cancelButton, saveButton);
-        buttonBar.setAlignment(Pos.CENTER_RIGHT);
-        buttonBar.setPadding(new Insets(10, 30, 20, 30));
-        grid.add(buttonBar, 1, row);
-
         dialog.getDialogPane().setContent(grid);
+        validate.run(); // Начальная валидация
 
         return dialog.showAndWait().orElse(null);
     }
+
+
 
     private TextField createStyledTextField(String text, String prompt) {
         TextField tf = new TextField(text);

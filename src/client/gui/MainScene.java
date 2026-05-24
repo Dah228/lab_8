@@ -368,70 +368,12 @@ public class MainScene {
     }
 
     private void handleExit() {
-        // Создаем диалог вручную, чтобы привязать его к главному окну (stage)
-        Stage dialogStage = new Stage();
-        dialogStage.initOwner(stage);
-        dialogStage.initModality(Modality.APPLICATION_MODAL);
-        dialogStage.initStyle(StageStyle.TRANSPARENT);
-
-        VBox content = new VBox(20);
-        content.setAlignment(Pos.CENTER);
-        content.setPadding(new Insets(30));
-        content.setStyle("-fx-background-color: white; -fx-background-radius: 16; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 30, 0, 0, 10);");
-
-        // Icon (Warning)
-        Circle iconBg = new Circle(40, Color.rgb(251, 191, 36));
-        Label iconLabel = new Label("⚠");
-        iconLabel.setStyle("-fx-text-fill: white; -fx-font-size: 24px;");
-        StackPane iconContainer = new StackPane(iconBg, iconLabel);
-
-        // Title
-        Label titleLabel = new Label(localization.get("app.title"));
-        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #1F2937;");
-
-        // Message
-        Label msgLabel = new Label(localization.get("confirm.exit"));
-        msgLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #6B7280;");
-        msgLabel.setAlignment(Pos.CENTER);
-
-        // Buttons
-        HBox buttonBox = new HBox(12);
-        buttonBox.setAlignment(Pos.CENTER);
-
-        Button cancelButton = new Button("Отмена");
-        cancelButton.setStyle("-fx-background-color: #F3F4F6; -fx-text-fill: #4B5563; " +
-                "-fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 10 24; -fx-font-size: 14px;");
-
-        Button confirmButton = new Button("Подтвердить");
-        confirmButton.setStyle("-fx-background-color: linear-gradient(to right, #667eea 0%, #764ba2 100%); " +
-                "-fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand; " +
-                "-fx-padding: 10 24; -fx-font-size: 14px; -fx-font-weight: bold;");
-        confirmButton.setDefaultButton(true); // Чтобы работала клавиша Enter
-
-        cancelButton.setOnAction(e -> dialogStage.close());
-        confirmButton.setOnAction(e -> {
-            stopAutoRefresh();
-            if (networkService != null && networkService.isConnected()) networkService.disconnect();
-            stage.close(); // Закрываем главное окно
-            dialogStage.close();
-        });
-
-        buttonBox.getChildren().addAll(cancelButton, confirmButton);
-        content.getChildren().addAll(iconContainer, titleLabel, msgLabel, buttonBox);
-
-        Scene dialogScene = new Scene(content, 400, 260, Color.TRANSPARENT);
-        dialogStage.setScene(dialogScene);
-
-        // Анимация появления
-        dialogStage.setOnShown(e -> {
-            FadeTransition fadeIn = new FadeTransition(Duration.millis(200), content);
-            fadeIn.setFromValue(0);
-            fadeIn.setToValue(1);
-            fadeIn.play();
-        });
-
-        dialogStage.showAndWait();
+        // Просто закрываем приложение без подтверждения
+        stopAutoRefresh();
+        if (networkService != null && networkService.isConnected()) {
+            networkService.disconnect();
+        }
+        stage.close();
     }
 
     private void showWarning(String msg) {
