@@ -1,16 +1,21 @@
 package client.gui;
+
 import client.logic.NetworkService;
 import common.CommandRequest;
 import common.CommandResponse;
+import javafx.animation.FadeTransition;
+import javafx.animation.ParallelTransition;
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import java.util.List;
 
 public class AuthScene {
@@ -20,14 +25,53 @@ public class AuthScene {
     private PasswordField passwordField;
     private Button actionButton;
     private ToggleGroup modeToggle;
-    private Label errorLabel;
+    private VBox notificationContainer;
     private Runnable onLoginSuccess;
 
-    private static final String BTN_GREEN_STYLE = "-fx-background-color: linear-gradient(to bottom, #A5D6A7, #81C784); " +
-            "-fx-text-fill: white; -fx-padding: 12 25; " +
-            "-fx-font-weight: bold; -fx-background-radius: 10; " +
+    // Современные стили
+    private static final String BG_GRADIENT = "-fx-background-color: linear-gradient(to bottom right, #667eea 0%, #764ba2 100%);";
+    private static final String CARD_STYLE = "-fx-background-color: white; " +
+            "-fx-background-radius: 20; " +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 30, 0, 0, 10);";
+    private static final String INPUT_STYLE = "-fx-background-color: #F3F4F6; " +
+            "-fx-background-radius: 10; " +
+            "-fx-border-color: transparent; " +
             "-fx-border-radius: 10; " +
-            "-fx-effect: dropshadow(gaussian, rgba(102,187,106,0.4), 8, 0, 0, 2); " +
+            "-fx-padding: 12 16; " +
+            "-fx-font-size: 14px; " +
+            "-fx-transition: all 0.3s;";
+    private static final String INPUT_FOCUSED = "-fx-background-color: white; " +
+            "-fx-background-radius: 10; " +
+            "-fx-border-color: #667eea; " +
+            "-fx-border-width: 2; " +
+            "-fx-border-radius: 10; " +
+            "-fx-padding: 12 16; " +
+            "-fx-font-size: 14px;";
+    private static final String BTN_PRIMARY = "-fx-background-color: linear-gradient(to right, #667eea 0%, #764ba2 100%); " +
+            "-fx-text-fill: white; " +
+            "-fx-font-weight: bold; " +
+            "-fx-font-size: 16px; " +
+            "-fx-background-radius: 10; " +
+            "-fx-padding: 14 40; " +
+            "-fx-cursor: hand; " +
+            "-fx-effect: dropshadow(gaussian, rgba(102,126,234,0.4), 10, 0, 0, 3);";
+    private static final String BTN_HOVER = "-fx-background-color: linear-gradient(to right, #764ba2 0%, #667eea 100%); " +
+            "-fx-text-fill: white; " +
+            "-fx-font-weight: bold; " +
+            "-fx-font-size: 16px; " +
+            "-fx-background-radius: 10; " +
+            "-fx-padding: 14 40; " +
+            "-fx-cursor: hand; " +
+            "-fx-effect: dropshadow(gaussian, rgba(118,75,162,0.5), 15, 0, 0, 5);";
+    private static final String TOGGLE_STYLE = "-fx-background-color: transparent; " +
+            "-fx-text-fill: #6B7280; " +
+            "-fx-font-size: 14px; " +
+            "-fx-font-weight: 600; " +
+            "-fx-cursor: hand;";
+    private static final String TOGGLE_SELECTED = "-fx-background-color: transparent; " +
+            "-fx-text-fill: #667eea; " +
+            "-fx-font-size: 14px; " +
+            "-fx-font-weight: 700; " +
             "-fx-cursor: hand;";
 
     public AuthScene(Stage stage, NetworkService networkService, LocalizationManager localization) {
@@ -40,82 +84,158 @@ public class AuthScene {
     }
 
     public Scene createScene() {
-        VBox root = new VBox(15);
-        root.setPadding(new Insets(20));
+        // Основной контейнер с градиентом
+        VBox root = new VBox(30);
+        root.setPadding(new Insets(40));
         root.setAlignment(Pos.CENTER);
-        root.setStyle("-fx-background-color: linear-gradient(to bottom right, #F1F8E9, #E8F5E9, #C8E6C9);");
+        root.setStyle(BG_GRADIENT);
+
+        // Карточка авторизации
+        VBox card = new VBox(25);
+        card.setPadding(new Insets(40));
+        card.setAlignment(Pos.CENTER);
+        card.setStyle(CARD_STYLE);
+        card.setMaxWidth(420);
+
+        // Начальное состояние для анимации
+        card.setOpacity(0);
+        card.setTranslateY(30);
+
+        // Заголовок с иконкой
+        VBox headerBox = new VBox(10);
+        headerBox.setAlignment(Pos.CENTER);
+
+        Circle iconCircle = new Circle(35, Color.web("#667eea"));
+        Label iconLabel = new Label("🚀");
+        iconLabel.setStyle("-fx-font-size: 32px;");
+        StackPane iconContainer = new StackPane(iconCircle, iconLabel);
 
         Label titleLabel = new Label(localization.get("app.title"));
         titleLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; " +
-                "-fx-text-fill: #2E7D32; " +
-                "-fx-effect: dropshadow(gaussian, rgba(46,125,50,0.2), 5, 0, 0, 1);");
+                "-fx-text-fill: #1F2937; " +
+                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 5, 0, 0, 2);");
 
+        headerBox.getChildren().addAll(iconContainer, titleLabel);
+
+        // Переключатель режимов
         RadioButton rbLogin = new RadioButton(localization.get("auth.login.button"));
         RadioButton rbRegister = new RadioButton(localization.get("auth.register.button"));
         modeToggle = new ToggleGroup();
         rbLogin.setToggleGroup(modeToggle);
         rbRegister.setToggleGroup(modeToggle);
         rbLogin.setSelected(true);
-        rbLogin.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
-        rbRegister.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
+        rbLogin.setStyle(TOGGLE_SELECTED);
+        rbRegister.setStyle(TOGGLE_STYLE);
 
-        HBox modeBox = new HBox(10, rbLogin, rbRegister);
+        HBox modeBox = new HBox(20, rbLogin, rbRegister);
         modeBox.setAlignment(Pos.CENTER);
+        modeBox.setStyle("-fx-background-color: #F3F4F6; " +
+                "-fx-background-radius: 10; " +
+                "-fx-padding: 5;");
 
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setAlignment(Pos.CENTER);
-
-        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9; -fx-padding: 5;";
-        Label loginLabel = new Label(localization.get("auth.login"));
-        loginLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
-        loginField = new TextField();
-        loginField.setPromptText("login");
-        loginField.setStyle(fieldStyle);
-
-        Label passLabel = new Label(localization.get("auth.password"));
-        passLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
-        passwordField = new PasswordField();
-        passwordField.setStyle(fieldStyle);
-        passLabel.setLabelFor(passwordField);
-
-        grid.add(loginLabel, 0, 0);
-        grid.add(loginField, 1, 0);
-        grid.add(passLabel, 0, 1);
-        grid.add(passwordField, 1, 1);
-
-        actionButton = new Button(localization.get("auth.login.button"));
-        actionButton.setStyle(BTN_GREEN_STYLE);
+        // Обработка переключения
         modeToggle.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal == rbLogin) {
+                rbLogin.setStyle(TOGGLE_SELECTED);
+                rbRegister.setStyle(TOGGLE_STYLE);
                 actionButton.setText(localization.get("auth.login.button"));
             } else {
+                rbLogin.setStyle(TOGGLE_STYLE);
+                rbRegister.setStyle(TOGGLE_SELECTED);
                 actionButton.setText(localization.get("auth.register.button"));
             }
         });
+
+        // Поля ввода
+        VBox inputBox = new VBox(15);
+
+        Label loginLabel = createInputLabel(localization.get("auth.login"));
+        loginField = createStyledInput();
+        loginField.setPromptText("username");
+
+        Label passLabel = createInputLabel(localization.get("auth.password"));
+        passwordField = createStyledPasswordInput();
+        passwordField.setPromptText("••••••••");
+
+        inputBox.getChildren().addAll(loginLabel, loginField, passLabel, passwordField);
+
+        // Кнопка действия
+        actionButton = new Button(localization.get("auth.login.button"));
+        actionButton.setStyle(BTN_PRIMARY);
+        actionButton.setMaxWidth(Double.MAX_VALUE);
         actionButton.setOnAction(e -> handleAction());
 
-        errorLabel = new Label();
-        errorLabel.setStyle("-fx-text-fill: #C62828; -fx-font-size: 12px; -fx-font-weight: bold;");
-        errorLabel.setVisible(false);
+        // Hover эффекты
+        actionButton.setOnMouseEntered(e -> actionButton.setStyle(BTN_HOVER));
+        actionButton.setOnMouseExited(e -> actionButton.setStyle(BTN_PRIMARY));
 
-        root.getChildren().addAll(titleLabel, modeBox, grid, actionButton, errorLabel);
-        return new Scene(root, 400, 300);
+        // Контейнер для уведомлений
+        notificationContainer = new VBox(10);
+        notificationContainer.setAlignment(Pos.TOP_CENTER);
+
+        card.getChildren().addAll(headerBox, modeBox, inputBox, actionButton);
+        root.getChildren().addAll(notificationContainer, card);
+
+        Scene scene = new Scene(root, 500, 600);
+
+        // Анимация появления карточки
+        Platform.runLater(() -> {
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(600), card);
+            fadeIn.setFromValue(0);
+            fadeIn.setToValue(1);
+            fadeIn.setInterpolator(javafx.animation.Interpolator.EASE_OUT);
+
+            TranslateTransition slideUp = new TranslateTransition(Duration.millis(600), card);
+            slideUp.setFromY(30);
+            slideUp.setToY(0);
+            slideUp.setInterpolator(javafx.animation.Interpolator.EASE_OUT);
+
+            ParallelTransition appear = new ParallelTransition(fadeIn, slideUp);
+            appear.play();
+        });
+
+        return scene;
+    }
+
+    private Label createInputLabel(String text) {
+        Label label = new Label(text);
+        label.setStyle("-fx-text-fill: #374151; " +
+                "-fx-font-weight: 600; " +
+                "-fx-font-size: 13px;");
+        return label;
+    }
+
+    private TextField createStyledInput() {
+        TextField field = new TextField();
+        field.setStyle(INPUT_STYLE);
+        field.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            field.setStyle(newVal ? INPUT_FOCUSED : INPUT_STYLE);
+        });
+        return field;
+    }
+
+    private PasswordField createStyledPasswordInput() {
+        PasswordField field = new PasswordField();
+        field.setStyle(INPUT_STYLE);
+        field.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            field.setStyle(newVal ? INPUT_FOCUSED : INPUT_STYLE);
+        });
+        return field;
     }
 
     private void handleAction() {
         String login = loginField.getText().trim();
         String password = passwordField.getText().trim();
+
         if (login.isEmpty() || password.isEmpty()) {
-            showError(localization.get("auth.error.empty"));
+            ModernNotifications.showWarning(notificationContainer, localization.get("auth.error.empty"));
             return;
         }
+
         boolean isRegister = modeToggle.getSelectedToggle() instanceof RadioButton &&
                 ((RadioButton) modeToggle.getSelectedToggle()).getText().equals(localization.get("auth.register.button"));
 
         setControlsDisabled(true);
-        errorLabel.setVisible(false);
 
         Thread authThread = new Thread(() -> {
             try {
@@ -125,22 +245,27 @@ public class AuthScene {
                 } else {
                     response = sendLoginRequest(login, password);
                 }
+
                 Platform.runLater(() -> {
                     setControlsDisabled(false);
                     if (response != null && response.isSuccess()) {
-                        System.out.println("Авторизация успешна: " + login);
+                        ModernNotifications.showSuccess(notificationContainer, "✓ Авторизация успешна!");
                         if (onLoginSuccess != null) {
-                            onLoginSuccess.run();
+                            // Небольшая задержка перед переходом
+                            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(Duration.millis(500));
+                            pause.setOnFinished(e -> onLoginSuccess.run());
+                            pause.play();
                         }
                     } else {
                         String msg = response != null ? response.getMessage() : localization.get("error.network");
-                        showError(isRegister ? localization.get("auth.error.register") + ": " + msg : localization.get("auth.error.auth"));
+                        ModernNotifications.showError(notificationContainer, isRegister ?
+                                localization.get("auth.error.register") : localization.get("auth.error.auth"));
                     }
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     setControlsDisabled(false);
-                    showError(localization.get("error.network") + ": " + e.getMessage());
+                    ModernNotifications.showError(notificationContainer, localization.get("error.network"));
                 });
             }
         });
@@ -160,11 +285,6 @@ public class AuthScene {
         CommandRequest request = new CommandRequest("info", args, null, true, login, password);
         networkService.send(request);
         return networkService.receive();
-    }
-
-    private void showError(String message) {
-        errorLabel.setText(message);
-        errorLabel.setVisible(true);
     }
 
     private void setControlsDisabled(boolean disabled) {

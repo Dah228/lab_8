@@ -36,6 +36,7 @@ public class MainScene {
     private Label userLabel;
     private Button balanceButton;
     private ComboBox<Locale> langComboBox;
+    private VBox notificationContainer;
 
     private ScheduledExecutorService refreshScheduler;
 
@@ -87,6 +88,13 @@ public class MainScene {
         root.setStyle(BG_COLOR);
         root.setPadding(new Insets(15));
 
+        // Контейнер для уведомлений (поверх всего)
+        notificationContainer = new VBox(10);
+        notificationContainer.setAlignment(Pos.TOP_RIGHT);
+        notificationContainer.setPadding(new Insets(15));
+        notificationContainer.setMouseTransparent(true); // Пропускаем клики
+        notificationContainer.setStyle("-fx-background-color: transparent;");
+
         HBox topPanel = createTopPanel();
         root.setTop(topPanel);
 
@@ -98,8 +106,10 @@ public class MainScene {
         root.setBottom(bottomPanel);
         BorderPane.setMargin(bottomPanel, new Insets(15, 0, 0, 0));
 
-        Scene scene = new Scene(root, 1300, 850);
+        // StackPane для наложения уведомлений
+        StackPane mainContainer = new StackPane(root, notificationContainer);
 
+        Scene scene = new Scene(mainContainer, 1300, 850);
         KeyCombination exitKey = new KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN);
         scene.getAccelerators().put(exitKey, () -> handleExit());
 
@@ -366,12 +376,19 @@ public class MainScene {
     }
 
     private void showWarning(String msg) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Внимание");
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
-        alert.getDialogPane().setStyle("-fx-background-color: white;");
-        alert.showAndWait();
+        ModernNotifications.showWarning(notificationContainer, msg);
+    }
+
+    public void showSuccessNotification(String msg) {
+        ModernNotifications.showSuccess(notificationContainer, msg);
+    }
+
+    public void showErrorNotification(String msg) {
+        ModernNotifications.showError(notificationContainer, msg);
+    }
+
+    public void showInfoNotification(String msg) {
+        ModernNotifications.showInfo(notificationContainer, msg);
     }
 
     private void updateUITexts() {

@@ -37,6 +37,7 @@ public class MainScene {
     private Label userLabel;
     private Button balanceButton;
     private ComboBox<Locale> langComboBox;
+    private VBox notificationContainer;
 
     private ScheduledExecutorService refreshScheduler;
 
@@ -60,6 +61,18 @@ public class MainScene {
             "-fx-background-radius: 8; -fx-cursor: hand;";
     private static final String BTN_DANGER_HOVER = "-fx-background-color: #FFEBEE; -fx-border-color: #D32F2F;";
 
+    private static final String MODERN_CARD = "-fx-background-color: white; " +
+            "-fx-background-radius: 16; " +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 20, 0, 0, 5);";
+
+    private static final String MODERN_INPUT = "-fx-background-color: #F9FAFB; " +
+            "-fx-background-radius: 10; " +
+            "-fx-border-color: #E5E7EB; " +
+            "-fx-border-radius: 10; " +
+            "-fx-border-width: 1.5; " +
+            "-fx-padding: 12 16; " +
+            "-fx-font-size: 14px;";
+
     public MainScene(Stage stage, LocalizationManager localization, NetworkService networkService,
                      String currentUserLogin, String currentUserPassword) {
         this.stage = stage;
@@ -76,6 +89,13 @@ public class MainScene {
         root.setStyle(BG_COLOR);
         root.setPadding(new Insets(15));
 
+        // Контейнер для уведомлений (поверх всего)
+        notificationContainer = new VBox(10);
+        notificationContainer.setAlignment(Pos.TOP_RIGHT);
+        notificationContainer.setPadding(new Insets(15));
+        notificationContainer.setMouseTransparent(true); // Пропускаем клики
+        notificationContainer.setStyle("-fx-background-color: transparent;");
+
         HBox topPanel = createTopPanel();
         root.setTop(topPanel);
 
@@ -87,8 +107,10 @@ public class MainScene {
         root.setBottom(bottomPanel);
         BorderPane.setMargin(bottomPanel, new Insets(15, 0, 0, 0));
 
-        Scene scene = new Scene(root, 1300, 850);
+        // StackPane для наложения уведомлений
+        StackPane mainContainer = new StackPane(root, notificationContainer);
 
+        Scene scene = new Scene(mainContainer, 1300, 850);
         KeyCombination exitKey = new KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN);
         scene.getAccelerators().put(exitKey, () -> handleExit());
 
@@ -355,12 +377,19 @@ public class MainScene {
     }
 
     private void showWarning(String msg) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Внимание");
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
-        alert.getDialogPane().setStyle("-fx-background-color: white;");
-        alert.showAndWait();
+        ModernNotifications.showWarning(notificationContainer, msg);
+    }
+
+    public void showSuccessNotification(String msg) {
+        ModernNotifications.showSuccess(notificationContainer, msg);
+    }
+
+    public void showErrorNotification(String msg) {
+        ModernNotifications.showError(notificationContainer, msg);
+    }
+
+    public void showInfoNotification(String msg) {
+        ModernNotifications.showInfo(notificationContainer, msg);
     }
 
     private void updateUITexts() {
@@ -1190,12 +1219,348 @@ public class LocalizationManager {
             default      -> "dd.MM.yyyy";
         };
     }
+}=== FILE: ./src/client/gui/ModernDialog.java ===
+package client.gui;
+
+import javafx.animation.FadeTransition;
+import javafx.animation.ScaleTransition;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+import javafx.util.Duration;
+
+import java.util.Optional;
+
+public class ModernDialog {
+
+    private static final String DIALOG_BG = "-fx-background-color: white; " +
+            "-fx-background-radius: 16; " +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 30, 0, 0, 10);";
+
+    private static final String BTN_PRIMARY = "-fx-background-color: linear-gradient(to right, #667eea 0%, #764ba2 100%); " +
+            "-fx-text-fill: white; -fx-font-weight: bold; " +
+            "-fx-background-radius: 8; -fx-cursor: hand; " +
+            "-fx-padding: 10 24; -fx-font-size: 14px;";
+
+    private static final String BTN_SECONDARY = "-fx-background-color: #F3F4F6; " +
+            "-fx-text-fill: #4B5563; -fx-font-weight: 600; " +
+            "-fx-background-radius: 8; -fx-cursor: hand; " +
+            "-fx-padding: 10 24; -fx-font-size: 14px;";
+
+    private static final String BTN_DANGER = "-fx-background-color: linear-gradient(to right, #ef4444 0%, #dc2626 100%); " +
+            "-fx-text-fill: white; -fx-font-weight: bold; " +
+            "-fx-background-radius: 8; -fx-cursor: hand; " +
+            "-fx-padding: 10 24; -fx-font-size: 14px;";
+
+    // SUCCESS DIALOG
+    public static void showSuccess(String title, String message) {
+        Stage dialog = createStyledStage(title);
+
+        VBox content = new VBox(20);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(30));
+        content.setStyle(DIALOG_BG);
+
+        // Icon
+        Circle iconBg = new Circle(40, Color.rgb(34, 197, 94));
+        ImageView icon = createIcon("success");
+        icon.setFitWidth(24);
+        icon.setFitHeight(24);
+        StackPane iconContainer = new StackPane(iconBg, icon);
+
+        // Title
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #1F2937;");
+
+        // Message
+        Label msgLabel = new Label(message);
+        msgLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #6B7280; -fx-wrap-text: true;");
+        msgLabel.setMaxWidth(300);
+        msgLabel.setAlignment(Pos.CENTER);
+
+        // Button
+        Button okButton = new Button("Отлично");
+        okButton.setStyle(BTN_PRIMARY);
+        okButton.setOnAction(e -> dialog.close());
+
+        content.getChildren().addAll(iconContainer, titleLabel, msgLabel, okButton);
+
+        Scene scene = new Scene(content, 400, 280, Color.TRANSPARENT);
+        dialog.setScene(scene);
+        dialog.showAndWait();
+    }
+
+    // ERROR DIALOG
+    public static void showError(String title, String message) {
+        Stage dialog = createStyledStage(title);
+
+        VBox content = new VBox(20);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(30));
+        content.setStyle(DIALOG_BG);
+
+        // Icon
+        Circle iconBg = new Circle(40, Color.rgb(239, 68, 68));
+        ImageView icon = createIcon("error");
+        icon.setFitWidth(24);
+        icon.setFitHeight(24);
+        StackPane iconContainer = new StackPane(iconBg, icon);
+
+        // Title
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #1F2937;");
+
+        // Message
+        Label msgLabel = new Label(message);
+        msgLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #6B7280; -fx-wrap-text: true;");
+        msgLabel.setMaxWidth(300);
+        msgLabel.setAlignment(Pos.CENTER);
+
+        // Button
+        Button okButton = new Button("Понятно");
+        okButton.setStyle(BTN_DANGER);
+        okButton.setOnAction(e -> dialog.close());
+
+        content.getChildren().addAll(iconContainer, titleLabel, msgLabel, okButton);
+
+        Scene scene = new Scene(content, 400, 280, Color.TRANSPARENT);
+        dialog.setScene(scene);
+        dialog.showAndWait();
+    }
+
+    // INFO DIALOG WITH SCROLL
+    public static void showInfo(String title, String message) {
+        Stage dialog = createStyledStage(title);
+
+        VBox content = new VBox(20);
+        content.setPadding(new Insets(30));
+        content.setStyle(DIALOG_BG);
+
+        // Header
+        HBox header = new HBox(15);
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        Circle iconBg = new Circle(20, Color.rgb(59, 130, 246));
+        ImageView icon = createIcon("info");
+        icon.setFitWidth(16);
+        icon.setFitHeight(16);
+        StackPane iconContainer = new StackPane(iconBg, icon);
+
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1F2937;");
+
+        header.getChildren().addAll(iconContainer, titleLabel);
+
+        // Message Area
+        TextArea textArea = new TextArea(message);
+        textArea.setEditable(false);
+        textArea.setWrapText(true);
+        textArea.setStyle("-fx-background-color: #F9FAFB; " +
+                "-fx-background-radius: 8; " +
+                "-fx-border-color: #E5E7EB; " +
+                "-fx-border-radius: 8; " +
+                "-fx-font-size: 13px; " +
+                "-fx-text-fill: #374151; " +
+                "-fx-padding: 12;");
+        textArea.setPrefHeight(250);
+
+        // Button
+        Button okButton = new Button("Закрыть");
+        okButton.setStyle(BTN_SECONDARY);
+        okButton.setOnAction(e -> dialog.close());
+
+        content.getChildren().addAll(header, textArea, okButton);
+
+        Scene scene = new Scene(content, 550, 400, Color.TRANSPARENT);
+        dialog.setScene(scene);
+        dialog.showAndWait();
+    }
+
+    // CONFIRMATION DIALOG
+    public static boolean showConfirmation(String title, String message) {
+        Stage dialog = createStyledStage(title);
+
+        VBox content = new VBox(20);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(30));
+        content.setStyle(DIALOG_BG);
+
+        // Icon
+        Circle iconBg = new Circle(40, Color.rgb(251, 191, 36));
+        ImageView icon = createIcon("warning");
+        icon.setFitWidth(24);
+        icon.setFitHeight(24);
+        StackPane iconContainer = new StackPane(iconBg, icon);
+
+        // Title
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #1F2937;");
+
+        // Message
+        Label msgLabel = new Label(message);
+        msgLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #6B7280; -fx-wrap-text: true;");
+        msgLabel.setMaxWidth(300);
+        msgLabel.setAlignment(Pos.CENTER);
+
+        // Buttons
+        HBox buttonBox = new HBox(12);
+        buttonBox.setAlignment(Pos.CENTER);
+
+        Button cancelButton = new Button("Отмена");
+        cancelButton.setStyle(BTN_SECONDARY);
+
+        Button confirmButton = new Button("Подтвердить");
+        confirmButton.setStyle(BTN_PRIMARY);
+
+        final boolean[] result = {false};
+
+        cancelButton.setOnAction(e -> {
+            result[0] = false;
+            dialog.close();
+        });
+
+        confirmButton.setOnAction(e -> {
+            result[0] = true;
+            dialog.close();
+        });
+
+        buttonBox.getChildren().addAll(cancelButton, confirmButton);
+        content.getChildren().addAll(iconContainer, titleLabel, msgLabel, buttonBox);
+
+        Scene scene = new Scene(content, 400, 280, Color.TRANSPARENT);
+        dialog.setScene(scene);
+        dialog.showAndWait();
+
+        return result[0];
+    }
+
+    // INPUT DIALOG
+    public static Optional<String> showInput(String title, String header, String prompt) {
+        Stage dialog = createStyledStage(title);
+
+        VBox content = new VBox(20);
+        content.setPadding(new Insets(30));
+        content.setStyle(DIALOG_BG);
+
+        // Header
+        Label headerLabel = new Label(header);
+        headerLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: 600; -fx-text-fill: #374151;");
+
+        // Input Field
+        TextField inputField = new TextField();
+        inputField.setPromptText(prompt);
+        inputField.setStyle("-fx-background-color: #F9FAFB; " +
+                "-fx-background-radius: 8; " +
+                "-fx-border-color: #E5E7EB; " +
+                "-fx-border-radius: 8; " +
+                "-fx-border-width: 1.5; " +
+                "-fx-padding: 10 12; " +
+                "-fx-font-size: 14px;");
+        inputField.setPrefWidth(300);
+
+        // Buttons
+        HBox buttonBox = new HBox(12);
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+
+        Button cancelButton = new Button("Отмена");
+        cancelButton.setStyle(BTN_SECONDARY);
+
+        Button okButton = new Button("OK");
+        okButton.setStyle(BTN_PRIMARY);
+
+        final String[] result = {null};
+
+        cancelButton.setOnAction(e -> dialog.close());
+
+        okButton.setOnAction(e -> {
+            String text = inputField.getText().trim();
+            if (!text.isEmpty()) {
+                result[0] = text;
+            }
+            dialog.close();
+        });
+
+        buttonBox.getChildren().addAll(cancelButton, okButton);
+        content.getChildren().addAll(headerLabel, inputField, buttonBox);
+
+        Scene scene = new Scene(content, 400, 200, Color.TRANSPARENT);
+        dialog.setScene(scene);
+        dialog.showAndWait();
+
+        return Optional.ofNullable(result[0]);
+    }
+
+    // Helper methods
+    private static Stage createStyledStage(String title) {
+        Stage stage = new Stage();
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.initStyle(StageStyle.TRANSPARENT);
+        stage.setTitle(title);
+        stage.setResizable(false);
+
+        // Animation on show
+        stage.setOnShown(e -> {
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(200), stage.getScene().getRoot());
+            fadeIn.setFromValue(0);
+            fadeIn.setToValue(1);
+            fadeIn.play();
+        });
+
+        return stage;
+    }
+
+    private static ImageView createIcon(String type) {
+        // Здесь можно добавить реальные иконки (SVG или PNG)
+        // Пока используем заглушки
+        ImageView icon = new ImageView();
+        switch (type) {
+            case "success":
+                icon.setImage(createCheckmarkImage());
+                break;
+            case "error":
+                icon.setImage(createCrossImage());
+                break;
+            case "info":
+            case "warning":
+                icon.setImage(createInfoImage());
+                break;
+        }
+        return icon;
+    }
+
+    // Simple SVG-like icons (в реальном проекте лучше использовать файлы)
+    private static Image createCheckmarkImage() {
+        // Создаем простую иконку галочки
+        return null; // Можно заменить на реальную иконку
+    }
+
+    private static Image createCrossImage() {
+        return null;
+    }
+
+    private static Image createInfoImage() {
+        return null;
+    }
 }=== FILE: ./src/client/gui/VehicleTableController.java ===
 package client.gui;
 
 import common.Vehicle;
 import common.VehicleType;
 import common.FuelType;
+import javafx.animation.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -1204,6 +1569,7 @@ import javafx.scene.control.SelectionMode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Callback;
+import javafx.util.Duration;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -1524,35 +1890,6 @@ public class VehicleTableController {
         filteredVehicles.setAll(result);
     }
 
-    public void updateData(List<Vehicle> vehicles) {
-        Long selectedId = null;
-        Vehicle currentSelection = tableView.getSelectionModel().getSelectedItem();
-        if (currentSelection != null) {
-            selectedId = currentSelection.getId();
-        }
-
-        if (vehicles == null) {
-            allVehicles.clear();
-            filteredVehicles.clear();
-            tableView.getSelectionModel().clearSelection();
-            return;
-        }
-
-        allVehicles.setAll(vehicles);
-        applyFilters();
-
-        if (selectedId != null) {
-            final Long finalSelectedId = selectedId;
-            Vehicle toSelect = filteredVehicles.stream()
-                    .filter(v -> v.getId() == finalSelectedId)
-                    .findFirst()
-                    .orElse(null);
-            if (toSelect != null) {
-                tableView.getSelectionModel().select(toSelect);
-            }
-        }
-    }
-
     public List<Vehicle> getAllVehicles() {
         return new ArrayList<>(allVehicles);
     }
@@ -1632,6 +1969,148 @@ public class VehicleTableController {
 
         filteredVehicles.setAll(result);
     }
+
+
+
+
+    public void updateData(List<Vehicle> vehicles) {
+        Long selectedId = null;
+        Vehicle currentSelection = tableView.getSelectionModel().getSelectedItem();
+        if (currentSelection != null) {
+            selectedId = currentSelection.getId();
+        }
+
+        if (vehicles == null) {
+            allVehicles.clear();
+            filteredVehicles.clear();
+            tableView.getSelectionModel().clearSelection();
+            return;
+        }
+
+        // Определяем тип изменения для анимации
+        List<Vehicle> oldList = new ArrayList<>(allVehicles);
+        List<Vehicle> newList = vehicles;
+
+        allVehicles.setAll(vehicles);
+        applyFilters();
+
+        // Анимация изменений
+        animateTableChanges(oldList, newList);
+
+        // Восстанавливаем выделение
+        if (selectedId != null) {
+            final Long finalSelectedId = selectedId;
+            Vehicle toSelect = filteredVehicles.stream()
+                    .filter(v -> v.getId() == finalSelectedId)
+                    .findFirst()
+                    .orElse(null);
+            if (toSelect != null) {
+                tableView.getSelectionModel().select(toSelect);
+            }
+        }
+    }
+
+    /**
+     * Анимация изменений в таблице
+     */
+    private void animateTableChanges(List<Vehicle> oldList, List<Vehicle> newList) {
+        if (oldList.size() == newList.size()) {
+            // Перемешивание - анимируем все строки
+            if (!oldList.containsAll(newList) || !newList.containsAll(oldList)) {
+                animateShuffle();
+            }
+        } else if (newList.size() > oldList.size()) {
+            // Добавление - анимируем новые строки
+            animateAddition(newList.size() - oldList.size());
+        } else if (newList.size() < oldList.size()) {
+            // Удаление - анимируем удаление
+            animateDeletion(oldList.size() - newList.size());
+        }
+    }
+
+    /**
+     * Анимация добавления новых строк
+     */
+    private void animateAddition(int newRowsCount) {
+        for (int i = 0; i < Math.min(newRowsCount, 10); i++) { // Анимируем максимум 10 строк
+            TableRow<Vehicle> row = (TableRow<Vehicle>) tableView.lookup(".table-row-cell");
+            if (row != null) {
+                row.setOpacity(0);
+                row.setTranslateY(-20);
+
+                FadeTransition fadeIn = new FadeTransition(Duration.millis(400), row);
+                fadeIn.setFromValue(0);
+                fadeIn.setToValue(1);
+                fadeIn.setInterpolator(Interpolator.EASE_OUT);
+
+                TranslateTransition slideDown = new TranslateTransition(Duration.millis(400), row);
+                slideDown.setFromY(-20);
+                slideDown.setToY(0);
+                slideDown.setInterpolator(Interpolator.EASE_OUT);
+
+                ParallelTransition appear = new ParallelTransition(fadeIn, slideDown);
+                appear.setDelay(Duration.millis(i * 50)); // Каскадная задержка
+                appear.play();
+            }
+        }
+    }
+
+    /**
+     * Анимация удаления строк
+     */
+    private void animateDeletion(int removedRowsCount) {
+        // Здесь можно добавить анимацию исчезновения
+        // Пока используем простой fade out для всей таблицы
+        FadeTransition fade = new FadeTransition(Duration.millis(300), tableView);
+        fade.setFromValue(1);
+        fade.setToValue(0.7);
+        fade.setInterpolator(Interpolator.EASE_IN);
+
+        PauseTransition pause = new PauseTransition(Duration.millis(100));
+        pause.setOnFinished(e -> {
+            FadeTransition fadeBack = new FadeTransition(Duration.millis(300), tableView);
+            fadeBack.setFromValue(0.7);
+            fadeBack.setToValue(1);
+            fadeBack.setInterpolator(Interpolator.EASE_OUT);
+            fadeBack.play();
+        });
+
+        fade.play();
+        pause.play();
+    }
+
+    /**
+     * Анимация перемешивания - эффект "покачивания"
+     */
+    private void animateShuffle() {
+        // Эффект быстрого покачивания таблицы
+        Timeline shakeTimeline = new Timeline();
+
+        for (int i = 0; i < 3; i++) {
+            final int step = i;
+            KeyFrame frame = new KeyFrame(
+                    Duration.millis(100 + step * 80),
+                    new KeyValue(tableView.translateXProperty(), step % 2 == 0 ? -5 : 5, Interpolator.EASE_BOTH)            );
+            shakeTimeline.getKeyFrames().add(frame);
+        }
+
+        // Возврат в исходное положение
+        KeyFrame finalFrame = new KeyFrame(
+                Duration.millis(400),
+                new KeyValue(tableView.translateXProperty(), 0, Interpolator.EASE_OUT)
+        );
+        shakeTimeline.getKeyFrames().add(finalFrame);
+
+        shakeTimeline.play();
+
+        // Дополнительный эффект - быстрая смена прозрачности
+        FadeTransition flash = new FadeTransition(Duration.millis(200), tableView);
+        flash.setFromValue(1);
+        flash.setToValue(0.8);
+        flash.setAutoReverse(true);
+        flash.setCycleCount(2);
+        flash.play();
+    }
 }=== FILE: ./src/client/gui/CommandDialogHandler.java ===
 package client.gui;
 
@@ -1647,6 +2126,7 @@ import javafx.scene.layout.HBox;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class CommandDialogHandler {
@@ -1714,35 +2194,7 @@ public class CommandDialogHandler {
         }
     }
 
-    public void executeClear() {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Подтверждение");
-        alert.setHeaderText(null);
-        alert.setContentText("Вы уверены, что хотите удалить ВСЕ свои объекты?");
-        alert.getDialogPane().setStyle(DIALOG_BG);
-        alert.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
-                sendCommand("clear", List.of("clear"), null);
-            }
-        });
-    }
 
-    public void executeUpdate() {
-        Vehicle vehicle = showModernVehicleDialog(null);
-        if (vehicle != null) {
-            TextInputDialog dialog = new TextInputDialog();
-            dialog.setHeaderText("Введите ID для обновления");
-            dialog.showAndWait().ifPresent(id -> {
-                try {
-                    long idLong = Long.parseLong(id);
-                    vehicle.setId(idLong);
-                    sendCommand("update", List.of("update", id), vehicle);
-                } catch (NumberFormatException e) {
-                    showError("Некорректный ID");
-                }
-            });
-        }
-    }
 
     public void executeInfo() { sendCommand("info", List.of("info"), null); }
     public void executeSort() { sendCommand("sort", List.of("sort"), null); }
@@ -1767,18 +2219,6 @@ public class CommandDialogHandler {
     }
     public void executeHelp() { sendCommand("help", List.of("help"), null); }
 
-    public void executeFilterByEnginePower() {
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setHeaderText("Фильтр по мощности (минимум)");
-        dialog.showAndWait().ifPresent(power -> {
-            try {
-                Float.parseFloat(power);
-                sendCommand("filter_greater_than_engine_power", List.of("filter_greater_than_engine_power", power), null);
-            } catch (NumberFormatException e) {
-                showError("Некорректное число");
-            }
-        });
-    }
 
     public void executeFilterLessThanType() {
         ComboBox<VehicleType> comboBox = new ComboBox<>();
@@ -1819,48 +2259,7 @@ public class CommandDialogHandler {
 
     public void executeShowBalance() { sendCommand("show_balance", List.of("show_balance"), null); }
 
-    public void executeDeposit() {
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setHeaderText("Пополнение баланса");
-        dialog.showAndWait().ifPresent(amount -> {
-            try {
-                double amountDouble = Double.parseDouble(amount);
-                if (amountDouble > 0) {
-                    sendCommand("deposit", List.of("deposit", amount), null);
-                } else {
-                    showError("Сумма должна быть > 0");
-                }
-            } catch (NumberFormatException e) {
-                showError("Некорректная сумма");
-            }
-        });
-    }
 
-    public void executeSetPrice() {
-        TextInputDialog idDialog = new TextInputDialog();
-        idDialog.setHeaderText("Установка цены: Введите ID");
-        idDialog.showAndWait().ifPresent(id -> {
-            try {
-                Long.parseLong(id);
-                TextInputDialog priceDialog = new TextInputDialog();
-                priceDialog.setHeaderText("Введите новую цену");
-                priceDialog.showAndWait().ifPresent(price -> {
-                    try {
-                        double priceDouble = Double.parseDouble(price);
-                        if (priceDouble >= 0) {
-                            sendCommand("set_price", List.of("set_price", id, price), null);
-                        } else {
-                            showError("Цена не может быть отрицательной");
-                        }
-                    } catch (NumberFormatException e) {
-                        showError("Некорректная цена");
-                    }
-                });
-            } catch (NumberFormatException e) {
-                showError("Некорректный ID");
-            }
-        });
-    }
 
     private void sendCommand(String commandName, List<String> args, Vehicle vehicle) {
         new Thread(() -> {
@@ -1917,30 +2316,9 @@ public class CommandDialogHandler {
         }).start();
     }
 
-    private void showScrollableInfo(String message) {
-        Dialog<Void> dialog = new Dialog<>();
-        dialog.getDialogPane().setStyle(DIALOG_BG);
-        dialog.setTitle("Результат");
-        dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
-        dialog.setResizable(true);
-        TextArea textArea = new TextArea(message);
-        textArea.setEditable(false);
-        textArea.setWrapText(true);
-        ScrollPane scrollPane = new ScrollPane(textArea);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setPrefSize(600, 350);
-        dialog.getDialogPane().setContent(scrollPane);
-        dialog.showAndWait();
-    }
 
-    private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.getDialogPane().setStyle(DIALOG_BG);
-        alert.setTitle("Ошибка");
-        alert.setHeaderText(null);
-        alert.setContentText(message != null ? message : "Произошла ошибка");
-        alert.showAndWait();
-    }
+
+
 
     private Vehicle showModernVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
@@ -2091,20 +2469,173 @@ public class CommandDialogHandler {
             sendCommand("update", List.of("update", String.valueOf(existingVehicle.getId())), vehicleToSave);
         }
     }
+
+
+
+    private void showError(String message) {
+        // Используем Alert как fallback
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.getDialogPane().setStyle(DIALOG_BG);
+        alert.setTitle("Ошибка");
+        alert.setHeaderText(null);
+        alert.setContentText(message != null ? message : "Произошла ошибка");
+        alert.showAndWait();
+    }
+
+    private void showScrollableInfo(String message) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.getDialogPane().setStyle(DIALOG_BG);
+        dialog.setTitle("Результат");
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
+        dialog.setResizable(true);
+
+        TextArea textArea = new TextArea(message);
+        textArea.setEditable(false);
+        textArea.setWrapText(true);
+        textArea.setStyle("-fx-background-color: #F9FAFB; " +
+                "-fx-background-radius: 8; " +
+                "-fx-border-color: #E5E7EB; " +
+                "-fx-border-radius: 8; " +
+                "-fx-font-size: 13px; " +
+                "-fx-padding: 12;");
+
+        ScrollPane scrollPane = new ScrollPane(textArea);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefSize(600, 350);
+
+        dialog.getDialogPane().setContent(scrollPane);
+        dialog.showAndWait();
+    }
+
+    // В executeClear замените Alert на:
+    public void executeClear() {
+        boolean confirmed = ModernDialog.showConfirmation(
+                "Очистка коллекции",
+                "Вы уверены, что хотите удалить ВСЕ свои объекты? Это действие нельзя отменить."
+        );
+
+        if (confirmed) {
+            sendCommand("clear", List.of("clear"), null);
+        }
+    }
+
+    // В executeDeposit замените TextInputDialog на:
+    public void executeDeposit() {
+        Optional<String> result = ModernDialog.showInput(
+                "Пополнение баланса",
+                "Введите сумму пополнения:",
+                "Например: 1000"
+        );
+
+        result.ifPresent(amount -> {
+            try {
+                double amountDouble = Double.parseDouble(amount);
+                if (amountDouble > 0) {
+                    sendCommand("deposit", List.of("deposit", amount), null);
+                } else {
+                    showError("Сумма должна быть больше 0");
+                }
+            } catch (NumberFormatException e) {
+                showError("Некорректная сумма");
+            }
+        });
+    }
+
+    // В executeUpdate замените TextInputDialog на:
+    public void executeUpdate() {
+        Vehicle vehicle = showModernVehicleDialog(null);
+        if (vehicle != null) {
+            Optional<String> result = ModernDialog.showInput(
+                    "Обновление элемента",
+                    "Введите ID для обновления:",
+                    "Например: 11"
+            );
+
+            result.ifPresent(id -> {
+                try {
+                    long idLong = Long.parseLong(id);
+                    vehicle.setId(idLong);
+                    sendCommand("update", List.of("update", id), vehicle);
+                } catch (NumberFormatException e) {
+                    showError("Некорректный ID");
+                }
+            });
+        }
+    }
+
+    // В executeSetPrice замените TextInputDialog на:
+    public void executeSetPrice() {
+        Optional<String> idResult = ModernDialog.showInput(
+                "Установка цены",
+                "Введите ID транспортного средства:",
+                "Например: 11"
+        );
+
+        idResult.ifPresent(id -> {
+            try {
+                Long.parseLong(id);
+
+                Optional<String> priceResult = ModernDialog.showInput(
+                        "Новая цена",
+                        "Введите новую цену для ID " + id + ":",
+                        "Например: 15000"
+                );
+
+                priceResult.ifPresent(price -> {
+                    try {
+                        double priceDouble = Double.parseDouble(price);
+                        if (priceDouble >= 0) {
+                            sendCommand("set_price", List.of("set_price", id, price), null);
+                        } else {
+                            showError("Цена не может быть отрицательной");
+                        }
+                    } catch (NumberFormatException e) {
+                        showError("Некорректная цена");
+                    }
+                });
+            } catch (NumberFormatException e) {
+                showError("Некорректный ID");
+            }
+        });
+    }
+
+    // В executeFilterByEnginePower замените TextInputDialog на:
+    public void executeFilterByEnginePower() {
+        Optional<String> result = ModernDialog.showInput(
+                "Фильтр по мощности",
+                "Введите минимальную мощность двигателя:",
+                "Например: 100"
+        );
+
+        result.ifPresent(power -> {
+            try {
+                Float.parseFloat(power);
+                sendCommand("filter_greater_than_engine_power",
+                        List.of("filter_greater_than_engine_power", power), null);
+            } catch (NumberFormatException e) {
+                showError("Некорректное число");
+            }
+        });
+    }
 }=== FILE: ./src/client/gui/AuthScene.java ===
 package client.gui;
+
 import client.logic.NetworkService;
 import common.CommandRequest;
 import common.CommandResponse;
+import javafx.animation.FadeTransition;
+import javafx.animation.ParallelTransition;
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import java.util.List;
 
 public class AuthScene {
@@ -2114,14 +2645,53 @@ public class AuthScene {
     private PasswordField passwordField;
     private Button actionButton;
     private ToggleGroup modeToggle;
-    private Label errorLabel;
+    private VBox notificationContainer;
     private Runnable onLoginSuccess;
 
-    private static final String BTN_GREEN_STYLE = "-fx-background-color: linear-gradient(to bottom, #A5D6A7, #81C784); " +
-            "-fx-text-fill: white; -fx-padding: 12 25; " +
-            "-fx-font-weight: bold; -fx-background-radius: 10; " +
+    // Современные стили
+    private static final String BG_GRADIENT = "-fx-background-color: linear-gradient(to bottom right, #667eea 0%, #764ba2 100%);";
+    private static final String CARD_STYLE = "-fx-background-color: white; " +
+            "-fx-background-radius: 20; " +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 30, 0, 0, 10);";
+    private static final String INPUT_STYLE = "-fx-background-color: #F3F4F6; " +
+            "-fx-background-radius: 10; " +
+            "-fx-border-color: transparent; " +
             "-fx-border-radius: 10; " +
-            "-fx-effect: dropshadow(gaussian, rgba(102,187,106,0.4), 8, 0, 0, 2); " +
+            "-fx-padding: 12 16; " +
+            "-fx-font-size: 14px; " +
+            "-fx-transition: all 0.3s;";
+    private static final String INPUT_FOCUSED = "-fx-background-color: white; " +
+            "-fx-background-radius: 10; " +
+            "-fx-border-color: #667eea; " +
+            "-fx-border-width: 2; " +
+            "-fx-border-radius: 10; " +
+            "-fx-padding: 12 16; " +
+            "-fx-font-size: 14px;";
+    private static final String BTN_PRIMARY = "-fx-background-color: linear-gradient(to right, #667eea 0%, #764ba2 100%); " +
+            "-fx-text-fill: white; " +
+            "-fx-font-weight: bold; " +
+            "-fx-font-size: 16px; " +
+            "-fx-background-radius: 10; " +
+            "-fx-padding: 14 40; " +
+            "-fx-cursor: hand; " +
+            "-fx-effect: dropshadow(gaussian, rgba(102,126,234,0.4), 10, 0, 0, 3);";
+    private static final String BTN_HOVER = "-fx-background-color: linear-gradient(to right, #764ba2 0%, #667eea 100%); " +
+            "-fx-text-fill: white; " +
+            "-fx-font-weight: bold; " +
+            "-fx-font-size: 16px; " +
+            "-fx-background-radius: 10; " +
+            "-fx-padding: 14 40; " +
+            "-fx-cursor: hand; " +
+            "-fx-effect: dropshadow(gaussian, rgba(118,75,162,0.5), 15, 0, 0, 5);";
+    private static final String TOGGLE_STYLE = "-fx-background-color: transparent; " +
+            "-fx-text-fill: #6B7280; " +
+            "-fx-font-size: 14px; " +
+            "-fx-font-weight: 600; " +
+            "-fx-cursor: hand;";
+    private static final String TOGGLE_SELECTED = "-fx-background-color: transparent; " +
+            "-fx-text-fill: #667eea; " +
+            "-fx-font-size: 14px; " +
+            "-fx-font-weight: 700; " +
             "-fx-cursor: hand;";
 
     public AuthScene(Stage stage, NetworkService networkService, LocalizationManager localization) {
@@ -2134,82 +2704,158 @@ public class AuthScene {
     }
 
     public Scene createScene() {
-        VBox root = new VBox(15);
-        root.setPadding(new Insets(20));
+        // Основной контейнер с градиентом
+        VBox root = new VBox(30);
+        root.setPadding(new Insets(40));
         root.setAlignment(Pos.CENTER);
-        root.setStyle("-fx-background-color: linear-gradient(to bottom right, #F1F8E9, #E8F5E9, #C8E6C9);");
+        root.setStyle(BG_GRADIENT);
+
+        // Карточка авторизации
+        VBox card = new VBox(25);
+        card.setPadding(new Insets(40));
+        card.setAlignment(Pos.CENTER);
+        card.setStyle(CARD_STYLE);
+        card.setMaxWidth(420);
+
+        // Начальное состояние для анимации
+        card.setOpacity(0);
+        card.setTranslateY(30);
+
+        // Заголовок с иконкой
+        VBox headerBox = new VBox(10);
+        headerBox.setAlignment(Pos.CENTER);
+
+        Circle iconCircle = new Circle(35, Color.web("#667eea"));
+        Label iconLabel = new Label("🚀");
+        iconLabel.setStyle("-fx-font-size: 32px;");
+        StackPane iconContainer = new StackPane(iconCircle, iconLabel);
 
         Label titleLabel = new Label(localization.get("app.title"));
         titleLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; " +
-                "-fx-text-fill: #2E7D32; " +
-                "-fx-effect: dropshadow(gaussian, rgba(46,125,50,0.2), 5, 0, 0, 1);");
+                "-fx-text-fill: #1F2937; " +
+                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 5, 0, 0, 2);");
 
+        headerBox.getChildren().addAll(iconContainer, titleLabel);
+
+        // Переключатель режимов
         RadioButton rbLogin = new RadioButton(localization.get("auth.login.button"));
         RadioButton rbRegister = new RadioButton(localization.get("auth.register.button"));
         modeToggle = new ToggleGroup();
         rbLogin.setToggleGroup(modeToggle);
         rbRegister.setToggleGroup(modeToggle);
         rbLogin.setSelected(true);
-        rbLogin.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
-        rbRegister.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
+        rbLogin.setStyle(TOGGLE_SELECTED);
+        rbRegister.setStyle(TOGGLE_STYLE);
 
-        HBox modeBox = new HBox(10, rbLogin, rbRegister);
+        HBox modeBox = new HBox(20, rbLogin, rbRegister);
         modeBox.setAlignment(Pos.CENTER);
+        modeBox.setStyle("-fx-background-color: #F3F4F6; " +
+                "-fx-background-radius: 10; " +
+                "-fx-padding: 5;");
 
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setAlignment(Pos.CENTER);
-
-        String fieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #C8E6C9; -fx-padding: 5;";
-        Label loginLabel = new Label(localization.get("auth.login"));
-        loginLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
-        loginField = new TextField();
-        loginField.setPromptText("login");
-        loginField.setStyle(fieldStyle);
-
-        Label passLabel = new Label(localization.get("auth.password"));
-        passLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
-        passwordField = new PasswordField();
-        passwordField.setStyle(fieldStyle);
-        passLabel.setLabelFor(passwordField);
-
-        grid.add(loginLabel, 0, 0);
-        grid.add(loginField, 1, 0);
-        grid.add(passLabel, 0, 1);
-        grid.add(passwordField, 1, 1);
-
-        actionButton = new Button(localization.get("auth.login.button"));
-        actionButton.setStyle(BTN_GREEN_STYLE);
+        // Обработка переключения
         modeToggle.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal == rbLogin) {
+                rbLogin.setStyle(TOGGLE_SELECTED);
+                rbRegister.setStyle(TOGGLE_STYLE);
                 actionButton.setText(localization.get("auth.login.button"));
             } else {
+                rbLogin.setStyle(TOGGLE_STYLE);
+                rbRegister.setStyle(TOGGLE_SELECTED);
                 actionButton.setText(localization.get("auth.register.button"));
             }
         });
+
+        // Поля ввода
+        VBox inputBox = new VBox(15);
+
+        Label loginLabel = createInputLabel(localization.get("auth.login"));
+        loginField = createStyledInput();
+        loginField.setPromptText("username");
+
+        Label passLabel = createInputLabel(localization.get("auth.password"));
+        passwordField = createStyledPasswordInput();
+        passwordField.setPromptText("••••••••");
+
+        inputBox.getChildren().addAll(loginLabel, loginField, passLabel, passwordField);
+
+        // Кнопка действия
+        actionButton = new Button(localization.get("auth.login.button"));
+        actionButton.setStyle(BTN_PRIMARY);
+        actionButton.setMaxWidth(Double.MAX_VALUE);
         actionButton.setOnAction(e -> handleAction());
 
-        errorLabel = new Label();
-        errorLabel.setStyle("-fx-text-fill: #C62828; -fx-font-size: 12px; -fx-font-weight: bold;");
-        errorLabel.setVisible(false);
+        // Hover эффекты
+        actionButton.setOnMouseEntered(e -> actionButton.setStyle(BTN_HOVER));
+        actionButton.setOnMouseExited(e -> actionButton.setStyle(BTN_PRIMARY));
 
-        root.getChildren().addAll(titleLabel, modeBox, grid, actionButton, errorLabel);
-        return new Scene(root, 400, 300);
+        // Контейнер для уведомлений
+        notificationContainer = new VBox(10);
+        notificationContainer.setAlignment(Pos.TOP_CENTER);
+
+        card.getChildren().addAll(headerBox, modeBox, inputBox, actionButton);
+        root.getChildren().addAll(notificationContainer, card);
+
+        Scene scene = new Scene(root, 500, 600);
+
+        // Анимация появления карточки
+        Platform.runLater(() -> {
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(600), card);
+            fadeIn.setFromValue(0);
+            fadeIn.setToValue(1);
+            fadeIn.setInterpolator(javafx.animation.Interpolator.EASE_OUT);
+
+            TranslateTransition slideUp = new TranslateTransition(Duration.millis(600), card);
+            slideUp.setFromY(30);
+            slideUp.setToY(0);
+            slideUp.setInterpolator(javafx.animation.Interpolator.EASE_OUT);
+
+            ParallelTransition appear = new ParallelTransition(fadeIn, slideUp);
+            appear.play();
+        });
+
+        return scene;
+    }
+
+    private Label createInputLabel(String text) {
+        Label label = new Label(text);
+        label.setStyle("-fx-text-fill: #374151; " +
+                "-fx-font-weight: 600; " +
+                "-fx-font-size: 13px;");
+        return label;
+    }
+
+    private TextField createStyledInput() {
+        TextField field = new TextField();
+        field.setStyle(INPUT_STYLE);
+        field.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            field.setStyle(newVal ? INPUT_FOCUSED : INPUT_STYLE);
+        });
+        return field;
+    }
+
+    private PasswordField createStyledPasswordInput() {
+        PasswordField field = new PasswordField();
+        field.setStyle(INPUT_STYLE);
+        field.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            field.setStyle(newVal ? INPUT_FOCUSED : INPUT_STYLE);
+        });
+        return field;
     }
 
     private void handleAction() {
         String login = loginField.getText().trim();
         String password = passwordField.getText().trim();
+
         if (login.isEmpty() || password.isEmpty()) {
-            showError(localization.get("auth.error.empty"));
+            ModernNotifications.showWarning(notificationContainer, localization.get("auth.error.empty"));
             return;
         }
+
         boolean isRegister = modeToggle.getSelectedToggle() instanceof RadioButton &&
                 ((RadioButton) modeToggle.getSelectedToggle()).getText().equals(localization.get("auth.register.button"));
 
         setControlsDisabled(true);
-        errorLabel.setVisible(false);
 
         Thread authThread = new Thread(() -> {
             try {
@@ -2219,22 +2865,27 @@ public class AuthScene {
                 } else {
                     response = sendLoginRequest(login, password);
                 }
+
                 Platform.runLater(() -> {
                     setControlsDisabled(false);
                     if (response != null && response.isSuccess()) {
-                        System.out.println("Авторизация успешна: " + login);
+                        ModernNotifications.showSuccess(notificationContainer, "✓ Авторизация успешна!");
                         if (onLoginSuccess != null) {
-                            onLoginSuccess.run();
+                            // Небольшая задержка перед переходом
+                            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(Duration.millis(500));
+                            pause.setOnFinished(e -> onLoginSuccess.run());
+                            pause.play();
                         }
                     } else {
                         String msg = response != null ? response.getMessage() : localization.get("error.network");
-                        showError(isRegister ? localization.get("auth.error.register") + ": " + msg : localization.get("auth.error.auth"));
+                        ModernNotifications.showError(notificationContainer, isRegister ?
+                                localization.get("auth.error.register") : localization.get("auth.error.auth"));
                     }
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     setControlsDisabled(false);
-                    showError(localization.get("error.network") + ": " + e.getMessage());
+                    ModernNotifications.showError(notificationContainer, localization.get("error.network"));
                 });
             }
         });
@@ -2256,11 +2907,6 @@ public class AuthScene {
         return networkService.receive();
     }
 
-    private void showError(String message) {
-        errorLabel.setText(message);
-        errorLabel.setVisible(true);
-    }
-
     private void setControlsDisabled(boolean disabled) {
         loginField.setDisable(disabled);
         passwordField.setDisable(disabled);
@@ -2278,6 +2924,141 @@ public class AuthScene {
 
     public String getPasswordText() {
         return passwordField.getText().trim();
+    }
+}=== FILE: ./src/client/gui/ModernNotifications.java ===
+package client.gui;
+
+import javafx.animation.*;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.stage.Popup;
+import javafx.util.Duration;
+
+/**
+ * Современные анимированные уведомления (Toast notifications)
+ */
+public class ModernNotifications {
+
+    private static final Duration ANIMATION_DURATION = Duration.millis(400);
+    private static final Duration DISPLAY_DURATION = Duration.seconds(3);
+
+    // Стили для разных типов уведомлений
+    private static final String SUCCESS_STYLE = "-fx-background-color: #10B981; " +
+            "-fx-background-radius: 12; " +
+            "-fx-effect: dropshadow(gaussian, rgba(16,185,129,0.3), 20, 0, 0, 5);";
+
+    private static final String ERROR_STYLE = "-fx-background-color: #EF4444; " +
+            "-fx-background-radius: 12; " +
+            "-fx-effect: dropshadow(gaussian, rgba(239,68,68,0.3), 20, 0, 0, 5);";
+
+    private static final String INFO_STYLE = "-fx-background-color: #3B82F6; " +
+            "-fx-background-radius: 12; " +
+            "-fx-effect: dropshadow(gaussian, rgba(59,130,246,0.3), 20, 0, 0, 5);";
+
+    private static final String WARNING_STYLE = "-fx-background-color: #F59E0B; " +
+            "-fx-background-radius: 12; " +
+            "-fx-effect: dropshadow(gaussian, rgba(245,158,11,0.3), 20, 0, 0, 5);";
+
+    /**
+     * Показать уведомление об успехе
+     */
+    public static void showSuccess(VBox container, String message) {
+        showToast(container, message, SUCCESS_STYLE, "✓");
+    }
+
+    /**
+     * Показать уведомление об ошибке
+     */
+    public static void showError(VBox container, String message) {
+        showToast(container, message, ERROR_STYLE, "✕");
+    }
+
+    /**
+     * Показать информационное уведомление
+     */
+    public static void showInfo(VBox container, String message) {
+        showToast(container, message, INFO_STYLE, "ℹ");
+    }
+
+    /**
+     * Показать предупреждение
+     */
+    public static void showWarning(VBox container, String message) {
+        showToast(container, message, WARNING_STYLE, "⚠");
+    }
+
+    private static void showToast(VBox container, String message, String style, String icon) {
+        if (container == null) return;
+
+        // Создаем уведомление
+        HBox toast = new HBox(12);
+        toast.setPadding(new Insets(14, 20, 14, 20));
+        toast.setAlignment(Pos.CENTER_LEFT);
+        toast.setStyle(style);
+        toast.setMaxWidth(400);
+
+        // Иконка
+        Circle iconCircle = new Circle(14, Color.WHITE);
+        Label iconLabel = new Label(icon);
+        iconLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
+        StackPane iconContainer = new StackPane(iconCircle, iconLabel);
+
+        // Текст
+        Label textLabel = new Label(message);
+        textLabel.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 500;");
+        textLabel.setWrapText(true);
+        textLabel.setMaxWidth(320);
+
+        toast.getChildren().addAll(iconContainer, textLabel);
+
+        // Начальное состояние (прозрачное и сдвинутое)
+        toast.setOpacity(0);
+        toast.setTranslateY(-20);
+
+        // Добавляем в контейнер
+        container.getChildren().add(toast);
+
+        // Анимация появления (Fade In + Slide Down)
+        FadeTransition fadeIn = new FadeTransition(ANIMATION_DURATION, toast);
+        fadeIn.setFromValue(0);
+        fadeIn.setToValue(1);
+        fadeIn.setInterpolator(Interpolator.EASE_OUT);
+
+        TranslateTransition slideIn = new TranslateTransition(ANIMATION_DURATION, toast);
+        slideIn.setFromY(-20);
+        slideIn.setToY(0);
+        slideIn.setInterpolator(Interpolator.EASE_OUT);
+
+        ParallelTransition showAnimation = new ParallelTransition(fadeIn, slideIn);
+
+        // Анимация исчезновения (Fade Out + Slide Up)
+        FadeTransition fadeOut = new FadeTransition(ANIMATION_DURATION, toast);
+        fadeOut.setFromValue(1);
+        fadeOut.setToValue(0);
+        fadeOut.setInterpolator(Interpolator.EASE_IN);
+
+        TranslateTransition slideOut = new TranslateTransition(ANIMATION_DURATION, toast);
+        slideOut.setFromY(0);
+        slideOut.setToY(-20);
+        slideOut.setInterpolator(Interpolator.EASE_IN);
+
+        ParallelTransition hideAnimation = new ParallelTransition(fadeOut, slideOut);
+        hideAnimation.setOnFinished(e -> container.getChildren().remove(toast));
+
+        // Запускаем анимацию появления
+        showAnimation.play();
+
+        // Через DISPLAY_DURATION запускаем анимацию исчезновения
+        PauseTransition displayPause = new PauseTransition(DISPLAY_DURATION);
+        displayPause.setOnFinished(e -> hideAnimation.play());
+        displayPause.play();
     }
 }=== FILE: ./src/client/gui/VehicleTextParser.java ===
 package client.gui;

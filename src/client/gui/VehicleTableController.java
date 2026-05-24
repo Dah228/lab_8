@@ -3,6 +3,7 @@ package client.gui;
 import common.Vehicle;
 import common.VehicleType;
 import common.FuelType;
+import javafx.animation.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -11,6 +12,7 @@ import javafx.scene.control.SelectionMode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Callback;
+import javafx.util.Duration;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -331,35 +333,6 @@ public class VehicleTableController {
         filteredVehicles.setAll(result);
     }
 
-    public void updateData(List<Vehicle> vehicles) {
-        Long selectedId = null;
-        Vehicle currentSelection = tableView.getSelectionModel().getSelectedItem();
-        if (currentSelection != null) {
-            selectedId = currentSelection.getId();
-        }
-
-        if (vehicles == null) {
-            allVehicles.clear();
-            filteredVehicles.clear();
-            tableView.getSelectionModel().clearSelection();
-            return;
-        }
-
-        allVehicles.setAll(vehicles);
-        applyFilters();
-
-        if (selectedId != null) {
-            final Long finalSelectedId = selectedId;
-            Vehicle toSelect = filteredVehicles.stream()
-                    .filter(v -> v.getId() == finalSelectedId)
-                    .findFirst()
-                    .orElse(null);
-            if (toSelect != null) {
-                tableView.getSelectionModel().select(toSelect);
-            }
-        }
-    }
-
     public List<Vehicle> getAllVehicles() {
         return new ArrayList<>(allVehicles);
     }
@@ -438,5 +411,147 @@ public class VehicleTableController {
                 .collect(Collectors.toList());
 
         filteredVehicles.setAll(result);
+    }
+
+
+
+
+    public void updateData(List<Vehicle> vehicles) {
+        Long selectedId = null;
+        Vehicle currentSelection = tableView.getSelectionModel().getSelectedItem();
+        if (currentSelection != null) {
+            selectedId = currentSelection.getId();
+        }
+
+        if (vehicles == null) {
+            allVehicles.clear();
+            filteredVehicles.clear();
+            tableView.getSelectionModel().clearSelection();
+            return;
+        }
+
+        // Определяем тип изменения для анимации
+        List<Vehicle> oldList = new ArrayList<>(allVehicles);
+        List<Vehicle> newList = vehicles;
+
+        allVehicles.setAll(vehicles);
+        applyFilters();
+
+        // Анимация изменений
+        animateTableChanges(oldList, newList);
+
+        // Восстанавливаем выделение
+        if (selectedId != null) {
+            final Long finalSelectedId = selectedId;
+            Vehicle toSelect = filteredVehicles.stream()
+                    .filter(v -> v.getId() == finalSelectedId)
+                    .findFirst()
+                    .orElse(null);
+            if (toSelect != null) {
+                tableView.getSelectionModel().select(toSelect);
+            }
+        }
+    }
+
+    /**
+     * Анимация изменений в таблице
+     */
+    private void animateTableChanges(List<Vehicle> oldList, List<Vehicle> newList) {
+        if (oldList.size() == newList.size()) {
+            // Перемешивание - анимируем все строки
+            if (!oldList.containsAll(newList) || !newList.containsAll(oldList)) {
+                animateShuffle();
+            }
+        } else if (newList.size() > oldList.size()) {
+            // Добавление - анимируем новые строки
+            animateAddition(newList.size() - oldList.size());
+        } else if (newList.size() < oldList.size()) {
+            // Удаление - анимируем удаление
+            animateDeletion(oldList.size() - newList.size());
+        }
+    }
+
+    /**
+     * Анимация добавления новых строк
+     */
+    private void animateAddition(int newRowsCount) {
+        for (int i = 0; i < Math.min(newRowsCount, 10); i++) { // Анимируем максимум 10 строк
+            TableRow<Vehicle> row = (TableRow<Vehicle>) tableView.lookup(".table-row-cell");
+            if (row != null) {
+                row.setOpacity(0);
+                row.setTranslateY(-20);
+
+                FadeTransition fadeIn = new FadeTransition(Duration.millis(400), row);
+                fadeIn.setFromValue(0);
+                fadeIn.setToValue(1);
+                fadeIn.setInterpolator(Interpolator.EASE_OUT);
+
+                TranslateTransition slideDown = new TranslateTransition(Duration.millis(400), row);
+                slideDown.setFromY(-20);
+                slideDown.setToY(0);
+                slideDown.setInterpolator(Interpolator.EASE_OUT);
+
+                ParallelTransition appear = new ParallelTransition(fadeIn, slideDown);
+                appear.setDelay(Duration.millis(i * 50)); // Каскадная задержка
+                appear.play();
+            }
+        }
+    }
+
+    /**
+     * Анимация удаления строк
+     */
+    private void animateDeletion(int removedRowsCount) {
+        // Здесь можно добавить анимацию исчезновения
+        // Пока используем простой fade out для всей таблицы
+        FadeTransition fade = new FadeTransition(Duration.millis(300), tableView);
+        fade.setFromValue(1);
+        fade.setToValue(0.7);
+        fade.setInterpolator(Interpolator.EASE_IN);
+
+        PauseTransition pause = new PauseTransition(Duration.millis(100));
+        pause.setOnFinished(e -> {
+            FadeTransition fadeBack = new FadeTransition(Duration.millis(300), tableView);
+            fadeBack.setFromValue(0.7);
+            fadeBack.setToValue(1);
+            fadeBack.setInterpolator(Interpolator.EASE_OUT);
+            fadeBack.play();
+        });
+
+        fade.play();
+        pause.play();
+    }
+
+    /**
+     * Анимация перемешивания - эффект "покачивания"
+     */
+    private void animateShuffle() {
+        // Эффект быстрого покачивания таблицы
+        Timeline shakeTimeline = new Timeline();
+
+        for (int i = 0; i < 3; i++) {
+            final int step = i;
+            KeyFrame frame = new KeyFrame(
+                    Duration.millis(100 + step * 80),
+                    new KeyValue(tableView.translateXProperty(), step % 2 == 0 ? -5 : 5, Interpolator.EASE_BOTH)            );
+            shakeTimeline.getKeyFrames().add(frame);
+        }
+
+        // Возврат в исходное положение
+        KeyFrame finalFrame = new KeyFrame(
+                Duration.millis(400),
+                new KeyValue(tableView.translateXProperty(), 0, Interpolator.EASE_OUT)
+        );
+        shakeTimeline.getKeyFrames().add(finalFrame);
+
+        shakeTimeline.play();
+
+        // Дополнительный эффект - быстрая смена прозрачности
+        FadeTransition flash = new FadeTransition(Duration.millis(200), tableView);
+        flash.setFromValue(1);
+        flash.setToValue(0.8);
+        flash.setAutoReverse(true);
+        flash.setCycleCount(2);
+        flash.play();
     }
 }

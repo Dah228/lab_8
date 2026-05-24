@@ -358,14 +358,39 @@ public class CommandDialogHandler {
 
 
 
-    // Замените метод showError на:
     private void showError(String message) {
-        ModernDialog.showError("Ошибка", message);
+        // Используем Alert как fallback
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.getDialogPane().setStyle(DIALOG_BG);
+        alert.setTitle("Ошибка");
+        alert.setHeaderText(null);
+        alert.setContentText(message != null ? message : "Произошла ошибка");
+        alert.showAndWait();
     }
 
-    // Замените метод showScrollableInfo на:
     private void showScrollableInfo(String message) {
-        ModernDialog.showInfo("Результат выполнения", message);
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.getDialogPane().setStyle(DIALOG_BG);
+        dialog.setTitle("Результат");
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
+        dialog.setResizable(true);
+
+        TextArea textArea = new TextArea(message);
+        textArea.setEditable(false);
+        textArea.setWrapText(true);
+        textArea.setStyle("-fx-background-color: #F9FAFB; " +
+                "-fx-background-radius: 8; " +
+                "-fx-border-color: #E5E7EB; " +
+                "-fx-border-radius: 8; " +
+                "-fx-font-size: 13px; " +
+                "-fx-padding: 12;");
+
+        ScrollPane scrollPane = new ScrollPane(textArea);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefSize(600, 350);
+
+        dialog.getDialogPane().setContent(scrollPane);
+        dialog.showAndWait();
     }
 
     // В executeClear замените Alert на:
