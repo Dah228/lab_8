@@ -30,6 +30,7 @@ public class MainScene {
     private VehicleTableController tableController;
     private VehicleCanvasController canvasController;
     private CommandDialogHandler commandHandler;
+    private Button depositButton;
 
     // Элементы верхней панели
     private Label userLabel;
@@ -123,21 +124,17 @@ public class MainScene {
         hbox.setPadding(new Insets(12, 20, 12, 20));
         hbox.setAlignment(Pos.CENTER_LEFT);
         hbox.setStyle(CARD_STYLE);
-
         userLabel = new Label(localization.get("main.user.label") + " " + currentUserLogin);
         userLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2979FF;");
-
-        // Кнопка баланса сверху
+// Кнопка баланса сверху
         balanceButton = new Button(localization.get("btn.balance"));
         balanceButton.setStyle(BTN_SECONDARY);
         balanceButton.setOnMouseEntered(e -> balanceButton.setStyle(BTN_SECONDARY_HOVER));
         balanceButton.setOnMouseExited(e -> balanceButton.setStyle(BTN_SECONDARY));
-
         balanceButton.setOnAction(e -> {
             String originalText = balanceButton.getText();
             balanceButton.setText("...");
             balanceButton.setDisable(true);
-
             new Thread(() -> {
                 try {
                     common.CommandRequest req = new common.CommandRequest(
@@ -150,7 +147,6 @@ public class MainScene {
                     );
                     networkService.send(req);
                     common.CommandResponse resp = networkService.receive();
-
                     Platform.runLater(() -> {
                         if (resp != null && resp.isSuccess()) {
                             String msg = resp.getMessage();
@@ -159,7 +155,6 @@ public class MainScene {
                         } else {
                             balanceButton.setText("Ошибка");
                         }
-
                         PauseTransition pause = new PauseTransition(Duration.seconds(3));
                         pause.setOnFinished(event -> {
                             balanceButton.setText(originalText);
@@ -180,13 +175,21 @@ public class MainScene {
                 }
             }).start();
         });
-
+// === НОВАЯ КНОПКА ПОПОЛНИТЬ ===
+        depositButton = new Button(localization.get("btn.deposit"));
+        depositButton.setStyle(BTN_SECONDARY);
+        depositButton.setOnMouseEntered(e -> depositButton.setStyle(BTN_SECONDARY_HOVER));
+        depositButton.setOnMouseExited(e -> depositButton.setStyle(BTN_SECONDARY));
+        depositButton.setOnAction(e -> {
+            if (commandHandler != null) {
+                commandHandler.executeDeposit();
+            }
+        });
+// ==============================
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-
         Label langLabel = new Label(localization.get("main.lang.label"));
         langLabel.setStyle("-fx-text-fill: #757575; -fx-font-weight: 500;");
-
         langComboBox = new ComboBox<>();
         langComboBox.getItems().setAll(localization.getAvailableLocales());
         langComboBox.setCellFactory(lv -> new ListCell<>() {
@@ -210,10 +213,10 @@ public class MainScene {
                 updateUITexts();
             }
         });
-
-        hbox.getChildren().addAll(userLabel, balanceButton, spacer, langLabel, langComboBox);
+        hbox.getChildren().addAll(userLabel, balanceButton, depositButton, spacer, langLabel, langComboBox);
         return hbox;
     }
+
 
     private SplitPane createCenterSplit() {
         SplitPane splitPane = new SplitPane();

@@ -115,27 +115,21 @@ public class CommandDialogHandler {
 
     public void executeShuffle() {
         if (tableController == null) return;
-
         // 1. Получаем текущий список всех объектов из контроллера таблицы
         List<Vehicle> vehicles = tableController.getAllVehicles();
-
         if (vehicles == null || vehicles.isEmpty()) {
             showError("Коллекция пуста, нечего перемешивать.");
             return;
         }
-
-        // 2. Создаем копию списка, чтобы не менять исходные данные напрямую до обновления UI
+        // 2. Создаем копию списка и перемешиваем
         List<Vehicle> shuffledVehicles = new java.util.ArrayList<>(vehicles);
-
-        // 3. Перемешиваем локально
         Collections.shuffle(shuffledVehicles);
 
-        // 4. Обновляем таблицу в JavaFX потоке
+        // 3. Обновляем таблицу в JavaFX потоке БЕЗ сортировки
         Platform.runLater(() -> {
-            tableController.updateData(shuffledVehicles);
+            tableController.updateDataWithoutSorting(shuffledVehicles);
         });
     }
-
     public void executeHelp() { sendCommand("help", List.of("help"), null); }
 
     public void executeFilterByEnginePower() {

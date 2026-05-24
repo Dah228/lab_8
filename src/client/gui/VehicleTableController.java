@@ -367,4 +367,76 @@ public class VehicleTableController {
     public TableView<Vehicle> getTable() {
         return tableView;
     }
+
+    /**
+     * Обновляет данные таблицы БЕЗ применения сортировки.
+     * Используется для команды shuffle.
+     */
+    public void updateDataWithoutSorting(List<Vehicle> vehicles) {
+        Long selectedId = null;
+        Vehicle currentSelection = tableView.getSelectionModel().getSelectedItem();
+        if (currentSelection != null) {
+            selectedId = currentSelection.getId();
+        }
+
+        if (vehicles == null) {
+            allVehicles.clear();
+            filteredVehicles.clear();
+            tableView.getSelectionModel().clearSelection();
+            return;
+        }
+
+        // Обновляем все vehicles
+        allVehicles.setAll(vehicles);
+
+        // Применяем фильтры, но БЕЗ сортировки
+        applyFiltersWithoutSorting();
+
+        // Восстанавливаем выделение
+        if (selectedId != null) {
+            final Long finalSelectedId = selectedId;
+            Vehicle toSelect = filteredVehicles.stream()
+                    .filter(v -> v.getId() == finalSelectedId)
+                    .findFirst()
+                    .orElse(null);
+            if (toSelect != null) {
+                tableView.getSelectionModel().select(toSelect);
+            }
+        }
+    }
+
+    /**
+     * Применяет фильтры БЕЗ сортировки.
+     * Используется для сохранения порядка при shuffle.
+     */
+    private void applyFiltersWithoutSorting() {
+        String idStr = filterId.getText().trim();
+        String nameStr = filterName.getText().trim().toLowerCase();
+        String ownerStr = filterOwner.getText().trim().toLowerCase();
+        String minPriceStr = filterMinPrice.getText().trim();
+        String maxPriceStr = filterMaxPrice.getText().trim();
+        VehicleType typeVal = filterType.getValue();
+        FuelType fuelVal = filterFuel.getValue();
+
+        List<Vehicle> result = allVehicles.stream()
+                .filter(v -> {
+                    if (!idStr.isEmpty()) {
+                        try { if (v.getId() != Long.parseLong(idStr)) return false; } catch (NumberFormatException e) { return false; }
+                    }
+                    if (!nameStr.isEmpty() && !v.getName().toLowerCase().contains(nameStr)) return false;
+                    if (!ownerStr.isEmpty() && (v.getOwnerLogin() == null || !v.getOwnerLogin().toLowerCase().contains(ownerStr))) return false;
+                    if (typeVal != null && v.getType() != typeVal) return false;
+                    if (fuelVal != null && v.getFuelType() != fuelVal) return false;
+                    if (!minPriceStr.isEmpty()) {
+                        try { if (v.getPrice() < Double.parseDouble(minPriceStr)) return false; } catch (NumberFormatException e) { return false; }
+                    }
+                    if (!maxPriceStr.isEmpty()) {
+                        try { if (v.getPrice() > Double.parseDouble(maxPriceStr)) return false; } catch (NumberFormatException e) { return false; }
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
+
+        filteredVehicles.setAll(result);
+    }
 }
