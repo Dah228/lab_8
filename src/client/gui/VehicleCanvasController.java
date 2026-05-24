@@ -353,6 +353,10 @@ public class VehicleCanvasController {
         } else {
             selectedVehicle = null;
             drawAll();
+
+            if (event.getClickCount() == 2) {
+                resetView();
+            }
         }
     }
 
