@@ -27,6 +27,7 @@ public class AuthScene {
     private ToggleGroup modeToggle;
     private VBox notificationContainer;
     private Runnable onLoginSuccess;
+    private Runnable onReturnToAuth;
 
     // Современные стили
     private static final String BG_GRADIENT = "-fx-background-color: linear-gradient(to bottom right, #667eea 0%, #764ba2 100%);";
@@ -81,6 +82,10 @@ public class AuthScene {
 
     public void setOnLoginSuccess(Runnable callback) {
         this.onLoginSuccess = callback;
+    }
+
+    public void setOnReturnToAuth(Runnable callback) {
+        this.onReturnToAuth = callback;
     }
 
     public Scene createScene() {
@@ -224,19 +229,24 @@ public class AuthScene {
     }
 
     private void handleAction() {
+        // Получаем введенные данные
         String login = loginField.getText().trim();
         String password = passwordField.getText().trim();
 
+        // Проверка на пустые поля
         if (login.isEmpty() || password.isEmpty()) {
             ModernNotifications.showWarning(notificationContainer, localization.get("auth.error.empty"), false);
             return;
         }
 
+        // Определяем режим: Вход или Регистрация
         boolean isRegister = modeToggle.getSelectedToggle() instanceof RadioButton &&
                 ((RadioButton) modeToggle.getSelectedToggle()).getText().equals(localization.get("auth.register.button"));
 
+        // Блокируем интерфейс на время запроса, чтобы избежать двойных нажатий
         setControlsDisabled(true);
 
+        // Выполняем сетевой запрос в фоновом потоке, чтобы не замораживать UI
         Thread authThread = new Thread(() -> {
             try {
                 CommandResponse response;
@@ -246,28 +256,34 @@ public class AuthScene {
                     response = sendLoginRequest(login, password);
                 }
 
+                // Обработка результата в JavaFX Application Thread (UI поток)
                 Platform.runLater(() -> {
-                    setControlsDisabled(false);
+                    setControlsDisabled(false); // Разблокируем интерфейс
+
                     if (response != null && response.isSuccess()) {
+                        // Успех: показываем уведомление и переходим дальше
                         ModernNotifications.showSuccess(notificationContainer, "✓ Авторизация успешна!", false);
                         if (onLoginSuccess != null) {
-                            // Небольшая задержка перед переходом
+                            // Небольшая задержка 500мс перед переходом на главную сцену
                             javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(Duration.millis(500));
                             pause.setOnFinished(e -> onLoginSuccess.run());
                             pause.play();
                         }
                     } else {
+                        // Ошибка: показываем соответствующее сообщение
                         ModernNotifications.showError(notificationContainer, isRegister ?
                                 localization.get("auth.error.register") : localization.get("auth.error.auth"), false);
                     }
                 });
             } catch (Exception e) {
+                // Обработка ошибок сети/соединения
                 Platform.runLater(() -> {
                     setControlsDisabled(false);
                     ModernNotifications.showError(notificationContainer, localization.get("error.network"), false);
                 });
             }
         });
+
         authThread.setDaemon(true);
         authThread.start();
     }
