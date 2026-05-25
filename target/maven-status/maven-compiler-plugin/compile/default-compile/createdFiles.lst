@@ -10,6 +10,7 @@ server\commands\AddIfMax.class
 server\collection\IVehicleManager.class
 client\gui\CommandDialogHandler.class
 server\commands\ShowBalanceCommand.class
+client\gui\CommandDialogHandler$2.class
 server\commands\SetPriceCommand.class
 server\commands\DepositCommand.class
 server\commands\UpdateElementID.class
@@ -67,6 +68,7 @@ client\gui\MainScene$1.class
 client\gui\ModernNotifications.class
 server\service\ServerLoop.class
 client\logic\AllCommands.class
+client\gui\CommandDialogHandler$1.class
 server\service\ServerNetworkService$ClientData.class
 common\ResponseSender.class
 common\CommandRequest.class
