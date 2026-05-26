@@ -385,35 +385,28 @@ public class MainScene {
         HBox hbox = new HBox(20);
         hbox.setPadding(new Insets(12, 20, 12, 20));
         hbox.setAlignment(Pos.CENTER_LEFT);
-// === ЗАГРУЗКА ИЗОБРАЖЕНИЙ ===
-// Используем полное имя класса, чтобы избежать конфликта с java.awt.Image
+
+        // === ЗАГРУЗКА ИЗОБРАЖЕНИЙ ===
         javafx.scene.image.Image sunImage;
         javafx.scene.image.Image moonImage;
         try {
-// Загружаем картинки из папки resources (корень classpath)
             sunImage = new javafx.scene.image.Image(getClass().getResourceAsStream("/sun.png"));
             moonImage = new javafx.scene.image.Image(getClass().getResourceAsStream("/moon.png"));
-// Проверка на ошибки загрузки (файл есть, но битый или пустой)
             if (sunImage.isError() || moonImage.isError()) {
                 throw new Exception("Images failed to load");
             }
         } catch (Exception e) {
-            System.err.println("Ошибка: Не удалось загрузить картинки темы (убедитесь, что sun.png и moon.png лежат в src/main/resources)");
-// Создаем "заглушки" если картинки не найдены, чтобы приложение работало
+            System.err.println("Ошибка: Не удалось загрузить картинки темы");
             sunImage = null;
             moonImage = null;
         }
-// === СОЗДАНИЕ ImageView ДЛЯ ИКОНКИ ===
-// По умолчанию (светлая тема) показываем Луну (чтобы переключиться на темную)
+
         final javafx.scene.image.ImageView themeIcon = new javafx.scene.image.ImageView();
         themeIcon.setFitWidth(24);
         themeIcon.setFitHeight(24);
         themeIcon.setPreserveRatio(true);
-// Устанавливаем начальную картинку
-        if (moonImage != null) {
-            themeIcon.setImage(moonImage);
-        }
-// === КНОПКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ ===
+        if (moonImage != null) themeIcon.setImage(moonImage);
+
         themeToggleButton = new Button();
         themeToggleButton.setGraphic(themeIcon);
         themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
@@ -422,7 +415,6 @@ public class MainScene {
         Image finalMoonImage = moonImage;
         themeToggleButton.setOnAction(e -> {
             isDarkMode = !isDarkMode;
-// Меняем картинку: если включили ТЕМНУЮ тему -> показываем Солнце
             if (isDarkMode && finalSunImage != null) {
                 themeIcon.setImage(finalSunImage);
             } else if (!isDarkMode && finalMoonImage != null) {
@@ -430,26 +422,16 @@ public class MainScene {
             }
             applyThemeStyles();
         });
+
+        // === USER LABEL — ИСПРАВЛЕННАЯ ВЕРСИЯ ===
         userLabel = new Label(localization.get("main.user.label") + " " + currentUserLogin);
-// Белый текст для темной темы, синий для светлой
-        String userLabelColor = isDarkMode ? "#FFFFFF" : "#2563EB";
-        userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: " + userLabelColor + "; -fx-cursor: hand; -fx-underline: true;");
-// === ОБРАБОТЧИКИ КЛИКА НА ПОЛЬЗОВАТЕЛЯ ===
+        updateUserLabelStyle(false); // initial style
+
         userLabel.setOnMouseClicked(e -> toggleProfile());
-        userLabel.setOnMouseEntered(e -> {
-            if (!isDarkMode) {
-                userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #1D4ED8; -fx-cursor: hand; -fx-underline: false;");
-            } else {
-                userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #A78BFA; -fx-cursor: hand; -fx-underline: false;");
-            }
-        });
-        userLabel.setOnMouseExited(e -> {
-            if (!isDarkMode) {
-                userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #2563EB; -fx-cursor: hand; -fx-underline: true;");
-            } else {
-                userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #8B5CF6; -fx-cursor: hand; -fx-underline: true;");
-            }
-        });
+        userLabel.setOnMouseEntered(e -> updateUserLabelStyle(true));  // hover
+        userLabel.setOnMouseExited(e -> updateUserLabelStyle(false));  // exit
+        // =================================
+
         balanceButton = new Button(localization.get("btn.balance"));
         themeAwareButtons.add(balanceButton);
         setupButtonHover(balanceButton, false);
@@ -488,16 +470,19 @@ public class MainScene {
                 }
             }).start();
         });
+
         depositButton = new Button(localization.get("btn.deposit"));
         themeAwareButtons.add(depositButton);
         setupButtonHover(depositButton, false);
         depositButton.setOnAction(e -> {
             if (commandHandler != null) commandHandler.executeDeposit();
         });
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        langLabel = new Label(localization.get("main.lang.label")); // <--- Используем поле класса
-// Цвет будет установлен в applyThemeStyles
+
+        Label langLabel = new Label(localization.get("main.lang.label"));
+        langLabel.setStyle("-fx-text-fill: #757575; -fx-font-weight: 500;");
         langComboBox = new ComboBox<>();
         langComboBox.getItems().setAll(localization.getAvailableLocales());
         langComboBox.setCellFactory(lv -> new ListCell<>() {
@@ -522,9 +507,34 @@ public class MainScene {
                 updateUITexts();
             }
         });
+
         hbox.getChildren().addAll(themeToggleButton, userLabel, balanceButton, depositButton, spacer, langLabel, langComboBox);
         return hbox;
     }
+
+    /**
+     * Вспомогательный метод для стилизации userLabel.
+     * Гарантирует, что font-size и font-weight всегда одинаковы.
+     */
+    private void updateUserLabelStyle(boolean isHover) {
+        // Базовые стили, которые НИКОГДА не меняются
+        String baseStyle = "-fx-font-size: 14px; -fx-font-weight: 600; -fx-cursor: hand;";
+
+        String textColor, underline;
+
+        if (isDarkMode) {
+            // Тёмная тема
+            textColor = isHover ? "-fx-text-fill: #A78BFA;" : "-fx-text-fill: #8B5CF6;";
+            underline = isHover ? "-fx-underline: false;" : "-fx-underline: true;";
+        } else {
+            // Светлая тема
+            textColor = isHover ? "-fx-text-fill: #1D4ED8;" : "-fx-text-fill: #2563EB;";
+            underline = isHover ? "-fx-underline: false;" : "-fx-underline: true;";
+        }
+
+        userLabel.setStyle(baseStyle + textColor + underline);
+    }
+
     private SplitPane createCenterSplit() {
         SplitPane splitPane = new SplitPane();
         splitPane.setOrientation(javafx.geometry.Orientation.HORIZONTAL);
@@ -637,6 +647,7 @@ public class MainScene {
         if (root == null) return;
         root.setStyle(isDarkMode ? D_BG : L_BG);
         if (topPanel != null) topPanel.setStyle(isDarkMode ? D_CARD : L_CARD);
+
         if (tableContainer != null) {
             if (isDarkMode) {
                 tableContainer.setStyle("-fx-background-color: #050505; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 2); -fx-padding: 15;");
@@ -644,14 +655,18 @@ public class MainScene {
                 tableContainer.setStyle(L_CARD + " -fx-padding: 15;");
             }
         }
+
         if (canvasContainer != null) canvasContainer.setStyle(isDarkMode ? D_CARD : L_CARD + " -fx-padding: 15;");
         if (bottomPanel != null) bottomPanel.setStyle("-fx-background-color: transparent;");
-        String txtColor = isDarkMode ? "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #8B5CF6;"
-                : "-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2563EB;";
-        if (userLabel != null) userLabel.setStyle(txtColor + " -fx-cursor: hand; -fx-underline: true;");
+
+        // === ИСПРАВЛЕНИЕ: используем новый метод ===
+        if (userLabel != null) {
+            updateUserLabelStyle(false); // Сбрасываем hover при смене темы
+        }
+
         if (visualTitle != null) visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#8B5CF6" : "#2563EB") + ";");
+
         for (Button btn : themeAwareButtons) {
-// === ИСПРАВЛЕНИЕ: Добавлена проверка стилей D_BTN_D и L_BTN_D ===
             if (btn.getStyle().contains(D_BTN_P) || btn.getStyle().contains(L_BTN_P) ||
                     btn.getStyle().contains(D_BTN_S) || btn.getStyle().contains(L_BTN_S) ||
                     btn.getStyle().contains(D_BTN_D) || btn.getStyle().contains(L_BTN_D)) {
@@ -664,23 +679,16 @@ public class MainScene {
                 }
             }
         }
+
         if (balanceButton != null) balanceButton.setStyle(getBaseStyle(false));
         if (depositButton != null) depositButton.setStyle(getBaseStyle(false));
-// === ИСПРАВЛЕНИЕ: Полная стилизация комбобокса языка ===
-        updateLangComboBoxStyle();
-// ================================================
-        if (profilePanel != null) {
-            profilePanel.setStyle(isDarkMode ? D_PROFILE_BG : L_PROFILE_BG);
+
+        if (langComboBox != null) {
+            langComboBox.setStyle("-fx-background-color: " + (isDarkMode ? "#334155" : "#F1F5F9") +
+                    "; -fx-border-color: " + (isDarkMode ? "#475569" : "#E2E8F0") +
+                    "; -fx-border-radius: 6; -fx-background-radius: 6;");
         }
-// === ИСПРАВЛЕНИЕ: Стилизация лейбла "Язык" ===
-        if (langLabel != null) {
-            if (isDarkMode) {
-                langLabel.setStyle("-fx-text-fill: #E2E8F0; -fx-font-weight: 500;");
-            } else {
-                langLabel.setStyle("-fx-text-fill: #374151; -fx-font-weight: 500;");
-            }
-        }
-// ================================================
+
         if (tableController != null) tableController.setDarkMode(isDarkMode);
         if (canvasController != null) canvasController.setDarkMode(isDarkMode);
         commandHandler.setDarkMode(isDarkMode);
