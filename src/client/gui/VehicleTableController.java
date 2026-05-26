@@ -37,6 +37,10 @@ public class VehicleTableController {
     public void setDarkMode(boolean darkMode) {
         this.isDarkMode = darkMode;
         updateTableTheme();
+        updateFilterStyles();
+        // Обновляем стили ComboBox
+        if (filterType != null) updateTypeComboBoxStyle();
+        if (filterFuel != null) updateFuelComboBoxStyle();
     }
 
     private void updateTableTheme() {
@@ -179,25 +183,21 @@ public class VehicleTableController {
         HBox hbox = new HBox(12);
         hbox.setPadding(new Insets(0, 0, 15, 0));
         hbox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
         Label filterLabel = new Label("Фильтры:");
         filterLabel.setStyle("-fx-text-fill: #757575; -fx-font-weight: 500;");
 
-        String fieldStyle = "-fx-background-color: " + (isDarkMode ? "#111111" : "white") + "; " +
-                "-fx-background-radius: 6; -fx-border-color: " + (isDarkMode ? "#475569" : "#E0E0E0") + "; " +
-                "-fx-border-radius: 6; -fx-border-width: 1; -fx-prompt-text-fill: " + (isDarkMode ? "#94A3B8" : "#9E9E9E") + "; -fx-padding: 5 8;";
-        String comboStyle = "-fx-background-color: " + (isDarkMode ? "#111111" : "white") + "; " +
-                "-fx-border-color: " + (isDarkMode ? "#475569" : "#E0E0E0") + "; -fx-border-radius: 6; -fx-background-radius: 6;";
-
-        filterId = new TextField(); filterId.setPromptText("ID"); filterId.setPrefWidth(50); filterId.setStyle(fieldStyle);
-        filterName = new TextField(); filterName.setPromptText("Имя"); filterName.setPrefWidth(100); filterName.setStyle(fieldStyle);
-        filterOwner = new TextField(); filterOwner.setPromptText("Владелец"); filterOwner.setPrefWidth(100); filterOwner.setStyle(fieldStyle);
-        filterMinPrice = new TextField(); filterMinPrice.setPromptText("Цена от"); filterMinPrice.setPrefWidth(70); filterMinPrice.setStyle(fieldStyle);
-        filterMaxPrice = new TextField(); filterMaxPrice.setPromptText("Цена до"); filterMaxPrice.setPrefWidth(70); filterMaxPrice.setStyle(fieldStyle);
+        // Создаем поля без жесткого задания стиля (стиль зададим в updateFilterStyles)
+        filterId = new TextField(); filterId.setPromptText("ID"); filterId.setPrefWidth(50);
+        filterName = new TextField(); filterName.setPromptText("Имя"); filterName.setPrefWidth(100);
+        filterOwner = new TextField(); filterOwner.setPromptText("Владелец"); filterOwner.setPrefWidth(100);
+        filterMinPrice = new TextField(); filterMinPrice.setPromptText("Цена от"); filterMinPrice.setPrefWidth(70);
+        filterMaxPrice = new TextField(); filterMaxPrice.setPromptText("Цена до"); filterMaxPrice.setPrefWidth(70);
 
         filterType = new ComboBox<>(); filterType.getItems().add(null); filterType.getItems().addAll(VehicleType.values());
-        filterType.setPromptText("Тип"); filterType.setValue(null); filterType.setStyle(comboStyle); setupFilterTypeLocalization();
+        filterType.setPromptText("Тип"); filterType.setValue(null); setupFilterTypeLocalization();
         filterFuel = new ComboBox<>(); filterFuel.getItems().add(null); filterFuel.getItems().addAll(FuelType.values());
-        filterFuel.setPromptText("Топливо"); filterFuel.setValue(null); filterFuel.setStyle(comboStyle); setupFilterFuelLocalization();
+        filterFuel.setPromptText("Топливо"); filterFuel.setValue(null); setupFilterFuelLocalization();
 
         Callback<Void, Void> updateFilter = v -> { applyFilters(); return null; };
         filterId.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
@@ -209,35 +209,100 @@ public class VehicleTableController {
         filterFuel.valueProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
 
         hbox.getChildren().addAll(filterLabel, filterId, filterName, filterOwner, filterMinPrice, filterMaxPrice, filterType, filterFuel);
+
+        // Применяем стили темы после создания элементов
+        updateFilterStyles();
+
         return hbox;
     }
 
     private void setupFilterTypeLocalization() {
+        updateTypeComboBoxStyle();
+    }
+
+    private void updateTypeComboBoxStyle() {
+        String bgColor = isDarkMode ? "#1E293B" : "white";
+        String textColor = isDarkMode ? "#E2E8F0" : "#1F2937";
+        String hoverBg = isDarkMode ? "#334155" : "#F3F4F6";
+        String selectedBg = isDarkMode ? "#475569" : "#DBEAFE";
+
         filterType.setCellFactory(cb -> new ListCell<>() {
-            @Override protected void updateItem(VehicleType item, boolean empty) {
+            @Override
+            protected void updateItem(VehicleType item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? localization.get("table.filter.all_types") : item.toString());
+                setStyle("-fx-background-color: " + bgColor + "; " +
+                        "-fx-text-fill: " + textColor + "; " +
+                        "-fx-font-size: 13px; " +
+                        "-fx-padding: 6 10;");
+
+                if (!empty && item != null) {
+                    setOnMouseEntered(e -> setStyle("-fx-background-color: " + hoverBg + "; " +
+                            "-fx-text-fill: " + textColor + "; " +
+                            "-fx-font-size: 13px; " +
+                            "-fx-padding: 6 10;"));
+                    setOnMouseExited(e -> setStyle("-fx-background-color: " + bgColor + "; " +
+                            "-fx-text-fill: " + textColor + "; " +
+                            "-fx-font-size: 13px; " +
+                            "-fx-padding: 6 10;"));
+                }
             }
         });
+
         filterType.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(VehicleType item, boolean empty) {
+            @Override
+            protected void updateItem(VehicleType item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? localization.get("table.filter.all_types") : item.toString());
+                setStyle("-fx-background-color: transparent; " +
+                        "-fx-text-fill: " + textColor + "; " +
+                        "-fx-font-size: 13px; " +
+                        "-fx-padding: 6 10;");
             }
         });
     }
 
     private void setupFilterFuelLocalization() {
+        updateFuelComboBoxStyle();
+    }
+
+    private void updateFuelComboBoxStyle() {
+        String bgColor = isDarkMode ? "#1E293B" : "white";
+        String textColor = isDarkMode ? "#E2E8F0" : "#1F2937";
+        String hoverBg = isDarkMode ? "#334155" : "#F3F4F6";
+
         filterFuel.setCellFactory(cb -> new ListCell<>() {
-            @Override protected void updateItem(FuelType item, boolean empty) {
+            @Override
+            protected void updateItem(FuelType item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? localization.get("table.filter.all_fuels") : item.toString());
+                setStyle("-fx-background-color: " + bgColor + "; " +
+                        "-fx-text-fill: " + textColor + "; " +
+                        "-fx-font-size: 13px; " +
+                        "-fx-padding: 6 10;");
+
+                if (!empty && item != null) {
+                    setOnMouseEntered(e -> setStyle("-fx-background-color: " + hoverBg + "; " +
+                            "-fx-text-fill: " + textColor + "; " +
+                            "-fx-font-size: 13px; " +
+                            "-fx-padding: 6 10;"));
+                    setOnMouseExited(e -> setStyle("-fx-background-color: " + bgColor + "; " +
+                            "-fx-text-fill: " + textColor + "; " +
+                            "-fx-font-size: 13px; " +
+                            "-fx-padding: 6 10;"));
+                }
             }
         });
+
         filterFuel.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(FuelType item, boolean empty) {
+            @Override
+            protected void updateItem(FuelType item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? localization.get("table.filter.all_fuels") : item.toString());
+                setStyle("-fx-background-color: transparent; " +
+                        "-fx-text-fill: " + textColor + "; " +
+                        "-fx-font-size: 13px; " +
+                        "-fx-padding: 6 10;");
             }
         });
     }
@@ -368,5 +433,42 @@ public class VehicleTableController {
             if (node instanceof TableRow) return (TableRow<Vehicle>) node;
         } catch (Exception ignored) {}
         return null;
+    }
+
+    private void updateFilterStyles() {
+        // Определяем цвета для темной и светлой темы
+        String bgColor = isDarkMode ? "#334155" : "white";
+        String borderColor = isDarkMode ? "#475569" : "#E2E8F0";
+        String textColor = isDarkMode ? "#F1F5F9" : "#1F2937"; // Более светлый текст для темной темы
+        String promptColor = isDarkMode ? "#94A3B8" : "#9CA3AF";
+
+        // Общий стиль для текстовых полей
+        String style = "-fx-background-color: " + bgColor + "; " +
+                "-fx-background-radius: 6; " +
+                "-fx-border-color: " + borderColor + "; " +
+                "-fx-border-radius: 6; " +
+                "-fx-border-width: 1; " +
+                "-fx-text-fill: " + textColor + "; " +
+                "-fx-prompt-text-fill: " + promptColor + "; " +
+                "-fx-font-size: 13px; " +
+                "-fx-padding: 6 10;";
+
+        // Применяем стиль ко всем полям
+        if (filterId != null) filterId.setStyle(style);
+        if (filterName != null) filterName.setStyle(style);
+        if (filterOwner != null) filterOwner.setStyle(style);
+        if (filterMinPrice != null) filterMinPrice.setStyle(style);
+        if (filterMaxPrice != null) filterMaxPrice.setStyle(style);
+
+        // Для ComboBox
+        String comboStyle = "-fx-background-color: " + bgColor + "; " +
+                "-fx-border-color: " + borderColor + "; " +
+                "-fx-border-radius: 6; " +
+                "-fx-background-radius: 6; " +
+                "-fx-text-fill: " + textColor + "; " +
+                "-fx-font-size: 13px;";
+
+        if (filterType != null) filterType.setStyle(comboStyle);
+        if (filterFuel != null) filterFuel.setStyle(comboStyle);
     }
 }
