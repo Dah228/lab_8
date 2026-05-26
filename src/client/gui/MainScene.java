@@ -13,6 +13,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.*;
+import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -149,12 +150,13 @@ public class MainScene {
     }
 
     // === Создание панели профиля ===
+    // === Создание панели профиля ===
     private VBox createProfilePanel() {
         VBox panel = new VBox(20);
         panel.setPadding(new Insets(30));
         panel.setAlignment(Pos.CENTER);
         panel.setPrefWidth(350);
-        panel.setPrefHeight(520);
+        panel.setPrefHeight(420); // Уменьшили высоту, т.к. убрали текстовое поле
         panel.setStyle(isDarkMode ? D_PROFILE_BG : L_PROFILE_BG);
         panel.setMouseTransparent(false);
 
@@ -192,7 +194,7 @@ public class MainScene {
         topBar.getChildren().add(closeBtn);
 
         // Аватар
-        javafx.scene.shape.Circle avatar = new javafx.scene.shape.Circle(60);
+        Circle avatar = new Circle(60);
         avatar.setFill(new javafx.scene.paint.LinearGradient(
                 0, 0, 1, 1, true,
                 javafx.scene.paint.CycleMethod.NO_CYCLE,
@@ -229,20 +231,6 @@ public class MainScene {
         separator.setStyle(isDarkMode ? D_SEPARATOR : L_SEPARATOR);
         separator.setPadding(new Insets(10, 0, 10, 0));
 
-        // Поле "О себе"
-        Label aboutLabel = new Label("Расскажите о себе:");
-        aboutLabel.setStyle(
-                "-fx-text-fill: " + (isDarkMode ? "#94A3B8" : "#6B7280") + "; " +
-                        "-fx-font-size: 12px; " +
-                        "-fx-font-weight: 500;"
-        );
-
-        aboutTextArea = new TextArea(); // Используем поле класса
-        aboutTextArea.setPromptText("Введите информацию о себе...");
-        aboutTextArea.setWrapText(true);
-        aboutTextArea.setPrefRowCount(3);
-        aboutTextArea.setStyle(isDarkMode ? TEXT_AREA_D : TEXT_AREA_L);
-
         // Кнопка выхода
         Button logoutBtn = new Button("Выйти из аккаунта");
         logoutBtn.setStyle(PROFILE_BTN_LOGOUT);
@@ -255,10 +243,7 @@ public class MainScene {
         Button backBtn = new Button("← Назад в меню");
         backBtn.setStyle(isDarkMode ? PROFILE_BTN_BACK_D : PROFILE_BTN_BACK_L);
         backBtn.setMaxWidth(Double.MAX_VALUE);
-        backBtn.setOnAction(e -> {
-            saveUserBio(); // Сохраняем перед закрытием
-            closeProfile();
-        });
+        backBtn.setOnAction(e -> closeProfile());
         backBtn.setOnMouseEntered(e -> backBtn.setStyle(isDarkMode ? PROFILE_BTN_BACK_H_D : PROFILE_BTN_BACK_H_L));
         backBtn.setOnMouseExited(e -> backBtn.setStyle(isDarkMode ? PROFILE_BTN_BACK_D : PROFILE_BTN_BACK_L));
 
@@ -268,9 +253,7 @@ public class MainScene {
                 userNameLabel,
                 statusBox,
                 separator,
-                aboutLabel,
-                aboutTextArea,
-                new Region(),
+                new Region(), // Spacer
                 logoutBtn,
                 backBtn
         );
@@ -369,14 +352,17 @@ public class MainScene {
                                     authScene.getLoginText(), authScene.getPasswordText());
                             stage.setScene(newMainScene.createScene());
                             stage.setTitle(localization.get("app.title") + " - " + authScene.getLoginText());
-                            stage.setWidth(1200);
-                            stage.setHeight(800);
-                            stage.centerOnScreen();
+                            stage.setMaximized(true);
+                            stage.setResizable(true);
                         });
                         stage.setScene(authScene.createScene());
-                        stage.setWidth(500);
+
+                        // === ИСПРАВЛЕНИЕ: Фиксированный размер при возврате ===
+                        stage.setWidth(520);
                         stage.setHeight(600);
+                        stage.setResizable(false);
                         stage.centerOnScreen();
+
                         stage.setTitle(localization.get("app.title"));
                     } else {
                         showError("Не удалось инициализировать соединение");
@@ -620,6 +606,10 @@ public class MainScene {
         VBox.setVgrow(canvasPane, Priority.ALWAYS);
 
         splitPane.getItems().addAll(tableContainer, canvasContainer);
+
+        // === ИСПРАВЛЕНО: Изменена позиция разделителя на 0.6 ===
+        splitPane.setDividerPositions(0.6);
+
         return splitPane;
     }
 

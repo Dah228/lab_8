@@ -48,7 +48,6 @@ public class GuiApp extends Application {
                     CommandRegistryLoader loader = new CommandRegistryLoader(networkService);
                     allCommands = loader.loadCommands(initResponse);
                     if (allCommands == null) throw new RuntimeException(localization.get("error.commands_load"));
-
                     return null;
                 } catch (Exception e) {
                     throw new RuntimeException(e);
@@ -77,8 +76,7 @@ public class GuiApp extends Application {
 
         Scene scene = authScene.createScene();
         stage.setScene(scene);
-
-        // === ИСПРАВЛЕНИЕ: Подгоняем размер окна под сцену авторизации ===
+        // Подгоняем размер под сцену авторизации (чтобы не было огромного пустого окна)
         stage.sizeToScene();
         stage.centerOnScreen();
     }
@@ -90,12 +88,13 @@ public class GuiApp extends Application {
         stage.setScene(scene);
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
 
-        // === ИСПРАВЛЕНИЕ: Устанавливаем жесткие размеры для главного окна ===
-        stage.setWidth(1200);
-        stage.setHeight(800);
-        stage.centerOnScreen();
-        stage.setMinWidth(900);
-        stage.setMinHeight(600);
+        // === ОТКРЫТИЕ ОКНА ПО ЦЕНТРУ НА ВЕСЬ ЭКРАН ===
+        stage.centerOnScreen();           // Центрируем окно
+        stage.setMaximized(true);         // Разворачиваем на весь экран
+
+        // Минимальные размеры (чтобы при восстановлении из максимизированного состояния окно не было слишком маленьким)
+        stage.setMinWidth(1200);
+        stage.setMinHeight(800);
     }
 
     private void cleanup() {

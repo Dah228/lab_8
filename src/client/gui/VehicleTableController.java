@@ -307,18 +307,54 @@ public class VehicleTableController {
         });
     }
     private void setupColumns() {
-        TableColumn<Vehicle, Number> colId = new TableColumn<>(localization.get("col.id")); colId.setCellValueFactory(data -> new javafx.beans.property.SimpleLongProperty(data.getValue().getId())); colId.setPrefWidth(50);
-        TableColumn<Vehicle, String> colName = new TableColumn<>(localization.get("col.name")); colName.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getName())); colName.setPrefWidth(120);
-        TableColumn<Vehicle, String> colCoords = new TableColumn<>(localization.get("col.coords")); colCoords.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getCoordinates().getX() + ", " + data.getValue().getCoordinates().getY())); colCoords.setPrefWidth(100);
-        TableColumn<Vehicle, String> colDate = new TableColumn<>(localization.get("col.creation_date")); colDate.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(localization.formatDateTime(data.getValue().getCreationDate()))); colDate.setPrefWidth(110);
-        TableColumn<Vehicle, Float> colPower = new TableColumn<>(localization.get("col.engine_power")); colPower.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getEnginePower())); colPower.setPrefWidth(70);
-        TableColumn<Vehicle, Float> colDist = new TableColumn<>(localization.get("col.distance")); colDist.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getDistanceTravelled())); colDist.setPrefWidth(70);
-        TableColumn<Vehicle, VehicleType> colType = new TableColumn<>(localization.get("col.type")); colType.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getType())); colType.setPrefWidth(90);
-        TableColumn<Vehicle, FuelType> colFuel = new TableColumn<>(localization.get("col.fuel")); colFuel.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getFuelType())); colFuel.setPrefWidth(90);
-        TableColumn<Vehicle, String> colOwner = new TableColumn<>(localization.get("col.owner")); colOwner.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getOwnerLogin())); colOwner.setPrefWidth(90);
-        TableColumn<Vehicle, Double> colPrice = new TableColumn<>(localization.get("col.price")); colPrice.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getPrice()));
-        colPrice.setCellFactory(tc -> new TableCell<>() { @Override protected void updateItem(Double price, boolean empty) { super.updateItem(price, empty); if (empty || price == null) setText(null); else setText(PRICE_FORMAT.format(price)); }});
-        colPrice.setPrefWidth(90);
+        TableColumn<Vehicle, Number> colId = new TableColumn<>(localization.get("col.id"));
+        colId.setCellValueFactory(data -> new javafx.beans.property.SimpleLongProperty(data.getValue().getId()));
+        colId.setMinWidth(30); colId.setPrefWidth(30); // ID
+
+        TableColumn<Vehicle, String> colName = new TableColumn<>(localization.get("col.name"));
+        colName.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getName()));
+        colName.setMinWidth(80); colName.setPrefWidth(80); // Имя
+
+        TableColumn<Vehicle, String> colCoords = new TableColumn<>(localization.get("col.coords"));
+        colCoords.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getCoordinates().getX() + ", " + data.getValue().getCoordinates().getY()));
+        colCoords.setMinWidth(130); colCoords.setPrefWidth(130); // Координаты (X,Y)
+
+        TableColumn<Vehicle, String> colDate = new TableColumn<>(localization.get("col.creation_date"));
+        colDate.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(localization.formatDateTime(data.getValue().getCreationDate())));
+        colDate.setMinWidth(110); colDate.setPrefWidth(110); // Дата создания
+
+        TableColumn<Vehicle, Float> colPower = new TableColumn<>(localization.get("col.engine_power"));
+        colPower.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getEnginePower()));
+        colPower.setMinWidth(90); colPower.setPrefWidth(90); // Мощность
+
+        TableColumn<Vehicle, Float> colDist = new TableColumn<>(localization.get("col.distance"));
+        colDist.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getDistanceTravelled()));
+        colDist.setMinWidth(90); colDist.setPrefWidth(90); // Дистанция
+
+        TableColumn<Vehicle, VehicleType> colType = new TableColumn<>(localization.get("col.type"));
+        colType.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getType()));
+        colType.setMinWidth(90); colType.setPrefWidth(90); // Тип
+
+        TableColumn<Vehicle, FuelType> colFuel = new TableColumn<>(localization.get("col.fuel"));
+        colFuel.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getFuelType()));
+        colFuel.setMinWidth(90); colFuel.setPrefWidth(90); // Топливо
+
+        TableColumn<Vehicle, String> colOwner = new TableColumn<>(localization.get("col.owner"));
+        colOwner.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getOwnerLogin()));
+        colOwner.setMinWidth(80); colOwner.setPrefWidth(80); // Владелец
+
+        TableColumn<Vehicle, Double> colPrice = new TableColumn<>(localization.get("col.price"));
+        colPrice.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getPrice()));
+        colPrice.setCellFactory(tc -> new TableCell<>() {
+            @Override
+            protected void updateItem(Double price, boolean empty) {
+                super.updateItem(price, empty);
+                if (empty || price == null) setText(null);
+                else setText(PRICE_FORMAT.format(price));
+            }
+        });
+        colPrice.setMinWidth(80); colPrice.setPrefWidth(80); // Цена
+
         tableView.getColumns().addAll(colId, colName, colCoords, colDate, colPower, colDist, colType, colFuel, colOwner, colPrice);
         updateTableTheme();
     }
