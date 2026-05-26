@@ -45,7 +45,6 @@ public class VehicleTableController {
 
     private void updateTableTheme() {
         if (tableView == null) return;
-
         if (!isDarkMode) {
             // === СВЕТЛАЯ ТЕМА ===
             tableView.setStyle(
@@ -54,7 +53,6 @@ public class VehicleTableController {
                             "-fx-table-cell-border-color: #E5E7EB; " +
                             "-fx-text-fill: #374151;"
             );
-
             for (TableColumn<Vehicle, ?> col : tableView.getColumns()) {
                 col.setStyle(
                         "-fx-background-color: white; " +
@@ -63,7 +61,6 @@ public class VehicleTableController {
                                 "-fx-border-color: #E5E7EB;"
                 );
             }
-
             tableView.setRowFactory(tv -> {
                 TableRow<Vehicle> row = new TableRow<>();
                 row.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
@@ -87,7 +84,6 @@ public class VehicleTableController {
                 });
                 return row;
             });
-
         } else {
             // === ТЁМНАЯ ТЕМА ===
             tableView.setStyle(
@@ -95,18 +91,16 @@ public class VehicleTableController {
                             "-fx-control-inner-background: #0B132B; " +
                             "-fx-table-cell-border-color: #1C2541; " +
                             "-fx-text-fill: #D8B4FE; " +
-                            "-fx-border-color: #1C2541;"  // Добавлено: цвет внешней границы таблицы
+                            "-fx-border-color: #1C2541;"
             );
-
             for (TableColumn<Vehicle, ?> col : tableView.getColumns()) {
                 col.setStyle(
                         "-fx-background-color: #0B132B; " +
                                 "-fx-text-fill: #D8B4FE; " +
                                 "-fx-font-weight: bold; " +
-                                "-fx-border-color: #1C2541;"  // Темно-синие границы колонок
+                                "-fx-border-color: #1C2541;"
                 );
             }
-
             tableView.setRowFactory(tv -> {
                 TableRow<Vehicle> row = new TableRow<>();
                 row.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
@@ -130,8 +124,31 @@ public class VehicleTableController {
                 });
                 return row;
             });
-        }
 
+            // === СТИЛИЗАЦИЯ СКРОЛЛБАРА ДЛЯ ТЕМНОЙ ТЕМЫ ===
+            Platform.runLater(() -> {
+                tableView.lookupAll(".scroll-bar").forEach(node -> {
+                    // Фон всего скроллбара
+                    node.setStyle("-fx-background-color: #1C2541;");
+                    // Ползунок (Thumb)
+                    node.lookupAll(".thumb").forEach(thumb ->
+                            thumb.setStyle("-fx-background-color: #475569; -fx-background-insets: 2; -fx-background-radius: 5;"));
+                    // Трек (Track)
+                    node.lookupAll(".track").forEach(track ->
+                            track.setStyle("-fx-background-color: #1C2541;"));
+                    // Кнопки (Buttons)
+                    node.lookupAll(".increment-button").forEach(btn ->
+                            btn.setStyle("-fx-background-color: #1C2541;"));
+                    node.lookupAll(".decrement-button").forEach(btn ->
+                            btn.setStyle("-fx-background-color: #1C2541;"));
+                    // Стрелки (Arrows)
+                    node.lookupAll(".increment-arrow").forEach(arr ->
+                            arr.setStyle("-fx-background-color: #D8B4FE;"));
+                    node.lookupAll(".decrement-arrow").forEach(arr ->
+                            arr.setStyle("-fx-background-color: #D8B4FE;"));
+                });
+            });
+        }
         // Принудительно обновляем таблицу
         Platform.runLater(() -> tableView.refresh());
     }
