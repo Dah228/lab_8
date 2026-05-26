@@ -12,6 +12,9 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
@@ -20,7 +23,10 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -208,7 +214,7 @@ public class MainScene {
         ));
         avatar.setStroke(javafx.scene.paint.Color.WHITE);
         avatar.setStrokeWidth(4);
-        Label avatarIcon = new Label("");
+        Label avatarIcon = new Label("👤");
         avatarIcon.setStyle("-fx-font-size: 40px; -fx-text-fill: white;");
         StackPane avatarContainer = new StackPane(avatar, avatarIcon);
         avatarContainer.setAlignment(Pos.CENTER);
@@ -438,18 +444,62 @@ public class MainScene {
         hbox.setPadding(new Insets(12, 20, 12, 20));
         hbox.setAlignment(Pos.CENTER_LEFT);
 
-        themeToggleButton = new Button("");
-        themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: #000000; -fx-font-weight: bold;");
+        // === ЗАГРУЗКА ИЗОБРАЖЕНИЙ ===
+        // Используем полное имя класса, чтобы избежать конфликта с java.awt.Image
+        javafx.scene.image.Image sunImage;
+        javafx.scene.image.Image moonImage;
+
+        try {
+            // Загружаем картинки из папки resources (корень classpath)
+            sunImage = new javafx.scene.image.Image(getClass().getResourceAsStream("/sun.png"));
+            moonImage = new javafx.scene.image.Image(getClass().getResourceAsStream("/moon.png"));
+
+            // Проверка на ошибки загрузки (файл есть, но битый или пустой)
+            if (sunImage.isError() || moonImage.isError()) {
+                throw new Exception("Images failed to load");
+            }
+        } catch (Exception e) {
+            System.err.println("Ошибка: Не удалось загрузить картинки темы (убедитесь, что sun.png и moon.png лежат в src/main/resources)");
+            // Создаем "заглушки" если картинки не найдены, чтобы приложение работало
+            sunImage = null;
+            moonImage = null;
+        }
+
+        // === СОЗДАНИЕ ImageView ДЛЯ ИКОНКИ ===
+        // По умолчанию (светлая тема) показываем Луну (чтобы переключиться на темную)
+        final javafx.scene.image.ImageView themeIcon = new javafx.scene.image.ImageView();
+        themeIcon.setFitWidth(24);
+        themeIcon.setFitHeight(24);
+        themeIcon.setPreserveRatio(true);
+
+        // Устанавливаем начальную картинку
+        if (moonImage != null) {
+            themeIcon.setImage(moonImage);
+        }
+
+        // === КНОПКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ ===
+        themeToggleButton = new Button();
+        themeToggleButton.setGraphic(themeIcon);
+        themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
+        themeToggleButton.setTooltip(new Tooltip("Переключить тему"));
+
+        Image finalSunImage = sunImage;
+        Image finalMoonImage = moonImage;
         themeToggleButton.setOnAction(e -> {
             isDarkMode = !isDarkMode;
-            themeToggleButton.setText(isDarkMode ? "☀️" : "");
-            String textColor = isDarkMode ? "#F8FAFC" : "#000000";
-            themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 5; -fx-text-fill: " + textColor + "; -fx-font-weight: bold;");
+
+            // Меняем картинку: если включили ТЕМНУЮ тему -> показываем Солнце
+            if (isDarkMode && finalSunImage != null) {
+                themeIcon.setImage(finalSunImage);
+            } else if (!isDarkMode && finalMoonImage != null) {
+                themeIcon.setImage(finalMoonImage);
+            }
+
             applyThemeStyles();
         });
 
         userLabel = new Label(localization.get("main.user.label") + " " + currentUserLogin);
-        // ИСПРАВЛЕНИЕ: Белый текст для темной темы, синий для светлой
+        // Белый текст для темной темы, синий для светлой
         String userLabelColor = isDarkMode ? "#FFFFFF" : "#2563EB";
         userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: " + userLabelColor + "; -fx-cursor: hand; -fx-underline: true;");
 
