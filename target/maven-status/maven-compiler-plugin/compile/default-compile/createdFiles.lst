@@ -46,6 +46,7 @@ client/gui/ModernNotifications.class
 server/collection/VehicleManager.class
 server/database/VehicleDao.class
 common/CommandResponse.class
+client/gui/MainScene$5.class
 server/commands/CommandParams.class
 client/gui/VehicleTextParser.class
 client/gui/MainScene.class
@@ -82,3 +83,4 @@ server/commands/ShuffleCommand.class
 server/commands/DepositCommand.class
 server/service/NetworkRequestHandler.class
 common/FuelType.class
+client/gui/MainScene$4.class
