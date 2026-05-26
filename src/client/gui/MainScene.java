@@ -10,6 +10,7 @@ import javafx.animation.*;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
@@ -715,8 +716,10 @@ public class MainScene {
 
     private void applyThemeStyles() {
         if (root == null) return;
+
         root.setStyle(isDarkMode ? D_BG : L_BG);
         if (topPanel != null) topPanel.setStyle(isDarkMode ? D_CARD : L_CARD);
+
         if (tableContainer != null) {
             if (isDarkMode) {
                 tableContainer.setStyle("-fx-background-color: #050505; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 2); -fx-padding: 15;");
@@ -724,6 +727,7 @@ public class MainScene {
                 tableContainer.setStyle(L_CARD + " -fx-padding: 15;");
             }
         }
+
         if (canvasContainer != null) canvasContainer.setStyle(isDarkMode ? D_CARD : L_CARD + " -fx-padding: 15;");
         if (bottomPanel != null) bottomPanel.setStyle("-fx-background-color: transparent;");
 
@@ -744,18 +748,36 @@ public class MainScene {
                 }
             }
         }
+
         if (balanceButton != null) balanceButton.setStyle(getBaseStyle(false));
         if (depositButton != null) depositButton.setStyle(getBaseStyle(false));
+
         if (langComboBox != null) {
             langComboBox.setStyle("-fx-background-color: " + (isDarkMode ? "#334155" : "#F1F5F9") +
                     "; -fx-border-color: " + (isDarkMode ? "#475569" : "#E2E8F0") +
                     "; -fx-border-radius: 6; -fx-background-radius: 6;");
         }
 
-        // Обновляем стиль панели профиля
         if (profilePanel != null) {
             profilePanel.setStyle(isDarkMode ? D_PROFILE_BG : L_PROFILE_BG);
         }
+
+        // === ИСПРАВЛЕННЫЙ БЛОК ДЛЯ РАЗДЕЛИТЕЛЯ ===
+        // Находим SplitPane и красим сам узел разделителя
+        if (root.getCenter() instanceof SplitPane) {
+            SplitPane splitPane = (SplitPane) root.getCenter();
+            // Используем Platform.runLater, чтобы убедиться, что узлы созданы
+            Platform.runLater(() -> {
+                // Ищем узел с классом .split-pane-divider
+                Node divider = splitPane.lookup(".split-pane-divider");
+                if (divider != null) {
+                    // В темной теме цвет #475569 (серый), в светлой #CBD5E1 (светло-серый)
+                    String dividerColor = isDarkMode ? "#475569" : "#CBD5E1";
+                    divider.setStyle("-fx-background-color: " + dividerColor + ";");
+                }
+            });
+        }
+        // =========================================
 
         if (tableController != null) tableController.setDarkMode(isDarkMode);
         if (canvasController != null) canvasController.setDarkMode(isDarkMode);

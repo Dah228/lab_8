@@ -45,6 +45,7 @@ public class VehicleTableController {
 
     private void updateTableTheme() {
         if (tableView == null) return;
+
         if (!isDarkMode) {
             // === СВЕТЛАЯ ТЕМА ===
             tableView.setStyle(
@@ -84,6 +85,27 @@ public class VehicleTableController {
                 });
                 return row;
             });
+
+            // === СТИЛИЗАЦИЯ СКРОЛЛБАРА ДЛЯ СВЕТЛОЙ ТЕМЫ ===
+            Platform.runLater(() -> {
+                tableView.lookupAll(".scroll-bar").forEach(node -> {
+                    // Прозрачный фон скроллбара
+                    node.setStyle("-fx-background-color: transparent;");
+                    // Ползунок (Thumb) - серый
+                    node.lookupAll(".thumb").forEach(thumb ->
+                            thumb.setStyle("-fx-background-color: #CBD5E1; -fx-background-insets: 2; -fx-background-radius: 5;"));
+                    // Трек (Track) - прозрачный
+                    node.lookupAll(".track").forEach(track ->
+                            track.setStyle("-fx-background-color: transparent;"));
+                    // Кнопки - прозрачные
+                    node.lookupAll(".increment-button").forEach(btn -> btn.setStyle("-fx-background-color: transparent;"));
+                    node.lookupAll(".decrement-button").forEach(btn -> btn.setStyle("-fx-background-color: transparent;"));
+                    // Стрелки - темно-серые
+                    node.lookupAll(".increment-arrow").forEach(arr -> arr.setStyle("-fx-background-color: #6B7280;"));
+                    node.lookupAll(".decrement-arrow").forEach(arr -> arr.setStyle("-fx-background-color: #6B7280;"));
+                });
+            });
+
         } else {
             // === ТЁМНАЯ ТЕМА ===
             tableView.setStyle(
@@ -128,24 +150,15 @@ public class VehicleTableController {
             // === СТИЛИЗАЦИЯ СКРОЛЛБАРА ДЛЯ ТЕМНОЙ ТЕМЫ ===
             Platform.runLater(() -> {
                 tableView.lookupAll(".scroll-bar").forEach(node -> {
-                    // Фон всего скроллбара
                     node.setStyle("-fx-background-color: #1C2541;");
-                    // Ползунок (Thumb)
                     node.lookupAll(".thumb").forEach(thumb ->
                             thumb.setStyle("-fx-background-color: #475569; -fx-background-insets: 2; -fx-background-radius: 5;"));
-                    // Трек (Track)
                     node.lookupAll(".track").forEach(track ->
                             track.setStyle("-fx-background-color: #1C2541;"));
-                    // Кнопки (Buttons)
-                    node.lookupAll(".increment-button").forEach(btn ->
-                            btn.setStyle("-fx-background-color: #1C2541;"));
-                    node.lookupAll(".decrement-button").forEach(btn ->
-                            btn.setStyle("-fx-background-color: #1C2541;"));
-                    // Стрелки (Arrows)
-                    node.lookupAll(".increment-arrow").forEach(arr ->
-                            arr.setStyle("-fx-background-color: #D8B4FE;"));
-                    node.lookupAll(".decrement-arrow").forEach(arr ->
-                            arr.setStyle("-fx-background-color: #D8B4FE;"));
+                    node.lookupAll(".increment-button").forEach(btn -> btn.setStyle("-fx-background-color: #1C2541;"));
+                    node.lookupAll(".decrement-button").forEach(btn -> btn.setStyle("-fx-background-color: #1C2541;"));
+                    node.lookupAll(".increment-arrow").forEach(arr -> arr.setStyle("-fx-background-color: #D8B4FE;"));
+                    node.lookupAll(".decrement-arrow").forEach(arr -> arr.setStyle("-fx-background-color: #D8B4FE;"));
                 });
             });
         }
