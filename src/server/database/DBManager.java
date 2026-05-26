@@ -6,8 +6,8 @@ import java.sql.SQLException;
 
 public class DBManager {
     private static final String URL = "jdbc:postgresql://localhost:5432/studs";
-    private static final String USER = "s501385";
-    private static final String PASS = "hGKsv7wv1qpyyzgA";
+    private static final String USER = "postgres";
+    private static final String PASS = "newpass123";
 
     static {
         try {

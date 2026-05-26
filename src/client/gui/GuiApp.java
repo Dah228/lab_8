@@ -5,6 +5,8 @@ import common.CommandResponse;
 import javafx.application.Application;
 import javafx.concurrent.Task;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -24,11 +26,10 @@ public class GuiApp extends Application {
         StackPane loadingRoot = new StackPane();
         Label statusLabel = new Label(localization.get("app.status.initializing"));
         loadingRoot.getChildren().add(statusLabel);
-        Scene loadingScene = new Scene(loadingRoot, 900, 600);
+        Scene loadingScene = new Scene(loadingRoot, 400, 200);
 
         primaryStage.setTitle(localization.get("app.title"));
         primaryStage.setScene(loadingScene);
-        primaryStage.setResizable(true);
         primaryStage.show();
 
         // Фоновая инициализация сети
@@ -71,73 +72,15 @@ public class GuiApp extends Application {
         authScene.setOnLoginSuccess(() -> {
             this.currentUserLogin = authScene.getLoginText();
             this.currentUserPassword = authScene.getPasswordText();
-            System.out.println("Переход на главную сцену для пользователя: " + currentUserLogin);
             showMainScene(stage);
-        });
-
-        // Обработчик для возврата на экран авторизации после выхода
-        authScene.setOnReturnToAuth(() -> {
-            System.out.println("Возврат на экран авторизации...");
-            // Создаем НОВЫЙ сетевой сервис и переподключаемся
-            reconnectAndShowAuth(stage);
         });
 
         Scene scene = authScene.createScene();
         stage.setScene(scene);
+
+        // === ИСПРАВЛЕНИЕ: Подгоняем размер окна под сцену авторизации ===
         stage.sizeToScene();
-    }
-
-    private void reconnectAndShowAuth(Stage stage) {
-        // Закрываем старое соединение
-        if (networkService != null && networkService.isConnected()) {
-            networkService.disconnect();
-        }
-
-        // Создаем новое соединение
-        ClientConfig config = ClientConfig.defaultConfig();
-        networkService = new NetworkService(config.host(), config.port());
-
-        // Фоновое переподключение
-        Task<Boolean> connectTask = new Task<>() {
-            @Override
-            protected Boolean call() {
-                return networkService.connect();
-            }
-        };
-
-        connectTask.setOnSucceeded(event -> {
-            if (connectTask.getValue()) {
-                // Загружаем команды
-                ConnectionInitializer initializer = new ConnectionInitializer(networkService, "connected");
-                CommandResponse initResponse = initializer.initialize();
-                if (initResponse != null) {
-                    CommandRegistryLoader loader = new CommandRegistryLoader(networkService);
-                    allCommands = loader.loadCommands(initResponse);
-
-                    // Показываем экран авторизации с новым сетевым сервисом
-                    AuthScene authScene = new AuthScene(stage, networkService, localization);
-                    authScene.setOnLoginSuccess(() -> {
-                        this.currentUserLogin = authScene.getLoginText();
-                        this.currentUserPassword = authScene.getPasswordText();
-                        showMainScene(stage);
-                    });
-                    authScene.setOnReturnToAuth(() -> reconnectAndShowAuth(stage));
-
-                    stage.setScene(authScene.createScene());
-                    stage.sizeToScene();
-                } else {
-                    showError("Не удалось загрузить команды");
-                }
-            } else {
-                showError("Не удалось подключиться к серверу");
-            }
-        });
-
-        connectTask.setOnFailed(event -> {
-            showError("Ошибка подключения: " + connectTask.getException().getMessage());
-        });
-
-        new Thread(connectTask).start();
+        stage.centerOnScreen();
     }
 
     private void showMainScene(Stage stage) {
@@ -146,16 +89,13 @@ public class GuiApp extends Application {
         Scene scene = mainScene.createScene();
         stage.setScene(scene);
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
-        stage.setMinWidth(1200);
-        stage.setMinHeight(800);
-    }
 
-    private void showError(String message) {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
-        alert.setTitle("Ошибка");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        // === ИСПРАВЛЕНИЕ: Устанавливаем жесткие размеры для главного окна ===
+        stage.setWidth(1200);
+        stage.setHeight(800);
+        stage.centerOnScreen();
+        stage.setMinWidth(900);
+        stage.setMinHeight(600);
     }
 
     private void cleanup() {
