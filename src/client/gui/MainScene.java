@@ -49,7 +49,7 @@ public class MainScene {
     private Label visualTitle;
     private List<Button> themeAwareButtons = new ArrayList<>();
     private Label userLabel;
-    private Label langLabel; // <--- Добавлено поле для лейбла языка
+    private Label langLabel; // <--- Вынесено в поле класса для доступа из applyThemeStyles
     private Button balanceButton;
     private Button depositButton;
     private Button themeToggleButton;
@@ -190,7 +190,7 @@ public class MainScene {
         ));
         avatar.setStroke(javafx.scene.paint.Color.WHITE);
         avatar.setStrokeWidth(4);
-        Label avatarIcon = new Label("");
+        Label avatarIcon = new Label("👤");
         avatarIcon.setStyle("-fx-font-size: 40px; -fx-text-fill: white;");
         StackPane avatarContainer = new StackPane(avatar, avatarIcon);
         avatarContainer.setAlignment(Pos.CENTER);
@@ -651,8 +651,10 @@ public class MainScene {
         if (userLabel != null) userLabel.setStyle(txtColor + " -fx-cursor: hand; -fx-underline: true;");
         if (visualTitle != null) visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#8B5CF6" : "#2563EB") + ";");
         for (Button btn : themeAwareButtons) {
+// === ИСПРАВЛЕНИЕ: Добавлена проверка стилей D_BTN_D и L_BTN_D ===
             if (btn.getStyle().contains(D_BTN_P) || btn.getStyle().contains(L_BTN_P) ||
-                    btn.getStyle().contains(D_BTN_S) || btn.getStyle().contains(L_BTN_S)) {
+                    btn.getStyle().contains(D_BTN_S) || btn.getStyle().contains(L_BTN_S) ||
+                    btn.getStyle().contains(D_BTN_D) || btn.getStyle().contains(L_BTN_D)) {
                 if (btn.getText().equals("Очистить")) {
                     btn.setStyle(getBaseStyle("danger"));
                 } else if (btn.getText().equals(localization.get("btn.add"))) {

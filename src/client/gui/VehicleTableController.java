@@ -26,6 +26,7 @@ public class VehicleTableController {
     private TextField filterId, filterName, filterOwner, filterMinPrice, filterMaxPrice;
     private ComboBox<VehicleType> filterType;
     private ComboBox<FuelType> filterFuel;
+    private Label filterLabel; // <--- Добавлено поле для надписи "Фильтры"
     private static final DecimalFormat PRICE_FORMAT = new DecimalFormat("#,##0.00");
     private boolean isDarkMode = false;
     public VehicleTableController(LocalizationManager localization) {
@@ -41,8 +42,9 @@ public class VehicleTableController {
     }
     private void updateTableTheme() {
         if (tableView == null) return;
+
         if (!isDarkMode) {
-// === СВЕТЛАЯ ТЕМА ===
+            // === СВЕТЛАЯ ТЕМА (Основные стили) ===
             tableView.setStyle(
                     "-fx-background-color: white; " +
                             "-fx-control-inner-background: white; " +
@@ -52,7 +54,6 @@ public class VehicleTableController {
             for (TableColumn<Vehicle, ?> col : tableView.getColumns()) {
                 col.setStyle(
                         "-fx-background-color: white; " +
-                                "-fx-text-fill: #374151; " +
                                 "-fx-font-weight: bold; " +
                                 "-fx-border-color: #E5E7EB;"
                 );
@@ -81,7 +82,7 @@ public class VehicleTableController {
                 return row;
             });
         } else {
-// === ТЁМНАЯ ТЕМА ===
+            // === ТЁМНАЯ ТЕМА (Основные стили) ===
             tableView.setStyle(
                     "-fx-background-color: #0B132B; " +
                             "-fx-control-inner-background: #0B132B; " +
@@ -92,7 +93,6 @@ public class VehicleTableController {
             for (TableColumn<Vehicle, ?> col : tableView.getColumns()) {
                 col.setStyle(
                         "-fx-background-color: #0B132B; " +
-                                "-fx-text-fill: #D8B4FE; " +
                                 "-fx-font-weight: bold; " +
                                 "-fx-border-color: #1C2541;"
                 );
@@ -121,36 +121,35 @@ public class VehicleTableController {
                 return row;
             });
         }
-// Принудительно обновляем таблицу
-        Platform.runLater(() -> tableView.refresh());
 
-// === ОБЩАЯ СТИЛИЗАЦИЯ ЗАГОЛОВКОВ И СКРОЛЛБАРА (РАБОТАЕТ ДЛЯ ОБЕИХ ТЕМ) ===
+        // === ПРИНУДИТЕЛЬНАЯ СТИЛИЗАЦИЯ ЗАГОЛОВКОВ И СКРОЛЛБАРА ===
+        // Вызывается всегда при переключении, чтобы применить правильные цвета текста и полосок
         Platform.runLater(() -> {
-            String headerBg = isDarkMode ? "#0B132B" : "white";
-            String headerText = isDarkMode ? "#A855F7" : "#1F2937"; // Черный для светлой, Фиолетовый для темной
-            String thumbColor = isDarkMode ? "#475569" : "#CBD5E1"; // Темный для темной, Светло-серый для светлой
-            String trackColor = isDarkMode ? "#1C2541" : "transparent";
-            String arrowColor = isDarkMode ? "#D8B4FE" : "#6B7280";
+            String headerTextColor = isDarkMode ? "#A855F7" : "#1F2937"; // Фиолетовый для темной, Черный для светлой
+            String headerBgColor = isDarkMode ? "#0B132B" : "white";
 
-// Стилизация заголовков столбцов
+            // Красим заголовки столбцов
             tableView.lookupAll(".column-header").forEach(header -> {
                 header.setStyle(
-                        "-fx-background-color: " + headerBg + "; " +
-                                "-fx-text-fill: " + headerText + "; " +
+                        "-fx-background-color: " + headerBgColor + "; " +
+                                "-fx-text-fill: " + headerTextColor + "; " +
                                 "-fx-font-weight: bold; " +
                                 "-fx-font-size: 13px;"
                 );
-// Красим также label внутри header
                 header.lookupAll(".label").forEach(label -> {
                     label.setStyle(
-                            "-fx-text-fill: " + headerText + "; " +
+                            "-fx-text-fill: " + headerTextColor + "; " +
                                     "-fx-font-weight: bold; " +
                                     "-fx-font-size: 13px;"
                     );
                 });
             });
 
-// Стилизация скроллбара
+            // Красим скроллбар (полоску)
+            String thumbColor = isDarkMode ? "#475569" : "#CBD5E1"; // Темный для темной, Светлый для светлой
+            String trackColor = isDarkMode ? "#1C2541" : "transparent";
+            String arrowColor = isDarkMode ? "#D8B4FE" : "#6B7280";
+
             tableView.lookupAll(".scroll-bar").forEach(node -> {
                 node.setStyle("-fx-background-color: " + trackColor + ";");
                 node.lookupAll(".thumb").forEach(thumb ->
@@ -163,14 +162,19 @@ public class VehicleTableController {
                 node.lookupAll(".decrement-arrow").forEach(arr -> arr.setStyle("-fx-background-color: " + arrowColor + ";"));
             });
         });
+
+        // Принудительно обновляем таблицу
+        Platform.runLater(() -> tableView.refresh());
     }
+
+
     private HBox createFilterPanel() {
         HBox hbox = new HBox(12);
         hbox.setPadding(new Insets(0, 0, 15, 0));
         hbox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        Label filterLabel = new Label("Фильтры:");
-// Исправлен цвет надписи на светло-серый (как "Все типы")
-        filterLabel.setStyle("-fx-text-fill: #E2E8F0; -fx-font-weight: 500;");
+        filterLabel = new Label("Фильтры:"); // <--- Присваиваем полю
+// Цвет устанавливается в зависимости от темы (как у "Язык")
+        filterLabel.setStyle("-fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#374151") + "; -fx-font-weight: 500;");
         filterId = new TextField(); filterId.setPromptText("ID"); filterId.setPrefWidth(50);
         filterName = new TextField(); filterName.setPromptText("Имя"); filterName.setPrefWidth(100);
         filterOwner = new TextField(); filterOwner.setPromptText("Владелец"); filterOwner.setPrefWidth(100);
@@ -430,6 +434,14 @@ public class VehicleTableController {
         String borderColor = isDarkMode ? "#475569" : "#E2E8F0";
         String textColor = isDarkMode ? "#F1F5F9" : "#1F2937"; // Более светлый текст для темной темы
         String promptColor = isDarkMode ? "#94A3B8" : "#9CA3AF";
+
+// === ИСПРАВЛЕНИЕ: Обновляем цвет надписи "Фильтры" ===
+        String filterLabelColor = isDarkMode ? "#E2E8F0" : "#374151";
+        if (filterLabel != null) {
+            filterLabel.setStyle("-fx-text-fill: " + filterLabelColor + "; -fx-font-weight: 500;");
+        }
+// ================================================
+
 // Общий стиль для текстовых полей
         String style = "-fx-background-color: " + bgColor + "; " +
                 "-fx-background-radius: 6; " +
