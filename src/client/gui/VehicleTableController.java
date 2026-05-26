@@ -358,7 +358,38 @@ public class VehicleTableController {
         tableView.getColumns().addAll(colId, colName, colCoords, colDate, colPower, colDist, colType, colFuel, colOwner, colPrice);
         updateTableTheme();
     }
-    public void updateLocalization() { tableView.getColumns().clear(); setupColumns(); }
+    public void updateLocalization() {
+        // Обновляем заголовки колонок
+        tableView.getColumns().clear();
+        setupColumns();
+
+        // Обновляем фильтр
+        if (filterLabel != null) {
+            filterLabel.setText(localization.get("table.filter") + ":");
+        }
+        if (filterId != null) filterId.setPromptText(localization.get("filter.id"));
+        if (filterName != null) filterName.setPromptText(localization.get("filter.name"));
+        if (filterOwner != null) filterOwner.setPromptText(localization.get("filter.owner"));
+        if (filterMinPrice != null) filterMinPrice.setPromptText(localization.get("filter.min_price"));
+        if (filterMaxPrice != null) filterMaxPrice.setPromptText(localization.get("filter.max_price"));
+        if (filterType != null) {
+            filterType.setPromptText(localization.get("filter.type"));
+            if (filterType.getValue() == null) {
+                filterType.getButtonCell().setText(localization.get("table.filter.all_types"));
+            }
+            setupFilterTypeLocalization();
+        }
+        if (filterFuel != null) {
+            filterFuel.setPromptText(localization.get("filter.fuel"));
+            if (filterFuel.getValue() == null) {
+                filterFuel.getButtonCell().setText(localization.get("table.filter.all_fuels"));
+            }
+            setupFilterFuelLocalization();
+        }
+
+        // Принудительно обновляем таблицу
+        tableView.refresh();
+    }
     private void applyFilters() {
         String idStr = filterId.getText().trim(), nameStr = filterName.getText().trim().toLowerCase(), ownerStr = filterOwner.getText().trim().toLowerCase();
         String minPriceStr = filterMinPrice.getText().trim(), maxPriceStr = filterMaxPrice.getText().trim();

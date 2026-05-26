@@ -48,7 +48,6 @@ client\gui\GuiApp$1.class
 server\database\DBManager.class
 server\commands\ShowCommand.class
 server\service\NetworkResponseSender.class
-client\gui\MainScene$3.class
 common\Coordinates.class
 common\Vehicle.class
 client\gui\VehicleTableController$4.class
