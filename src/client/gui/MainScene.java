@@ -1,9 +1,6 @@
 package client.gui;
-import client.logic.AllCommands;
-import client.logic.CommandRegistryLoader;
-import client.logic.ConnectionInitializer;
+
 import client.logic.NetworkService;
-import common.CommandResponse;
 import common.Vehicle;
 import javafx.animation.*;
 import javafx.application.Platform;
@@ -12,32 +9,27 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import java.awt.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.prefs.Preferences;
+
 public class MainScene {
     private final Stage stage;
     private final LocalizationManager localization;
     private final String currentUserLogin;
     private final String currentUserPassword;
-    private NetworkService networkService;
+    private final NetworkService networkService;
     private VehicleTableController tableController;
     private VehicleCanvasController canvasController;
     private CommandDialogHandler commandHandler;
@@ -49,7 +41,6 @@ public class MainScene {
     private Label visualTitle;
     private List<Button> themeAwareButtons = new ArrayList<>();
     private Label userLabel;
-    private Label langLabel; // <--- Вынесено в поле класса для доступа из applyThemeStyles
     private Button balanceButton;
     private Button depositButton;
     private Button themeToggleButton;
@@ -58,9 +49,12 @@ public class MainScene {
     private List<Vehicle> lastCanvasVehicles = List.of();
     private ScheduledExecutorService refreshScheduler;
     private boolean isDarkMode = false;
+
     // === Профиль ===
     private VBox profilePanel;
     private boolean isProfileOpen = false;
+    private TextArea aboutTextArea; // Ссылка на текстовое поле "О себе"
+
     // === СВЕТЛАЯ ТЕМА ===
     private static final String L_BG = "-fx-background-color: #F8FAFC;";
     private static final String L_CARD = "-fx-background-color: #FFFFFF; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 10, 0, 0, 2);";
@@ -70,6 +64,7 @@ public class MainScene {
     private static final String L_BTN_S_H = "-fx-background-color: #E2E8F0; -fx-border-color: #CBD5E1;";
     private static final String L_BTN_D = "-fx-background-color: #F1F5F9; -fx-text-fill: #EF4444; -fx-border-color: #FECACA; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
     private static final String L_BTN_D_H = "-fx-background-color: #FEE2E2; -fx-border-color: #FCA5A5;";
+
     // === ТЁМНАЯ ТЕМА ===
     private static final String D_BG = "-fx-background-color: #0B1120;";
     private static final String D_CARD = "-fx-background-color: #1E293B; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 2);";
@@ -79,6 +74,7 @@ public class MainScene {
     private static final String D_BTN_S_H = "-fx-background-color: #475569; -fx-border-color: #64748B;";
     private static final String D_BTN_D = "-fx-background-color: linear-gradient(to right, #DC2626, #B91C1C); -fx-text-fill: white; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
     private static final String D_BTN_D_H = "-fx-background-color: linear-gradient(to right, #EF4444, #DC2626);";
+
     // === СТИЛИ ПРОФИЛЯ ===
     private static final String L_PROFILE_BG = "-fx-background-color: rgba(255,255,255,0.98); -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 30, 0, 0, 15);";
     private static final String D_PROFILE_BG = "-fx-background-color: rgba(30,41,59,0.98); -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 30, 0, 0, 15);";
@@ -92,6 +88,7 @@ public class MainScene {
     private static final String PROFILE_BTN_BACK_H_D = "-fx-background-color: #475569; -fx-text-fill: #F8FAFC; -fx-font-weight: 600; -fx-background-radius: 12; -fx-padding: 12 30; -fx-cursor: hand; -fx-font-size: 14px;";
     private static final String TEXT_AREA_L = "-fx-background-color: #F9FAFB; -fx-text-fill: #1F2937; -fx-font-size: 13px; -fx-background-radius: 10; -fx-border-color: #E5E7EB; -fx-border-radius: 10; -fx-border-width: 1;";
     private static final String TEXT_AREA_D = "-fx-background-color: #334155; -fx-text-fill: #E2E8F0; -fx-font-size: 13px; -fx-background-radius: 10; -fx-border-color: #475569; -fx-border-radius: 10; -fx-border-width: 1;";
+
     public MainScene(Stage stage, LocalizationManager localization, NetworkService networkService,
                      String currentUserLogin, String currentUserPassword) {
         this.stage = stage;
@@ -101,32 +98,41 @@ public class MainScene {
         this.currentUserPassword = currentUserPassword;
         this.commandHandler = new CommandDialogHandler(networkService, localization, currentUserLogin, currentUserPassword);
     }
+
     public Scene createScene() {
         root = new BorderPane();
         root.setPadding(new Insets(15));
+
         notificationContainer = new VBox(10);
         notificationContainer.setAlignment(Pos.TOP_RIGHT);
         notificationContainer.setPadding(new Insets(15));
         notificationContainer.setMouseTransparent(true);
         notificationContainer.setStyle("-fx-background-color: transparent;");
+
         topPanel = createTopPanel();
         root.setTop(topPanel);
+
         SplitPane centerSplit = createCenterSplit();
         centerSplit.setDividerPositions(0.65);
         root.setCenter(centerSplit);
+
         bottomPanel = createBottomPanel();
         root.setBottom(bottomPanel);
         BorderPane.setMargin(bottomPanel, new Insets(15, 0, 0, 0));
-// === Создаём панель профиля ===
+
+        // === Создаём панель профиля ===
         profilePanel = createProfilePanel();
         profilePanel.setVisible(false);
         profilePanel.setOpacity(0);
         profilePanel.setTranslateY(-20);
+
         StackPane mainContainer = new StackPane(root, notificationContainer, profilePanel);
         Scene scene = new Scene(mainContainer, 1200, 800);
+
         KeyCombination exitKey = new KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN);
         scene.getAccelerators().put(exitKey, () -> handleExit());
-// Закрытие профиля по клику вне его
+
+        // Закрытие профиля по клику вне его
         scene.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> {
             if (isProfileOpen && profilePanel.isVisible()) {
                 if (!profilePanel.getBoundsInParent().contains(e.getSceneX(), e.getSceneY()) &&
@@ -135,11 +141,13 @@ public class MainScene {
                 }
             }
         });
+
         applyThemeStyles();
         Platform.runLater(() -> commandHandler.executeShow());
         startAutoRefresh();
         return scene;
     }
+
     // === Создание панели профиля ===
     private VBox createProfilePanel() {
         VBox panel = new VBox(20);
@@ -149,7 +157,8 @@ public class MainScene {
         panel.setPrefHeight(520);
         panel.setStyle(isDarkMode ? D_PROFILE_BG : L_PROFILE_BG);
         panel.setMouseTransparent(false);
-// Кнопка закрытия (крестик)
+
+        // Кнопка закрытия (крестик)
         Button closeBtn = new Button("✕");
         closeBtn.setStyle(
                 "-fx-background-color: transparent; " +
@@ -177,11 +186,13 @@ public class MainScene {
                         "-fx-padding: 5 10;"
         ));
         closeBtn.setOnAction(e -> closeProfile());
+
         HBox topBar = new HBox();
         topBar.setAlignment(Pos.CENTER_RIGHT);
         topBar.getChildren().add(closeBtn);
-// Аватар
-        Circle avatar = new Circle(60);
+
+        // Аватар
+        javafx.scene.shape.Circle avatar = new javafx.scene.shape.Circle(60);
         avatar.setFill(new javafx.scene.paint.LinearGradient(
                 0, 0, 1, 1, true,
                 javafx.scene.paint.CycleMethod.NO_CYCLE,
@@ -194,14 +205,16 @@ public class MainScene {
         avatarIcon.setStyle("-fx-font-size: 40px; -fx-text-fill: white;");
         StackPane avatarContainer = new StackPane(avatar, avatarIcon);
         avatarContainer.setAlignment(Pos.CENTER);
-// Имя пользователя (теперь видно в обеих темах)
+
+        // Имя пользователя
         Label userNameLabel = new Label(currentUserLogin);
         userNameLabel.setStyle(
                 "-fx-font-size: 24px; " +
                         "-fx-font-weight: bold; " +
                         "-fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#1F2937") + ";"
         );
-// Статус онлайн
+
+        // Статус онлайн
         HBox statusBox = new HBox(8);
         statusBox.setAlignment(Pos.CENTER);
         Label statusDot = new Label("●");
@@ -209,37 +222,46 @@ public class MainScene {
         Label statusText = new Label("Онлайн");
         statusText.setStyle("-fx-text-fill: #10B981; -fx-font-size: 13px; -fx-font-weight: 500;");
         statusBox.getChildren().addAll(statusDot, statusText);
-// Разделитель (адаптируется под тему)
+
+        // Разделитель
         Region separator = new Region();
         separator.setPrefHeight(1);
         separator.setStyle(isDarkMode ? D_SEPARATOR : L_SEPARATOR);
         separator.setPadding(new Insets(10, 0, 10, 0));
-// Поле "О себе"
+
+        // Поле "О себе"
         Label aboutLabel = new Label("Расскажите о себе:");
         aboutLabel.setStyle(
                 "-fx-text-fill: " + (isDarkMode ? "#94A3B8" : "#6B7280") + "; " +
                         "-fx-font-size: 12px; " +
                         "-fx-font-weight: 500;"
         );
-        TextArea aboutTextArea = new TextArea();
+
+        aboutTextArea = new TextArea(); // Используем поле класса
         aboutTextArea.setPromptText("Введите информацию о себе...");
         aboutTextArea.setWrapText(true);
         aboutTextArea.setPrefRowCount(3);
         aboutTextArea.setStyle(isDarkMode ? TEXT_AREA_D : TEXT_AREA_L);
-// Кнопка выхода
+
+        // Кнопка выхода
         Button logoutBtn = new Button("Выйти из аккаунта");
         logoutBtn.setStyle(PROFILE_BTN_LOGOUT);
         logoutBtn.setMaxWidth(Double.MAX_VALUE);
         logoutBtn.setOnAction(e -> handleLogout());
         logoutBtn.setOnMouseEntered(e -> logoutBtn.setStyle(PROFILE_BTN_LOGOUT_H));
         logoutBtn.setOnMouseExited(e -> logoutBtn.setStyle(PROFILE_BTN_LOGOUT));
-// Кнопка "Назад в меню"
+
+        // Кнопка "Назад в меню"
         Button backBtn = new Button("← Назад в меню");
         backBtn.setStyle(isDarkMode ? PROFILE_BTN_BACK_D : PROFILE_BTN_BACK_L);
         backBtn.setMaxWidth(Double.MAX_VALUE);
-        backBtn.setOnAction(e -> closeProfile());
+        backBtn.setOnAction(e -> {
+            saveUserBio(); // Сохраняем перед закрытием
+            closeProfile();
+        });
         backBtn.setOnMouseEntered(e -> backBtn.setStyle(isDarkMode ? PROFILE_BTN_BACK_H_D : PROFILE_BTN_BACK_H_L));
         backBtn.setOnMouseExited(e -> backBtn.setStyle(isDarkMode ? PROFILE_BTN_BACK_D : PROFILE_BTN_BACK_L));
+
         panel.getChildren().addAll(
                 topBar,
                 avatarContainer,
@@ -253,8 +275,10 @@ public class MainScene {
                 backBtn
         );
         VBox.setVgrow(panel.getChildren().get(panel.getChildren().size() - 3), Priority.ALWAYS);
+
         return panel;
     }
+
     // === Открытие/Закрытие профиля ===
     private void toggleProfile() {
         if (isProfileOpen) {
@@ -263,38 +287,51 @@ public class MainScene {
             openProfile();
         }
     }
+
     private void openProfile() {
         isProfileOpen = true;
         profilePanel.setVisible(true);
+
+        // Загружаем сохраненное описание
+        loadUserBio();
+
         double labelX = userLabel.localToScene(userLabel.getBoundsInLocal()).getMinX();
         double labelY = userLabel.localToScene(userLabel.getBoundsInLocal()).getMaxY() + 10;
         profilePanel.setLayoutX(Math.max(15, labelX - 140));
         profilePanel.setLayoutY(labelY);
+
         FadeTransition fadeIn = new FadeTransition(Duration.millis(200), profilePanel);
         fadeIn.setFromValue(0);
         fadeIn.setToValue(1);
         fadeIn.setInterpolator(Interpolator.EASE_OUT);
+
         TranslateTransition slideDown = new TranslateTransition(Duration.millis(200), profilePanel);
         slideDown.setFromY(-20);
         slideDown.setToY(0);
         slideDown.setInterpolator(Interpolator.EASE_OUT);
+
         new ParallelTransition(fadeIn, slideDown).play();
     }
+
     private void closeProfile() {
         if (!isProfileOpen) return;
         isProfileOpen = false;
+
         FadeTransition fadeOut = new FadeTransition(Duration.millis(150), profilePanel);
         fadeOut.setFromValue(1);
         fadeOut.setToValue(0);
         fadeOut.setInterpolator(Interpolator.EASE_IN);
+
         TranslateTransition slideUp = new TranslateTransition(Duration.millis(150), profilePanel);
         slideUp.setFromY(0);
         slideUp.setToY(-20);
         slideUp.setInterpolator(Interpolator.EASE_IN);
+
         ParallelTransition exitAnim = new ParallelTransition(fadeOut, slideUp);
         exitAnim.setOnFinished(e -> profilePanel.setVisible(false));
         exitAnim.play();
     }
+
     // === Обработка выхода ===
     private void handleLogout() {
         closeProfile();
@@ -308,6 +345,7 @@ public class MainScene {
         });
         pause.play();
     }
+
     // === Переподключение и возврат к авторизации ===
     private void returnToAuth() {
         NetworkService newNetworkService = new NetworkService("localhost", 7301);
@@ -320,11 +358,11 @@ public class MainScene {
         connectTask.setOnSucceeded(event -> {
             if (connectTask.getValue()) {
                 try {
-                    ConnectionInitializer initializer = new ConnectionInitializer(newNetworkService, "connected");
-                    CommandResponse initResponse = initializer.initialize();
+                    client.logic.ConnectionInitializer initializer = new client.logic.ConnectionInitializer(newNetworkService, "connected");
+                    common.CommandResponse initResponse = initializer.initialize();
                     if (initResponse != null) {
-                        CommandRegistryLoader loader = new CommandRegistryLoader(newNetworkService);
-                        AllCommands allCommands = loader.loadCommands(initResponse);
+                        client.logic.CommandRegistryLoader loader = new client.logic.CommandRegistryLoader(newNetworkService);
+                        client.logic.AllCommands allCommands = loader.loadCommands(initResponse);
                         AuthScene authScene = new AuthScene(stage, newNetworkService, localization);
                         authScene.setOnLoginSuccess(() -> {
                             MainScene newMainScene = new MainScene(stage, localization, newNetworkService,
@@ -336,7 +374,6 @@ public class MainScene {
                             stage.centerOnScreen();
                         });
                         stage.setScene(authScene.createScene());
-// === ВОЗВРАЩАЕМ ИСХОДНЫЕ РАЗМЕРЫ ДЛЯ ОКНА АВТОРИЗАЦИИ ===
                         stage.setWidth(500);
                         stage.setHeight(600);
                         stage.centerOnScreen();
@@ -356,6 +393,7 @@ public class MainScene {
         });
         new Thread(connectTask).start();
     }
+
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Ошибка");
@@ -363,6 +401,7 @@ public class MainScene {
         alert.setContentText(message);
         alert.showAndWait();
     }
+
     private void startAutoRefresh() {
         refreshScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "AutoRefresh-" + currentUserLogin);
@@ -378,9 +417,11 @@ public class MainScene {
             }
         }, 5, 5, TimeUnit.SECONDS);
     }
+
     public void stopAutoRefresh() {
         if (refreshScheduler != null && !refreshScheduler.isShutdown()) refreshScheduler.shutdownNow();
     }
+
     private HBox createTopPanel() {
         HBox hbox = new HBox(20);
         hbox.setPadding(new Insets(12, 20, 12, 20));
@@ -411,8 +452,8 @@ public class MainScene {
         themeToggleButton.setGraphic(themeIcon);
         themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
         themeToggleButton.setTooltip(new Tooltip("Переключить тему"));
-        Image finalSunImage = sunImage;
-        Image finalMoonImage = moonImage;
+        javafx.scene.image.Image finalSunImage = sunImage;
+        javafx.scene.image.Image finalMoonImage = moonImage;
         themeToggleButton.setOnAction(e -> {
             isDarkMode = !isDarkMode;
             if (isDarkMode && finalSunImage != null) {
@@ -423,14 +464,13 @@ public class MainScene {
             applyThemeStyles();
         });
 
-        // === USER LABEL — ИСПРАВЛЕННАЯ ВЕРСИЯ ===
+        // === USER LABEL ===
         userLabel = new Label(localization.get("main.user.label") + " " + currentUserLogin);
         updateUserLabelStyle(false); // initial style
 
         userLabel.setOnMouseClicked(e -> toggleProfile());
         userLabel.setOnMouseEntered(e -> updateUserLabelStyle(true));  // hover
         userLabel.setOnMouseExited(e -> updateUserLabelStyle(false));  // exit
-        // =================================
 
         balanceButton = new Button(localization.get("btn.balance"));
         themeAwareButtons.add(balanceButton);
@@ -483,6 +523,7 @@ public class MainScene {
 
         Label langLabel = new Label(localization.get("main.lang.label"));
         langLabel.setStyle("-fx-text-fill: #757575; -fx-font-weight: 500;");
+
         langComboBox = new ComboBox<>();
         langComboBox.getItems().setAll(localization.getAvailableLocales());
         langComboBox.setCellFactory(lv -> new ListCell<>() {
@@ -539,9 +580,11 @@ public class MainScene {
         SplitPane splitPane = new SplitPane();
         splitPane.setOrientation(javafx.geometry.Orientation.HORIZONTAL);
         splitPane.setStyle("-fx-background-color: transparent;");
+
         tableController = new VehicleTableController(localization);
         tableContainer = tableController.createTablePane();
         if (commandHandler != null) commandHandler.setTableController(tableController);
+
         tableController.getTable().setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
@@ -551,6 +594,7 @@ public class MainScene {
                 if (selected != null && canvasController != null) canvasController.focusOnVehicle(selected);
             }
         });
+
         if (canvasController == null) canvasController = new VehicleCanvasController(localization);
         javafx.scene.canvas.Canvas canvas = canvasController.createCanvas(600, 600);
         canvasController.setOnVehicleClicked(vehicle -> {
@@ -564,27 +608,33 @@ public class MainScene {
                 Platform.runLater(() -> canvasController.resetView());
             }
         });
+
         canvasContainer = new VBox(10);
         visualTitle = new Label("Визуализация координат");
         visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#334155") + ";");
+
         Pane canvasPane = new Pane(canvas);
         canvas.widthProperty().bind(canvasPane.widthProperty());
         canvas.heightProperty().bind(canvasPane.heightProperty());
         canvasContainer.getChildren().addAll(visualTitle, canvasPane);
         VBox.setVgrow(canvasPane, Priority.ALWAYS);
+
         splitPane.getItems().addAll(tableContainer, canvasContainer);
         return splitPane;
     }
+
     private HBox createBottomPanel() {
         HBox hbox = new HBox(15);
         hbox.setPadding(new Insets(5));
         hbox.setAlignment(Pos.CENTER);
         hbox.setStyle("-fx-background-color: transparent;");
+
         Button btnAdd = createStyledButton(localization.get("btn.add"), true);
         Button btnRemove = createStyledButton(localization.get("btn.remove"), false);
         Button btnShuffle = createStyledButton(localization.get("btn.shuffle"), false);
         Button btnBuy = createStyledButton(localization.get("btn.buy"), false);
         Button btnClear = createStyledButton("Очистить", "danger");
+
         List<Button> buttons = List.of(btnAdd, btnRemove, btnShuffle, btnBuy, btnClear);
         for (Button btn : buttons) {
             HBox.setHgrow(btn, Priority.ALWAYS);
@@ -593,6 +643,7 @@ public class MainScene {
             btn.setFont(javafx.scene.text.Font.font(14));
             themeAwareButtons.add(btn);
         }
+
         btnAdd.setOnAction(e -> commandHandler.executeAdd());
         btnRemove.setOnAction(e -> {
             Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
@@ -606,48 +657,61 @@ public class MainScene {
             else showWarning("Выберите элемент в таблице для покупки!");
         });
         btnClear.setOnAction(e -> commandHandler.executeClear());
+
         hbox.getChildren().addAll(buttons);
         return hbox;
     }
+
     private Button createStyledButton(String text, boolean isPrimary) {
         Button btn = new Button(text);
         btn.setStyle(getBaseStyle(isPrimary));
         setupButtonHover(btn, isPrimary);
         return btn;
     }
+
     private Button createStyledButton(String text, String type) {
         Button btn = new Button(text);
         btn.setStyle(getBaseStyle("danger"));
         setupButtonHover(btn, "danger");
         return btn;
     }
+
     private String getBaseStyle(boolean isPrimary) {
         if (isDarkMode) return isPrimary ? D_BTN_P : D_BTN_S;
         return isPrimary ? L_BTN_P : L_BTN_S;
     }
+
     private String getHoverStyle(boolean isPrimary) {
         if (isDarkMode) return isPrimary ? D_BTN_P_H : D_BTN_S_H;
         return isPrimary ? L_BTN_P_H : L_BTN_S_H;
     }
+
     private String getBaseStyle(String type) {
         return isDarkMode ? D_BTN_D : L_BTN_D;
     }
+
     private String getHoverStyle(String type) {
         return isDarkMode ? D_BTN_D_H : L_BTN_D_H;
     }
+
     private void setupButtonHover(Button btn, boolean isPrimary) {
         btn.setOnMouseEntered(e -> btn.setStyle(getHoverStyle(isPrimary)));
         btn.setOnMouseExited(e -> btn.setStyle(getBaseStyle(isPrimary)));
     }
+
     private void setupButtonHover(Button btn, String type) {
         btn.setOnMouseEntered(e -> btn.setStyle(getHoverStyle(type)));
         btn.setOnMouseExited(e -> btn.setStyle(getBaseStyle(type)));
     }
+
     private void applyThemeStyles() {
         if (root == null) return;
+
+        // 1. Основные фоны
         root.setStyle(isDarkMode ? D_BG : L_BG);
         if (topPanel != null) topPanel.setStyle(isDarkMode ? D_CARD : L_CARD);
 
+        // Контейнер таблицы
         if (tableContainer != null) {
             if (isDarkMode) {
                 tableContainer.setStyle("-fx-background-color: #050505; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 2); -fx-padding: 15;");
@@ -656,16 +720,19 @@ public class MainScene {
             }
         }
 
+        // Контейнер канваса
         if (canvasContainer != null) canvasContainer.setStyle(isDarkMode ? D_CARD : L_CARD + " -fx-padding: 15;");
         if (bottomPanel != null) bottomPanel.setStyle("-fx-background-color: transparent;");
 
-        // === ИСПРАВЛЕНИЕ: используем новый метод ===
-        if (userLabel != null) {
-            updateUserLabelStyle(false); // Сбрасываем hover при смене темы
-        }
+        // 2. Текстовые элементы (User, Title)
+        // ИСПРАВЛЕНО: Размер шрифта 14px, чтобы совпадать с hover-стилями
+        String txtColor = isDarkMode ? "-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #8B5CF6;"
+                : "-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #2563EB;";
+        if (userLabel != null) userLabel.setStyle(txtColor + " -fx-cursor: hand; -fx-underline: true;");
 
         if (visualTitle != null) visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#8B5CF6" : "#2563EB") + ";");
 
+        // 3. Кнопки
         for (Button btn : themeAwareButtons) {
             if (btn.getStyle().contains(D_BTN_P) || btn.getStyle().contains(L_BTN_P) ||
                     btn.getStyle().contains(D_BTN_S) || btn.getStyle().contains(L_BTN_S) ||
@@ -679,37 +746,93 @@ public class MainScene {
                 }
             }
         }
-
         if (balanceButton != null) balanceButton.setStyle(getBaseStyle(false));
         if (depositButton != null) depositButton.setStyle(getBaseStyle(false));
 
+        // 4. ComboBox языка
         if (langComboBox != null) {
             langComboBox.setStyle("-fx-background-color: " + (isDarkMode ? "#334155" : "#F1F5F9") +
                     "; -fx-border-color: " + (isDarkMode ? "#475569" : "#E2E8F0") +
                     "; -fx-border-radius: 6; -fx-background-radius: 6;");
         }
 
+        // 5. Панель Профиля (ИСПРАВЛЕНИЕ: Обновляем стили профиля при смене темы)
+        if (profilePanel != null) {
+            // Обновляем фон самой панели
+            profilePanel.setStyle(isDarkMode ? D_PROFILE_BG : L_PROFILE_BG);
+
+            // Рекурсивно обновляем стили всех элементов внутри профиля
+            for (Node node : profilePanel.getChildren()) {
+                updateProfileNodeStyle(node);
+            }
+        }
+
+        // 6. Контроллеры
         if (tableController != null) tableController.setDarkMode(isDarkMode);
         if (canvasController != null) canvasController.setDarkMode(isDarkMode);
         commandHandler.setDarkMode(isDarkMode);
     }
+
+    // Вспомогательный метод для обновления стилей внутри профиля
+    private void updateProfileNodeStyle(Node node) {
+        if (node instanceof VBox || node instanceof HBox) {
+            for (Node child : ((javafx.scene.layout.Region) node).getChildrenUnmodifiable()) {
+                updateProfileNodeStyle(child);
+            }
+        } else if (node instanceof Label) {
+            Label label = (Label) node;
+            String text = label.getText();
+            // Имя пользователя
+            if (text != null && text.equals(currentUserLogin)) {
+                label.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#1F2937") + ";");
+            }
+            // Метка "Расскажите о себе"
+            else if (text != null && text.contains("Расскажите")) {
+                label.setStyle("-fx-text-fill: " + (isDarkMode ? "#94A3B8" : "#6B7280") + "; -fx-font-size: 12px; -fx-font-weight: 500;");
+            }
+            // Статус "Онлайн"
+            else if (text != null && text.contains("Онлайн")) {
+                label.setStyle("-fx-text-fill: #10B981; -fx-font-size: 13px; -fx-font-weight: 500;");
+            }
+            // Крестик закрытия
+            else if (text != null && text.equals("✕")) {
+                label.setStyle(
+                        "-fx-background-color: transparent; " +
+                                "-fx-text-fill: " + (isDarkMode ? "#94A3B8" : "#9CA3AF") + "; " +
+                                "-fx-font-size: 18px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 5 10;"
+                );
+            }
+        } else if (node instanceof TextArea) {
+            // Поле ввода
+            ((TextArea) node).setStyle(isDarkMode ? TEXT_AREA_D : TEXT_AREA_L);
+        } else if (node instanceof Button) {
+            Button btn = (Button) node;
+            // Кнопки
+            if (btn.getText().contains("Выйти")) {
+                btn.setStyle(PROFILE_BTN_LOGOUT);
+            } else if (btn.getText().contains("Назад")) {
+                btn.setStyle(isDarkMode ? PROFILE_BTN_BACK_D : PROFILE_BTN_BACK_L);
+            }
+        } else if (node instanceof Region) {
+            // Разделители
+            Region region = (Region) node;
+            if (region.getPrefHeight() == 1) {
+                region.setStyle(isDarkMode ? D_SEPARATOR : L_SEPARATOR);
+            }
+        }
+    }
+
     private void handleExit() {
         stopAutoRefresh();
         if (networkService != null && networkService.isConnected()) networkService.disconnect();
         stage.close();
     }
-    private void showWarning(String msg) {
-        ModernNotifications.showWarning(notificationContainer, msg, isDarkMode);
-    }
-    public void showSuccessNotification(String msg) {
-        ModernNotifications.showSuccess(notificationContainer, msg, isDarkMode);
-    }
-    public void showErrorNotification(String msg) {
-        ModernNotifications.showError(notificationContainer, msg, isDarkMode);
-    }
-    public void showInfoNotification(String msg) {
-        ModernNotifications.showInfo(notificationContainer, msg, isDarkMode);
-    }
+
+    private void showWarning(String msg) { ModernNotifications.showWarning(notificationContainer, msg, isDarkMode); }
+    public void showSuccessNotification(String msg) { ModernNotifications.showSuccess(notificationContainer, msg, isDarkMode); }
+    public void showErrorNotification(String msg) { ModernNotifications.showError(notificationContainer, msg, isDarkMode); }
+    public void showInfoNotification(String msg) { ModernNotifications.showInfo(notificationContainer, msg, isDarkMode); }
+
     private void updateUITexts() {
         userLabel.setText(localization.get("main.user.label") + " " + currentUserLogin);
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
@@ -721,6 +844,7 @@ public class MainScene {
         }
         applyThemeStyles();
     }
+
     public void updateVisualization() {
         if (tableController != null && canvasController != null) {
             List<Vehicle> currentVehicles = tableController.getAllVehicles();
@@ -733,6 +857,7 @@ public class MainScene {
             }
         }
     }
+
     private boolean hasDataChanged(List<Vehicle> oldList, List<Vehicle> newList) {
         if (oldList == null && newList == null) return false;
         if (oldList == null || newList == null) return true;
@@ -748,38 +873,20 @@ public class MainScene {
         }
         return false;
     }
-    private void updateLangComboBoxStyle() {
-        if (langComboBox == null) return;
-// Определяем цвета
-        String bgColor = isDarkMode ? "#334155" : "#FFFFFF";
-        String textColor = isDarkMode ? "#E2E8F0" : "#1F2937";
-        String borderColor = isDarkMode ? "#475569" : "#E2E8F0";
-// Стиль для основной кнопки комбобокса
-        langComboBox.setStyle("-fx-background-color: " + bgColor + "; " +
-                "-fx-border-color: " + borderColor + "; " +
-                "-fx-border-radius: 6; -fx-background-radius: 6; " +
-                "-fx-text-fill: " + textColor + ";");
-// Стиль для элементов выпадающего списка
-        langComboBox.setCellFactory(lv -> new ListCell<>() {
-            @Override
-            protected void updateItem(Locale item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty || item == null ? null : localization.getLocaleDisplayName(item));
-// Применяем темный/светлый фон к каждой ячейке
-                String style = "-fx-background-color: " + bgColor + "; " +
-                        "-fx-text-fill: " + textColor + "; " +
-                        "-fx-font-size: 13px; -fx-padding: 5 10;";
-                setStyle(style);
-            }
-        });
-// Стиль для отображения выбранного элемента (в закрытом виде)
-        langComboBox.setButtonCell(new ListCell<>() {
-            @Override
-            protected void updateItem(Locale item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty || item == null ? null : localization.getLocaleDisplayName(item));
-                setStyle("-fx-text-fill: " + textColor + ";");
-            }
-        });
+
+    /** Загружает описание из системных настроек */
+    private void loadUserBio() {
+        if (aboutTextArea == null) return;
+        Preferences prefs = Preferences.userNodeForPackage(MainScene.class);
+        // Ключ уникален для каждого логина
+        String bio = prefs.get("bio_" + currentUserLogin, "");
+        aboutTextArea.setText(bio);
+    }
+
+    /** Сохраняет описание в системные настройки */
+    private void saveUserBio() {
+        if (aboutTextArea == null) return;
+        Preferences prefs = Preferences.userNodeForPackage(MainScene.class);
+        prefs.put("bio_" + currentUserLogin, aboutTextArea.getText());
     }
 }

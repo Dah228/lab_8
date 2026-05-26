@@ -3,7 +3,6 @@ server\commands\AddCommand.class
 client\gui\VehicleTableController$2.class
 client\gui\MainScene.class
 server\database\UserDao.class
-client\gui\MainScene$5.class
 server\commands\CompareByEnginePowerCommand.class
 server\commands\Invoker.class
 server\commands\PrintDescendingCommand.class
@@ -68,7 +67,6 @@ server\commands\ClearCommand.class
 server\commands\CommandParams.class
 client\gui\MainScene$1.class
 client\gui\ModernNotifications.class
-client\gui\MainScene$4.class
 server\service\ServerLoop.class
 client\logic\AllCommands.class
 client\gui\CommandDialogHandler$1.class

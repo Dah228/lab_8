@@ -42,9 +42,8 @@ public class VehicleTableController {
     }
     private void updateTableTheme() {
         if (tableView == null) return;
-
         if (!isDarkMode) {
-            // === СВЕТЛАЯ ТЕМА (Основные стили) ===
+            // === СВЕТЛАЯ ТЕМА ===
             tableView.setStyle(
                     "-fx-background-color: white; " +
                             "-fx-control-inner-background: white; " +
@@ -54,6 +53,7 @@ public class VehicleTableController {
             for (TableColumn<Vehicle, ?> col : tableView.getColumns()) {
                 col.setStyle(
                         "-fx-background-color: white; " +
+                                "-fx-text-fill: #374151; " +
                                 "-fx-font-weight: bold; " +
                                 "-fx-border-color: #E5E7EB;"
                 );
@@ -82,19 +82,20 @@ public class VehicleTableController {
                 return row;
             });
         } else {
-            // === ТЁМНАЯ ТЕМА (Основные стили) ===
+            // === ТЁМНАЯ ТЕМА (ИСПРАВЛЕНО) ===
             tableView.setStyle(
                     "-fx-background-color: #0B132B; " +
                             "-fx-control-inner-background: #0B132B; " +
-                            "-fx-table-cell-border-color: #1C2541; " +
-                            "-fx-text-fill: #D8B4FE; " +
-                            "-fx-border-color: #1C2541;"
+                            "-fx-table-cell-border-color: #334155; " + // Более видимые линии сетки
+                            "-fx-text-fill: #E2E8F0; " + // Светлый текст
+                            "-fx-border-color: #334155;"
             );
             for (TableColumn<Vehicle, ?> col : tableView.getColumns()) {
                 col.setStyle(
-                        "-fx-background-color: #0B132B; " +
+                        "-fx-background-color: #1E293B; " + // Заголовок чуть светлее фона
+                                "-fx-text-fill: #A855F7; " + // Фиолетовый текст заголовка
                                 "-fx-font-weight: bold; " +
-                                "-fx-border-color: #1C2541;"
+                                "-fx-border-color: #334155;"
                 );
             }
             tableView.setRowFactory(tv -> {
@@ -121,14 +122,10 @@ public class VehicleTableController {
                 return row;
             });
         }
-
-        // === ПРИНУДИТЕЛЬНАЯ СТИЛИЗАЦИЯ ЗАГОЛОВКОВ И СКРОЛЛБАРА ===
-        // Вызывается всегда при переключении, чтобы применить правильные цвета текста и полосок
         Platform.runLater(() -> {
-            String headerTextColor = isDarkMode ? "#A855F7" : "#1F2937"; // Фиолетовый для темной, Черный для светлой
-            String headerBgColor = isDarkMode ? "#0B132B" : "white";
+            String headerTextColor = isDarkMode ? "#A855F7" : "#1F2937";
+            String headerBgColor = isDarkMode ? "#1E293B" : "white";
 
-            // Красим заголовки столбцов
             tableView.lookupAll(".column-header").forEach(header -> {
                 header.setStyle(
                         "-fx-background-color: " + headerBgColor + "; " +
@@ -145,28 +142,22 @@ public class VehicleTableController {
                 });
             });
 
-            // Красим скроллбар (полоску)
-            String thumbColor = isDarkMode ? "#475569" : "#CBD5E1"; // Темный для темной, Светлый для светлой
+            String thumbColor = isDarkMode ? "#475569" : "#CBD5E1";
             String trackColor = isDarkMode ? "#1C2541" : "transparent";
             String arrowColor = isDarkMode ? "#D8B4FE" : "#6B7280";
 
             tableView.lookupAll(".scroll-bar").forEach(node -> {
                 node.setStyle("-fx-background-color: " + trackColor + ";");
-                node.lookupAll(".thumb").forEach(thumb ->
-                        thumb.setStyle("-fx-background-color: " + thumbColor + "; -fx-background-insets: 2; -fx-background-radius: 5;"));
-                node.lookupAll(".track").forEach(track ->
-                        track.setStyle("-fx-background-color: " + trackColor + ";"));
+                node.lookupAll(".thumb").forEach(thumb -> thumb.setStyle("-fx-background-color: " + thumbColor + "; -fx-background-insets: 2; -fx-background-radius: 5;"));
+                node.lookupAll(".track").forEach(track -> track.setStyle("-fx-background-color: " + trackColor + ";"));
                 node.lookupAll(".increment-button").forEach(btn -> btn.setStyle("-fx-background-color: " + trackColor + ";"));
                 node.lookupAll(".decrement-button").forEach(btn -> btn.setStyle("-fx-background-color: " + trackColor + ";"));
                 node.lookupAll(".increment-arrow").forEach(arr -> arr.setStyle("-fx-background-color: " + arrowColor + ";"));
                 node.lookupAll(".decrement-arrow").forEach(arr -> arr.setStyle("-fx-background-color: " + arrowColor + ";"));
             });
         });
-
-        // Принудительно обновляем таблицу
         Platform.runLater(() -> tableView.refresh());
     }
-
 
     private HBox createFilterPanel() {
         HBox hbox = new HBox(12);
