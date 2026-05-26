@@ -473,6 +473,7 @@ public class MainScene {
         themeIcon.setFitHeight(24);
         themeIcon.setPreserveRatio(true);
 
+
         // Устанавливаем начальную картинку
         if (moonImage != null) {
             themeIcon.setImage(moonImage);
@@ -561,7 +562,8 @@ public class MainScene {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Label langLabel = new Label(localization.get("main.lang.label"));
-        langLabel.setStyle("-fx-text-fill: #757575; -fx-font-weight: 500;");
+// Исправлен цвет надписи "Язык:" на светло-серый (как "Все типы")
+        langLabel.setStyle("-fx-text-fill: #E2E8F0; -fx-font-weight: 500;");
 
         langComboBox = new ComboBox<>();
         langComboBox.getItems().setAll(localization.getAvailableLocales());

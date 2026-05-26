@@ -45,7 +45,6 @@ public class VehicleTableController {
 
     private void updateTableTheme() {
         if (tableView == null) return;
-
         if (!isDarkMode) {
             // === СВЕТЛАЯ ТЕМА ===
             tableView.setStyle(
@@ -85,27 +84,6 @@ public class VehicleTableController {
                 });
                 return row;
             });
-
-            // === СТИЛИЗАЦИЯ СКРОЛЛБАРА ДЛЯ СВЕТЛОЙ ТЕМЫ ===
-            Platform.runLater(() -> {
-                tableView.lookupAll(".scroll-bar").forEach(node -> {
-                    // Прозрачный фон скроллбара
-                    node.setStyle("-fx-background-color: transparent;");
-                    // Ползунок (Thumb) - серый
-                    node.lookupAll(".thumb").forEach(thumb ->
-                            thumb.setStyle("-fx-background-color: #CBD5E1; -fx-background-insets: 2; -fx-background-radius: 5;"));
-                    // Трек (Track) - прозрачный
-                    node.lookupAll(".track").forEach(track ->
-                            track.setStyle("-fx-background-color: transparent;"));
-                    // Кнопки - прозрачные
-                    node.lookupAll(".increment-button").forEach(btn -> btn.setStyle("-fx-background-color: transparent;"));
-                    node.lookupAll(".decrement-button").forEach(btn -> btn.setStyle("-fx-background-color: transparent;"));
-                    // Стрелки - темно-серые
-                    node.lookupAll(".increment-arrow").forEach(arr -> arr.setStyle("-fx-background-color: #6B7280;"));
-                    node.lookupAll(".decrement-arrow").forEach(arr -> arr.setStyle("-fx-background-color: #6B7280;"));
-                });
-            });
-
         } else {
             // === ТЁМНАЯ ТЕМА ===
             tableView.setStyle(
@@ -147,6 +125,27 @@ public class VehicleTableController {
                 return row;
             });
 
+            // === СТИЛИЗАЦИЯ ЗАГОЛОВКОВ СТОЛБЦОВ (ФИОЛЕТОВЫЕ) ===
+            Platform.runLater(() -> {
+                // Находим все заголовки столбцов и красим их в фиолетовый
+                tableView.lookupAll(".column-header").forEach(header -> {
+                    header.setStyle(
+                            "-fx-background-color: #0B132B; " +
+                                    "-fx-text-fill: #A855F7; " +
+                                    "-fx-font-weight: bold; " +
+                                    "-fx-font-size: 13px;"
+                    );
+                    // Красим также label внутри header
+                    header.lookupAll(".label").forEach(label -> {
+                        label.setStyle(
+                                "-fx-text-fill: #A855F7; " +
+                                        "-fx-font-weight: bold; " +
+                                        "-fx-font-size: 13px;"
+                        );
+                    });
+                });
+            });
+
             // === СТИЛИЗАЦИЯ СКРОЛЛБАРА ДЛЯ ТЕМНОЙ ТЕМЫ ===
             Platform.runLater(() -> {
                 tableView.lookupAll(".scroll-bar").forEach(node -> {
@@ -164,6 +163,39 @@ public class VehicleTableController {
         }
         // Принудительно обновляем таблицу
         Platform.runLater(() -> tableView.refresh());
+    }
+
+    private HBox createFilterPanel() {
+        HBox hbox = new HBox(12);
+        hbox.setPadding(new Insets(0, 0, 15, 0));
+        hbox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        Label filterLabel = new Label("Фильтры:");
+        // Исправлен цвет надписи на светло-серый (как "Все типы")
+        filterLabel.setStyle("-fx-text-fill: #E2E8F0; -fx-font-weight: 500;");
+
+        filterId = new TextField(); filterId.setPromptText("ID"); filterId.setPrefWidth(50);
+        filterName = new TextField(); filterName.setPromptText("Имя"); filterName.setPrefWidth(100);
+        filterOwner = new TextField(); filterOwner.setPromptText("Владелец"); filterOwner.setPrefWidth(100);
+        filterMinPrice = new TextField(); filterMinPrice.setPromptText("Цена от"); filterMinPrice.setPrefWidth(70);
+        filterMaxPrice = new TextField(); filterMaxPrice.setPromptText("Цена до"); filterMaxPrice.setPrefWidth(70);
+
+        filterType = new ComboBox<>(); filterType.getItems().add(null); filterType.getItems().addAll(VehicleType.values());
+        filterType.setPromptText("Тип"); filterType.setValue(null); setupFilterTypeLocalization();
+        filterFuel = new ComboBox<>(); filterFuel.getItems().add(null); filterFuel.getItems().addAll(FuelType.values());
+        filterFuel.setPromptText("Топливо"); filterFuel.setValue(null); setupFilterFuelLocalization();
+
+        Callback<Void, Void> updateFilter = v -> { applyFilters(); return null; };
+        filterId.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
+        filterName.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
+        filterOwner.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
+        filterMinPrice.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
+        filterMaxPrice.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
+        filterType.valueProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
+        filterFuel.valueProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
+
+        hbox.getChildren().addAll(filterLabel, filterId, filterName, filterOwner, filterMinPrice, filterMaxPrice, filterType, filterFuel);
+        updateFilterStyles();
+        return hbox;
     }
 
 
@@ -209,42 +241,6 @@ public class VehicleTableController {
         return root;
     }
 
-    private HBox createFilterPanel() {
-        HBox hbox = new HBox(12);
-        hbox.setPadding(new Insets(0, 0, 15, 0));
-        hbox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-
-        Label filterLabel = new Label("Фильтры:");
-        filterLabel.setStyle("-fx-text-fill: #757575; -fx-font-weight: 500;");
-
-        // Создаем поля без жесткого задания стиля (стиль зададим в updateFilterStyles)
-        filterId = new TextField(); filterId.setPromptText("ID"); filterId.setPrefWidth(50);
-        filterName = new TextField(); filterName.setPromptText("Имя"); filterName.setPrefWidth(100);
-        filterOwner = new TextField(); filterOwner.setPromptText("Владелец"); filterOwner.setPrefWidth(100);
-        filterMinPrice = new TextField(); filterMinPrice.setPromptText("Цена от"); filterMinPrice.setPrefWidth(70);
-        filterMaxPrice = new TextField(); filterMaxPrice.setPromptText("Цена до"); filterMaxPrice.setPrefWidth(70);
-
-        filterType = new ComboBox<>(); filterType.getItems().add(null); filterType.getItems().addAll(VehicleType.values());
-        filterType.setPromptText("Тип"); filterType.setValue(null); setupFilterTypeLocalization();
-        filterFuel = new ComboBox<>(); filterFuel.getItems().add(null); filterFuel.getItems().addAll(FuelType.values());
-        filterFuel.setPromptText("Топливо"); filterFuel.setValue(null); setupFilterFuelLocalization();
-
-        Callback<Void, Void> updateFilter = v -> { applyFilters(); return null; };
-        filterId.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
-        filterName.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
-        filterOwner.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
-        filterMinPrice.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
-        filterMaxPrice.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
-        filterType.valueProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
-        filterFuel.valueProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
-
-        hbox.getChildren().addAll(filterLabel, filterId, filterName, filterOwner, filterMinPrice, filterMaxPrice, filterType, filterFuel);
-
-        // Применяем стили темы после создания элементов
-        updateFilterStyles();
-
-        return hbox;
-    }
 
     private void setupFilterTypeLocalization() {
         updateTypeComboBoxStyle();
