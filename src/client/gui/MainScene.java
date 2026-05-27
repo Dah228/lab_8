@@ -491,6 +491,10 @@ public class MainScene {
         VBox.setVgrow(canvasPane, Priority.ALWAYS);
 
         splitPane.getItems().addAll(tableContainer, canvasContainer);
+
+        // === ИСПРАВЛЕНО: 40% таблица, 60% визуализация ===
+        splitPane.setDividerPositions(0.4);
+
         return splitPane;
     }
 
