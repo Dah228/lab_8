@@ -184,12 +184,14 @@ public class CommandDialogHandler {
         dialog.setHeaderText(existing == null ? localization.get("dialog.header.add") : localization.get("dialog.header.edit"));
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
 
+        // 1. Стиль фона диалога
         String dialogBg = isDarkMode
                 ? "-fx-background-color: #1E293B; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 20, 0, 0, 5);"
                 : "-fx-background-color: #FFFFFF; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 20, 0, 0, 5);";
         dialog.getDialogPane().setStyle(dialogBg);
         dialog.getDialogPane().setPrefWidth(500);
 
+        // 2. Стиль шапки
         String headerBgStyle = isDarkMode
                 ? "-fx-background-color: #0F172A; -fx-text-fill: #E2E8F0; -fx-font-weight: bold; -fx-border-color: #1E293B; -fx-border-width: 0 0 1 0;"
                 : "-fx-background-color: #F3F4F6; -fx-text-fill: #1F2937; -fx-font-weight: bold; -fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;";
@@ -200,6 +202,7 @@ public class CommandDialogHandler {
             node.setStyle("-fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#1F2937") + "; -fx-font-weight: bold; -fx-font-size: 14px;");
         }
 
+        // 3. Стили кнопок
         String btnSaveStyle = isDarkMode
                 ? "-fx-background-color: linear-gradient(to right, #10B981, #059669); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;"
                 : "-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;";
@@ -212,6 +215,7 @@ public class CommandDialogHandler {
         Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
         cancelButton.setStyle(btnCancelStyle); cancelButton.setText(localization.get("dialog.cancel"));
 
+        // 4. Стили полей ввода и меток
         String inputStyle = isDarkMode
                 ? "-fx-background-color: #334155; -fx-background-radius: 8; -fx-border-color: #475569; -fx-border-radius: 8; -fx-border-width: 1.5; -fx-padding: 10; -fx-font-size: 14px; -fx-text-fill: #E2E8F0; -fx-prompt-text-fill: #94A3B8;"
                 : "-fx-background-color: #F5F5F5; -fx-background-radius: 8; -fx-border-color: transparent; -fx-padding: 10; -fx-font-size: 14px;";
@@ -234,8 +238,57 @@ public class CommandDialogHandler {
         else datePicker.setValue(java.time.LocalDate.now());
         datePicker.setStyle(inputStyle);
 
-        ComboBox<VehicleType> typeCombo = new ComboBox<>(); typeCombo.getItems().addAll(VehicleType.values()); typeCombo.setValue(existing != null ? existing.getType() : VehicleType.BOAT); typeCombo.setStyle(inputStyle);
-        ComboBox<FuelType> fuelCombo = new ComboBox<>(); fuelCombo.getItems().addAll(FuelType.values()); fuelCombo.setValue(existing != null ? existing.getFuelType() : FuelType.GASOLINE); fuelCombo.setStyle(inputStyle);
+        // === ТИП (Type) ===
+        ComboBox<VehicleType> typeCombo = new ComboBox<>();
+        typeCombo.getItems().addAll(VehicleType.values());
+        typeCombo.setValue(existing != null ? existing.getType() : VehicleType.BOAT);
+        typeCombo.setStyle(inputStyle);
+
+        // Темный стиль для выпадающего списка
+        typeCombo.setCellFactory(lv -> new ListCell<VehicleType>() {
+            @Override
+            protected void updateItem(VehicleType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (isDarkMode) setStyle("-fx-background-color: #334155; -fx-text-fill: #E2E8F0;");
+                if (empty || item == null) setText(null);
+                else setText(item.toString());
+            }
+        });
+        typeCombo.setButtonCell(new ListCell<VehicleType>() {
+            @Override
+            protected void updateItem(VehicleType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (isDarkMode) setStyle("-fx-background-color: #334155; -fx-text-fill: #E2E8F0;");
+                if (empty || item == null) setText(null);
+                else setText(item.toString());
+            }
+        });
+
+        // === ТОПЛИВО (Fuel) ===
+        ComboBox<FuelType> fuelCombo = new ComboBox<>();
+        fuelCombo.getItems().addAll(FuelType.values());
+        fuelCombo.setValue(existing != null ? existing.getFuelType() : FuelType.GASOLINE);
+        fuelCombo.setStyle(inputStyle);
+
+        // Темный стиль для выпадающего списка
+        fuelCombo.setCellFactory(lv -> new ListCell<FuelType>() {
+            @Override
+            protected void updateItem(FuelType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (isDarkMode) setStyle("-fx-background-color: #334155; -fx-text-fill: #E2E8F0;");
+                if (empty || item == null) setText(null);
+                else setText(item.toString());
+            }
+        });
+        fuelCombo.setButtonCell(new ListCell<FuelType>() {
+            @Override
+            protected void updateItem(FuelType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (isDarkMode) setStyle("-fx-background-color: #334155; -fx-text-fill: #E2E8F0;");
+                if (empty || item == null) setText(null);
+                else setText(item.toString());
+            }
+        });
 
         int row = 0;
         grid.add(createLabel(localization.get("dialog.label.name"), labelStyle), 0, row); grid.add(nameField, 1, row++);
@@ -261,11 +314,10 @@ public class CommandDialogHandler {
         distanceField.textProperty().addListener((o, n, w) -> validate.run());
         priceField.textProperty().addListener((o, n, w) -> validate.run());
 
-        // === ИСПРАВЛЕНО: Всегда создаём НОВЫЙ объект, не меняем existing ===
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == ButtonType.OK) {
                 try {
-                    Vehicle v = new Vehicle(); // <-- ВАЖНО: новый экземпляр
+                    Vehicle v = new Vehicle();
                     if (existing != null) v.setId(existing.getId());
                     v.setName(nameField.getText());
                     v.setCoordinates(Integer.parseInt(xField.getText()), Float.parseFloat(yField.getText()));
@@ -274,16 +326,14 @@ public class CommandDialogHandler {
                     if (datePicker.getValue() != null) v.setCreationDate(Date.from(datePicker.getValue().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()));
                     v.setType(typeCombo.getValue()); v.setFuelType(fuelCombo.getValue()); v.setPrice(Double.parseDouble(priceField.getText()));
                     return v;
-                } catch (NumberFormatException ex) {
-                    showError(localization.get("dialog.error.invalid_numbers"));
-                }
+                } catch (NumberFormatException ex) { showError(localization.get("dialog.error.invalid_numbers")); }
             }
             return null;
         });
 
         dialog.getDialogPane().setContent(grid);
         validate.run();
-        Platform.runLater(() -> applyComboBoxStyles(dialog, isDarkMode));
+
         return dialog.showAndWait().orElse(null);
     }
 
