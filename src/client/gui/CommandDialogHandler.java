@@ -184,27 +184,22 @@ public class CommandDialogHandler {
         dialog.setHeaderText(existing == null ? localization.get("dialog.header.add") : localization.get("dialog.header.edit"));
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
 
-        // === ИСПРАВЛЕНО: Стили в зависимости от темы ===
         String dialogBg = isDarkMode
                 ? "-fx-background-color: #1E293B; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 20, 0, 0, 5);"
                 : "-fx-background-color: #FFFFFF; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 20, 0, 0, 5);";
         dialog.getDialogPane().setStyle(dialogBg);
         dialog.getDialogPane().setPrefWidth(500);
 
-        // === Стили для шапки диалога ===
         String headerBgStyle = isDarkMode
                 ? "-fx-background-color: #0F172A; -fx-text-fill: #E2E8F0; -fx-font-weight: bold; -fx-border-color: #1E293B; -fx-border-width: 0 0 1 0;"
                 : "-fx-background-color: #F3F4F6; -fx-text-fill: #1F2937; -fx-font-weight: bold; -fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;";
 
         Node headerPanel = dialog.getDialogPane().lookup(".header-panel");
-        if (headerPanel != null) {
-            headerPanel.setStyle(headerBgStyle);
-        }
+        if (headerPanel != null) headerPanel.setStyle(headerBgStyle);
         for (Node node : dialog.getDialogPane().lookupAll(".header-panel .header-text")) {
-            node.setStyle("-fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#1F2937") + ";");
+            node.setStyle("-fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#1F2937") + "; -fx-font-weight: bold; -fx-font-size: 14px;");
         }
 
-        // === Стили для кнопок ===
         String btnSaveStyle = isDarkMode
                 ? "-fx-background-color: linear-gradient(to right, #10B981, #059669); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;"
                 : "-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;";
@@ -213,28 +208,19 @@ public class CommandDialogHandler {
                 : "-fx-background-color: #EEEEEE; -fx-text-fill: #333333; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;";
 
         Button saveButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
-        saveButton.setStyle(btnSaveStyle);
-        saveButton.setText(localization.get("dialog.save"));
-
+        saveButton.setStyle(btnSaveStyle); saveButton.setText(localization.get("dialog.save"));
         Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
-        cancelButton.setStyle(btnCancelStyle);
-        cancelButton.setText(localization.get("dialog.cancel"));
+        cancelButton.setStyle(btnCancelStyle); cancelButton.setText(localization.get("dialog.cancel"));
 
-        // === Стили для полей ввода ===
         String inputStyle = isDarkMode
                 ? "-fx-background-color: #334155; -fx-background-radius: 8; -fx-border-color: #475569; -fx-border-radius: 8; -fx-border-width: 1.5; -fx-padding: 10; -fx-font-size: 14px; -fx-text-fill: #E2E8F0; -fx-prompt-text-fill: #94A3B8;"
                 : "-fx-background-color: #F5F5F5; -fx-background-radius: 8; -fx-border-color: transparent; -fx-padding: 10; -fx-font-size: 14px;";
-
-        // === Стили для меток ===
         String labelStyle = isDarkMode
                 ? "-fx-text-fill: #E2E8F0; -fx-font-weight: bold; -fx-font-size: 14px;"
                 : "-fx-text-fill: #555555; -fx-font-weight: bold; -fx-font-size: 14px;";
 
         GridPane grid = new GridPane();
-        grid.setHgap(15);
-        grid.setVgap(15);
-        grid.setPadding(new Insets(20, 30, 10, 30));
-        grid.setAlignment(Pos.CENTER);
+        grid.setHgap(15); grid.setVgap(15); grid.setPadding(new Insets(20, 30, 10, 30)); grid.setAlignment(Pos.CENTER);
 
         TextField nameField = createStyledTextField(existing != null ? existing.getName() : "", localization.get("dialog.prompt.name"), inputStyle);
         TextField xField = createStyledTextField(existing != null ? String.valueOf(existing.getCoordinates().getX()) : "0", localization.get("dialog.prompt.x"), inputStyle);
@@ -248,52 +234,23 @@ public class CommandDialogHandler {
         else datePicker.setValue(java.time.LocalDate.now());
         datePicker.setStyle(inputStyle);
 
-        ComboBox<VehicleType> typeCombo = new ComboBox<>();
-        typeCombo.getItems().addAll(VehicleType.values());
-        typeCombo.setValue(existing != null ? existing.getType() : VehicleType.BOAT);
-        typeCombo.setStyle(inputStyle);
-
-        ComboBox<FuelType> fuelCombo = new ComboBox<>();
-        fuelCombo.getItems().addAll(FuelType.values());
-        fuelCombo.setValue(existing != null ? existing.getFuelType() : FuelType.GASOLINE);
-        fuelCombo.setStyle(inputStyle);
+        ComboBox<VehicleType> typeCombo = new ComboBox<>(); typeCombo.getItems().addAll(VehicleType.values()); typeCombo.setValue(existing != null ? existing.getType() : VehicleType.BOAT); typeCombo.setStyle(inputStyle);
+        ComboBox<FuelType> fuelCombo = new ComboBox<>(); fuelCombo.getItems().addAll(FuelType.values()); fuelCombo.setValue(existing != null ? existing.getFuelType() : FuelType.GASOLINE); fuelCombo.setStyle(inputStyle);
 
         int row = 0;
-        grid.add(createLabel(localization.get("dialog.label.name"), labelStyle), 0, row);
-        grid.add(nameField, 1, row++);
-
-        grid.add(createLabel(localization.get("dialog.label.coords"), labelStyle), 0, row);
-        grid.add(new HBox(10, xField, yField), 1, row++);
-
-        grid.add(createLabel(localization.get("dialog.label.creation_date"), labelStyle), 0, row);
-        grid.add(datePicker, 1, row++);
-
-        grid.add(createLabel(localization.get("dialog.label.power"), labelStyle), 0, row);
-        grid.add(powerField, 1, row++);
-
-        grid.add(createLabel(localization.get("dialog.label.distance"), labelStyle), 0, row);
-        grid.add(distanceField, 1, row++);
-
-        grid.add(createLabel(localization.get("dialog.label.type"), labelStyle), 0, row);
-        grid.add(typeCombo, 1, row++);
-
-        grid.add(createLabel(localization.get("dialog.label.fuel"), labelStyle), 0, row);
-        grid.add(fuelCombo, 1, row++);
-
-        grid.add(createLabel(localization.get("dialog.label.price"), labelStyle), 0, row);
-        grid.add(priceField, 1, row++);
+        grid.add(createLabel(localization.get("dialog.label.name"), labelStyle), 0, row); grid.add(nameField, 1, row++);
+        grid.add(createLabel(localization.get("dialog.label.coords"), labelStyle), 0, row); grid.add(new HBox(10, xField, yField), 1, row++);
+        grid.add(createLabel(localization.get("dialog.label.creation_date"), labelStyle), 0, row); grid.add(datePicker, 1, row++);
+        grid.add(createLabel(localization.get("dialog.label.power"), labelStyle), 0, row); grid.add(powerField, 1, row++);
+        grid.add(createLabel(localization.get("dialog.label.distance"), labelStyle), 0, row); grid.add(distanceField, 1, row++);
+        grid.add(createLabel(localization.get("dialog.label.type"), labelStyle), 0, row); grid.add(typeCombo, 1, row++);
+        grid.add(createLabel(localization.get("dialog.label.fuel"), labelStyle), 0, row); grid.add(fuelCombo, 1, row++);
+        grid.add(createLabel(localization.get("dialog.label.price"), labelStyle), 0, row); grid.add(priceField, 1, row++);
 
         Runnable validate = () -> {
             boolean valid = !nameField.getText().trim().isEmpty();
-            try {
-                Integer.parseInt(xField.getText());
-                Float.parseFloat(yField.getText());
-                Float.parseFloat(powerField.getText());
-                Float.parseFloat(distanceField.getText());
-                Double.parseDouble(priceField.getText());
-            } catch (NumberFormatException e) {
-                valid = false;
-            }
+            try { Integer.parseInt(xField.getText()); Float.parseFloat(yField.getText()); Float.parseFloat(powerField.getText()); Float.parseFloat(distanceField.getText()); Double.parseDouble(priceField.getText()); }
+            catch (NumberFormatException e) { valid = false; }
             saveButton.setDisable(!valid);
         };
 
@@ -304,18 +261,18 @@ public class CommandDialogHandler {
         distanceField.textProperty().addListener((o, n, w) -> validate.run());
         priceField.textProperty().addListener((o, n, w) -> validate.run());
 
+        // === ИСПРАВЛЕНО: Всегда создаём НОВЫЙ объект, не меняем existing ===
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == ButtonType.OK) {
                 try {
-                    Vehicle v = existing != null ? existing : new Vehicle();
+                    Vehicle v = new Vehicle(); // <-- ВАЖНО: новый экземпляр
+                    if (existing != null) v.setId(existing.getId());
                     v.setName(nameField.getText());
                     v.setCoordinates(Integer.parseInt(xField.getText()), Float.parseFloat(yField.getText()));
                     v.setEnginePower(Float.parseFloat(powerField.getText()));
                     v.setDistanceTravelled(Float.parseFloat(distanceField.getText()));
                     if (datePicker.getValue() != null) v.setCreationDate(Date.from(datePicker.getValue().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()));
-                    v.setType(typeCombo.getValue());
-                    v.setFuelType(fuelCombo.getValue());
-                    v.setPrice(Double.parseDouble(priceField.getText()));
+                    v.setType(typeCombo.getValue()); v.setFuelType(fuelCombo.getValue()); v.setPrice(Double.parseDouble(priceField.getText()));
                     return v;
                 } catch (NumberFormatException ex) {
                     showError(localization.get("dialog.error.invalid_numbers"));
@@ -326,10 +283,7 @@ public class CommandDialogHandler {
 
         dialog.getDialogPane().setContent(grid);
         validate.run();
-
-        // Применяем стили к ComboBox (ячейки списка)
         Platform.runLater(() -> applyComboBoxStyles(dialog, isDarkMode));
-
         return dialog.showAndWait().orElse(null);
     }
 
@@ -417,6 +371,8 @@ public class CommandDialogHandler {
 
     public void executeEdit(Vehicle existingVehicle) {
         if (existingVehicle == null) return;
+
+        // Диалог вернёт новый объект с введёнными данными
         Vehicle vehicleToSave = showModernVehicleDialog(existingVehicle);
         if (vehicleToSave != null) {
             vehicleToSave.setId(existingVehicle.getId());
