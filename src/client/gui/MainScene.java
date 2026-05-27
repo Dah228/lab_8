@@ -2,7 +2,11 @@ package client.gui;
 
 import client.logic.NetworkService;
 import common.Vehicle;
-import javafx.animation.*;
+import javafx.animation.PauseTransition;
+import javafx.animation.FadeTransition;
+import javafx.animation.ParallelTransition;
+import javafx.animation.TranslateTransition;
+import javafx.animation.Interpolator;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -57,8 +61,8 @@ public class MainScene {
     // === Профиль ===
     private VBox profilePanel;
     private boolean isProfileOpen = false;
-    private Button logoutBtn; // Сохраняем для локализации
-    private Button backBtn;   // Сохраняем для локализации
+    private Button logoutBtn;
+    private Button backBtn;
 
     // === СВЕТЛАЯ ТЕМА ===
     private static final String L_BG = "-fx-background-color: #F8FAFC;";
@@ -116,8 +120,7 @@ public class MainScene {
         root.setTop(topPanel);
 
         SplitPane centerSplit = createCenterSplit();
-        // 70% таблица, 30% визуализация
-        centerSplit.setDividerPositions(0.7);
+        centerSplit.setDividerPositions(0.65);
         root.setCenter(centerSplit);
 
         bottomPanel = createBottomPanel();
@@ -211,7 +214,7 @@ public class MainScene {
         separator.setStyle(isDarkMode ? D_SEPARATOR : L_SEPARATOR);
         separator.setPadding(new Insets(10, 0, 10, 0));
 
-        // === КНОПКИ ПРОФИЛЯ (сохраняем в поля) ===
+        // === КНОПКИ ПРОФИЛЯ ===
         logoutBtn = new Button(localization.get("btn.exit"));
         logoutBtn.setStyle(PROFILE_BTN_LOGOUT);
         logoutBtn.setMaxWidth(Double.MAX_VALUE);
@@ -356,10 +359,10 @@ public class MainScene {
         themeIconView = new ImageView();
         if (sunImage != null && moonImage != null) {
             themeIconView.setFitWidth(24); themeIconView.setFitHeight(24); themeIconView.setPreserveRatio(true);
-            themeIconView.setImage(moonImage); // По умолчанию светлая тема -> луна
+            themeIconView.setImage(moonImage);
             themeToggleButton.setGraphic(themeIconView);
         } else {
-            themeToggleButton.setText("🌙");
+            themeToggleButton.setText("");
             themeToggleButton.setStyle("-fx-font-size: 20px; -fx-background-color: transparent; -fx-cursor: hand;");
         }
         themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
@@ -369,10 +372,9 @@ public class MainScene {
             applyThemeStyles();
         });
 
-        // === ССЫЛКА НА ПОЛЬЗОВАТЕЛЯ (ИСПРАВЛЕНО: стабильный шрифт) ===
+        // === ССЫЛКА НА ПОЛЬЗОВАТЕЛЯ ===
         userLabel = new Label(localization.get("main.user.label") + " " + currentUserLogin);
         String baseColor = isDarkMode ? "#8B5CF6" : "#2563EB";
-        // Шрифт ВСЕГДА 14px, меняется только цвет и подчёркивание
         userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: " + baseColor + "; -fx-cursor: hand; -fx-underline: true;");
 
         userLabel.setOnMouseClicked(e -> toggleProfile());
@@ -558,7 +560,7 @@ public class MainScene {
                 themeIconView.setImage(isDarkMode ? sunImage : moonImage);
             }
         } else if (themeToggleButton != null) {
-            themeToggleButton.setText(isDarkMode ? "☀️" : "🌙");
+            themeToggleButton.setText(isDarkMode ? "️" : "🌙");
         }
     }
 
@@ -574,7 +576,7 @@ public class MainScene {
         if (canvasContainer != null) canvasContainer.setStyle(isDarkMode ? D_CARD : L_CARD + " -fx-padding: 15;");
         if (bottomPanel != null) bottomPanel.setStyle("-fx-background-color: transparent;");
 
-        // === ИСПРАВЛЕНО: Ссылка пользователя всегда 14px ===
+        // === ССЫЛКА ПОЛЬЗОВАТЕЛЯ ===
         if (userLabel != null) {
             String baseColor = isDarkMode ? "#8B5CF6" : "#2563EB";
             userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: " + baseColor + "; -fx-cursor: hand; -fx-underline: true;");
@@ -593,13 +595,10 @@ public class MainScene {
         if (balanceButton != null) balanceButton.setStyle(getBaseStyle(false));
         if (depositButton != null) depositButton.setStyle(getBaseStyle(false));
 
-        if (langComboBox != null) {
-            langComboBox.setStyle("-fx-background-color: " + (isDarkMode ? "#334155" : "#F1F5F9") +
-                    "; -fx-border-color: " + (isDarkMode ? "#475569" : "#E2E8F0") +
-                    "; -fx-border-radius: 6; -fx-background-radius: 6;");
-        }
+        // === КОМБОБОКС ЯЗЫКА (ИСПРАВЛЕНИЕ ЦВЕТОВ) ===
+        updateLangComboBoxStyle();
 
-        // === ОБНОВЛЕНИЕ ПРОФИЛЯ ===
+        // === ПРОФИЛЬ ===
         if (profilePanel != null) {
             profilePanel.setStyle(isDarkMode ? D_PROFILE_BG : L_PROFILE_BG);
             for (Node node : profilePanel.getChildren()) updateProfileNodeStyle(node);
@@ -609,6 +608,56 @@ public class MainScene {
         if (tableController != null) tableController.setDarkMode(isDarkMode);
         if (canvasController != null) canvasController.setDarkMode(isDarkMode);
         commandHandler.setDarkMode(isDarkMode);
+    }
+
+    // === ИСПРАВЛЕННЫЙ МЕТОД СТИЛИЗАЦИИ КОМБОБОКСА ЯЗЫКА ===
+    private void updateLangComboBoxStyle() {
+        if (langComboBox == null) return;
+
+        // Используем цвета как в фильтрах (Type/Fuel)
+        String bgColor = isDarkMode ? "#1E293B" : "#FFFFFF";
+        String textColor = isDarkMode ? "#E2E8F0" : "#1F2937";
+        String hoverBg = isDarkMode ? "#334155" : "#F3F4F6";
+        String borderColor = isDarkMode ? "#475569" : "#E2E8F0";
+
+        // Стиль для кнопки (закрытое состояние)
+        langComboBox.setStyle("-fx-background-color: " + bgColor + "; " +
+                "-fx-border-color: " + borderColor + "; " +
+                "-fx-border-radius: 6; -fx-background-radius: 6; " +
+                "-fx-text-fill: " + textColor + ";");
+
+        // Стиль для выпадающего списка (ячейки)
+        langComboBox.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Locale item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : localization.getLocaleDisplayName(item));
+
+                String style = "-fx-background-color: " + bgColor + "; " +
+                        "-fx-text-fill: " + textColor + "; " +
+                        "-fx-font-size: 13px; -fx-padding: 5 10;";
+                setStyle(style);
+
+                // Эффект наведения
+                if (!empty && item != null) {
+                    setOnMouseEntered(e -> setStyle(
+                            "-fx-background-color: " + hoverBg + "; " +
+                                    "-fx-text-fill: " + textColor + "; " +
+                                    "-fx-font-size: 13px; -fx-padding: 5 10;"));
+                    setOnMouseExited(e -> setStyle(style));
+                }
+            }
+        });
+
+        // Стиль для отображения выбранного элемента
+        langComboBox.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(Locale item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : localization.getLocaleDisplayName(item));
+                setStyle("-fx-text-fill: " + textColor + ";");
+            }
+        });
     }
 
     private void updateProfileNodeStyle(Node node) {
@@ -645,7 +694,6 @@ public class MainScene {
     public void showErrorNotification(String msg) { ModernNotifications.showError(notificationContainer, msg, isDarkMode); }
     public void showInfoNotification(String msg) { ModernNotifications.showInfo(notificationContainer, msg, isDarkMode); }
 
-    // === ПОЛНОЕ ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ПРИ СМЕНЕ ЯЗЫКА ===
     private void updateUITexts() {
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
         userLabel.setText(localization.get("main.user.label") + " " + currentUserLogin);
@@ -654,11 +702,9 @@ public class MainScene {
         balanceButton.setText(localization.get("btn.balance"));
         depositButton.setText(localization.get("btn.deposit"));
 
-        // Обновляем кнопки профиля
         if (logoutBtn != null) logoutBtn.setText(localization.get("btn.exit"));
         if (backBtn != null) backBtn.setText(localization.get("dialog.cancel"));
 
-        // Обновляем нижние кнопки
         for (Button btn : themeAwareButtons) {
             String txt = btn.getText();
             if (txt.equals("Очистить") || txt.equals("Clear") || txt.equals("Tøm") || txt.equals("Išvalyti"))
