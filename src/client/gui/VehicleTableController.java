@@ -163,19 +163,81 @@ public class VehicleTableController {
         HBox hbox = new HBox(12);
         hbox.setPadding(new Insets(0, 0, 15, 0));
         hbox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        filterLabel = new Label("Фильтры:"); // <--- Присваиваем полю
-// Цвет устанавливается в зависимости от темы (как у "Язык")
+
+        // === ЛОКАЛИЗОВАННАЯ МЕТКА "ФИЛЬТРЫ" ===
+        filterLabel = new Label(localization.get("table.filter") + ":");
         filterLabel.setStyle("-fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#374151") + "; -fx-font-weight: 500;");
-        filterId = new TextField(); filterId.setPromptText("ID"); filterId.setPrefWidth(50);
-        filterName = new TextField(); filterName.setPromptText("Имя"); filterName.setPrefWidth(100);
-        filterOwner = new TextField(); filterOwner.setPromptText("Владелец"); filterOwner.setPrefWidth(100);
-        filterMinPrice = new TextField(); filterMinPrice.setPromptText("Цена от"); filterMinPrice.setPrefWidth(70);
-        filterMaxPrice = new TextField(); filterMaxPrice.setPromptText("Цена до"); filterMaxPrice.setPrefWidth(70);
-        filterType = new ComboBox<>(); filterType.getItems().add(null); filterType.getItems().addAll(VehicleType.values());
-        filterType.setPromptText("Тип"); filterType.setValue(null); setupFilterTypeLocalization();
-        filterFuel = new ComboBox<>(); filterFuel.getItems().add(null); filterFuel.getItems().addAll(FuelType.values());
-        filterFuel.setPromptText("Топливо"); filterFuel.setValue(null); setupFilterFuelLocalization();
+
+        // === СТИЛИ ДЛЯ ПОЛЕЙ В ЗАВИСИМОСТИ ОТ ТЕМЫ ===
+        String fieldBg = isDarkMode ? "#334155" : "white";
+        String fieldBorder = isDarkMode ? "#475569" : "#E2E8F0";
+        String fieldText = isDarkMode ? "#E2E8F0" : "#1F2937";
+        String fieldPrompt = isDarkMode ? "#94A3B8" : "#9CA3AF";
+
+        String fieldStyle = "-fx-background-color: " + fieldBg + "; " +
+                "-fx-background-radius: 6; " +
+                "-fx-border-color: " + fieldBorder + "; " +
+                "-fx-border-radius: 6; " +
+                "-fx-border-width: 1; " +
+                "-fx-text-fill: " + fieldText + "; " +
+                "-fx-prompt-text-fill: " + fieldPrompt + "; " +
+                "-fx-font-size: 13px; " +
+                "-fx-padding: 6 10;";
+
+        String comboStyle = "-fx-background-color: " + fieldBg + "; " +
+                "-fx-border-color: " + fieldBorder + "; " +
+                "-fx-border-radius: 6; " +
+                "-fx-background-radius: 6; " +
+                "-fx-text-fill: " + fieldText + "; " +
+                "-fx-font-size: 13px;";
+
+        // === ПОЛЯ ФИЛЬТРАЦИИ С ЛОКАЛИЗОВАННЫМИ ПОДСКАЗКАМИ ===
+        filterId = new TextField();
+        filterId.setPromptText(localization.get("filter.id"));
+        filterId.setPrefWidth(50);
+        filterId.setStyle(fieldStyle);
+
+        filterName = new TextField();
+        filterName.setPromptText(localization.get("filter.name"));
+        filterName.setPrefWidth(100);
+        filterName.setStyle(fieldStyle);
+
+        filterOwner = new TextField();
+        filterOwner.setPromptText(localization.get("filter.owner"));
+        filterOwner.setPrefWidth(100);
+        filterOwner.setStyle(fieldStyle);
+
+        filterMinPrice = new TextField();
+        filterMinPrice.setPromptText(localization.get("filter.min_price"));
+        filterMinPrice.setPrefWidth(70);
+        filterMinPrice.setStyle(fieldStyle);
+
+        filterMaxPrice = new TextField();
+        filterMaxPrice.setPromptText(localization.get("filter.max_price"));
+        filterMaxPrice.setPrefWidth(70);
+        filterMaxPrice.setStyle(fieldStyle);
+
+        // === COMBOBOX ДЛЯ ТИПА С ЛОКАЛИЗАЦИЕЙ ===
+        filterType = new ComboBox<>();
+        filterType.getItems().add(null);
+        filterType.getItems().addAll(VehicleType.values());
+        filterType.setPromptText(localization.get("filter.type"));
+        filterType.setValue(null);
+        filterType.setStyle(comboStyle);
+        setupFilterTypeLocalization();
+
+        // === COMBOBOX ДЛЯ ТОПЛИВА С ЛОКАЛИЗАЦИЕЙ ===
+        filterFuel = new ComboBox<>();
+        filterFuel.getItems().add(null);
+        filterFuel.getItems().addAll(FuelType.values());
+        filterFuel.setPromptText(localization.get("filter.fuel"));
+        filterFuel.setValue(null);
+        filterFuel.setStyle(comboStyle);
+        setupFilterFuelLocalization();
+
+        // === ОБРАБОТЧИКИ ИЗМЕНЕНИЙ ДЛЯ ПРИМЕНЕНИЯ ФИЛЬТРОВ ===
         Callback<Void, Void> updateFilter = v -> { applyFilters(); return null; };
+
         filterId.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterName.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterOwner.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
@@ -183,8 +245,13 @@ public class VehicleTableController {
         filterMaxPrice.textProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterType.valueProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
         filterFuel.valueProperty().addListener((obs, old, newVal) -> updateFilter.call(null));
-        hbox.getChildren().addAll(filterLabel, filterId, filterName, filterOwner, filterMinPrice, filterMaxPrice, filterType, filterFuel);
-        updateFilterStyles();
+
+        // === ДОБАВЛЯЕМ ВСЕ ЭЛЕМЕНТЫ В ПАНЕЛЬ ===
+        hbox.getChildren().addAll(
+                filterLabel, filterId, filterName, filterOwner,
+                filterMinPrice, filterMaxPrice, filterType, filterFuel
+        );
+
         return hbox;
     }
     private void updateRowStyle(TableRow<Vehicle> row) {

@@ -28,83 +28,11 @@ public class CommandDialogHandler {
     private boolean isFirstLoad = true;
     private boolean isDarkMode = false;
 
-    // === СВЕТЛАЯ ТЕМА ===
-    private static final String LIGHT_DIALOG_BG =
-            "-fx-background-color: #FFFFFF; " +
-                    "-fx-background-radius: 16; " +
-                    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 30, 0, 0, 10);";
-
-    private static final String LIGHT_INPUT =
-            "-fx-background-color: #F9FAFB; " +
-                    "-fx-background-radius: 8; " +
-                    "-fx-border-color: #E5E7EB; " +
-                    "-fx-border-radius: 8; " +
-                    "-fx-border-width: 1.5; " +
-                    "-fx-padding: 10 12; " +
-                    "-fx-font-size: 14px; " +
-                    "-fx-text-fill: #1F2937;";
-
-    private static final String LIGHT_LABEL =
-            "-fx-text-fill: #4B5563; " +
-                    "-fx-font-weight: 600; " +
-                    "-fx-font-size: 13px;";
-
-    private static final String LIGHT_BTN_SAVE =
-            "-fx-background-color: linear-gradient(to right, #10B981, #059669); " +
-                    "-fx-text-fill: white; " +
-                    "-fx-font-weight: bold; " +
-                    "-fx-background-radius: 8; " +
-                    "-fx-padding: 10 20; " +
-                    "-fx-cursor: hand; " +
-                    "-fx-font-size: 14px;";
-
-    private static final String LIGHT_BTN_CANCEL =
-            "-fx-background-color: #F3F4F6; " +
-                    "-fx-text-fill: #4B5563; " +
-                    "-fx-font-weight: 600; " +
-                    "-fx-background-radius: 8; " +
-                    "-fx-padding: 10 20; " +
-                    "-fx-cursor: hand; " +
-                    "-fx-font-size: 14px;";
-
-    // === ТЁМНАЯ ТЕМА ===
-    private static final String DARK_DIALOG_BG =
-            "-fx-background-color: #1E293B; " +
-                    "-fx-background-radius: 16; " +
-                    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 30, 0, 0, 10);";
-
-    private static final String DARK_INPUT =
-            "-fx-background-color: #334155; " +
-                    "-fx-background-radius: 8; " +
-                    "-fx-border-color: #475569; " +
-                    "-fx-border-radius: 8; " +
-                    "-fx-border-width: 1.5; " +
-                    "-fx-padding: 10 12; " +
-                    "-fx-font-size: 14px; " +
-                    "-fx-text-fill: #E2E8F0;";
-
-    private static final String DARK_LABEL =
-            "-fx-text-fill: #CBD5E1; " +
-                    "-fx-font-weight: 600; " +
-                    "-fx-font-size: 13px;";
-
-    private static final String DARK_BTN_SAVE =
-            "-fx-background-color: linear-gradient(to right, #10B981, #059669); " +
-                    "-fx-text-fill: white; " +
-                    "-fx-font-weight: bold; " +
-                    "-fx-background-radius: 8; " +
-                    "-fx-padding: 10 20; " +
-                    "-fx-cursor: hand; " +
-                    "-fx-font-size: 14px;";
-
-    private static final String DARK_BTN_CANCEL =
-            "-fx-background-color: #475569; " +
-                    "-fx-text-fill: #E2E8F0; " +
-                    "-fx-font-weight: 600; " +
-                    "-fx-background-radius: 8; " +
-                    "-fx-padding: 10 20; " +
-                    "-fx-cursor: hand; " +
-                    "-fx-font-size: 14px;";
+    private static final String DIALOG_BG = "-fx-background-color: #FFFFFF; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 20, 0, 0, 5);";
+    private static final String INPUT_FIELD_STYLE = "-fx-background-color: #F5F5F5; -fx-background-radius: 8; -fx-border-color: transparent; -fx-padding: 10; -fx-font-size: 14px;";
+    private static final String LABEL_STYLE = "-fx-text-fill: #555555; -fx-font-weight: bold; -fx-font-size: 14px;";
+    private static final String BTN_SAVE_STYLE = "-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;";
+    private static final String BTN_CANCEL_STYLE = "-fx-background-color: #EEEEEE; -fx-text-fill: #333333; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;";
 
     public CommandDialogHandler(NetworkService networkService, LocalizationManager localization, String login, String password) {
         this.networkService = networkService;
@@ -136,31 +64,11 @@ public class CommandDialogHandler {
         if (vehicle != null) sendCommand("add", List.of("add"), vehicle);
     }
 
-    public void executeInfo() {
-        sendCommand("info", List.of("info"), null);
-    }
-
-    public void executeSort() {
-        sendCommand("sort", List.of("sort"), null);
-    }
-
-    public void executePrintDescending() {
-        sendCommand("print_descending", List.of("print_descending"), null);
-    }
-
-    public void executeHelp() {
-        sendCommand("help", List.of("help"), null);
-    }
-
-    public void executeShowBalance() {
-        sendCommand("show_balance", List.of("show_balance"), null);
-    }
-
     public void executeShuffle() {
         if (tableController == null) return;
         List<Vehicle> originalVehicles = tableController.getAllVehicles();
         if (originalVehicles == null || originalVehicles.isEmpty()) {
-            showError("Коллекция пуста, нечего перемешивать.");
+            showError(localization.get("dialog.error.empty_collection"));
             return;
         }
         List<Vehicle> shuffledVehicles = new java.util.ArrayList<>(originalVehicles);
@@ -171,51 +79,73 @@ public class CommandDialogHandler {
         returnTimer.play();
     }
 
-    public void executeFilterLessThanType() {
-        ComboBox<VehicleType> comboBox = new ComboBox<>();
-        comboBox.getItems().addAll(VehicleType.values());
-        comboBox.setValue(VehicleType.BOAT);
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setHeaderText("Фильтр по типу (меньше чем)");
-        alert.getDialogPane().setContent(comboBox);
-        alert.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK)
-                sendCommand("filter_less_than_type", List.of("filter_less_than_type", comboBox.getValue().name()), null);
-        });
-    }
-
-    public void executeGroupBy() {
-        ComboBox<String> comboBox = new ComboBox<>();
-        comboBox.getItems().addAll("TYPE", "FUELTYPE", "COORDINATES");
-        comboBox.setValue("TYPE");
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setHeaderText("Группировка по полю");
-        alert.getDialogPane().setContent(comboBox);
-        alert.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK)
-                sendCommand("group_by", List.of("group_by", comboBox.getValue()), null);
-        });
-    }
-
-    public void executeAddIfMax() {
-        Vehicle vehicle = showModernVehicleDialog(null);
-        if (vehicle != null)
-            sendCommand("add_if_max", List.of("add_if_max"), vehicle);
-    }
-
     private void sendCommand(String commandName, List<String> args, Vehicle vehicle) {
         new Thread(() -> {
             try {
                 CommandRequest request = new CommandRequest(commandName, args, vehicle, true, login, password);
                 networkService.send(request);
                 CommandResponse response = networkService.receive();
-
                 Platform.runLater(() -> {
                     if (response != null) {
                         if (response.isSuccess()) {
-                            handleSuccessResponse(commandName, response);
+                            if ("add".equals(commandName) || "update".equals(commandName) ||
+                                    "remove_by_id".equals(commandName) || "clear".equals(commandName)) {
+                                String message = response.getMessage();
+                                if (message != null && !message.trim().isEmpty()) {
+                                    VBox notificationContainer = findNotificationContainer();
+                                    if (notificationContainer != null)
+                                        ModernNotifications.showSuccess(notificationContainer, message, isDarkMode);
+                                }
+                            }
+                            if ("show".equals(commandName)) {
+                                String message = response.getMessage();
+                                if (message != null && !message.trim().isEmpty()) {
+                                    List<Vehicle> vehicles = VehicleTextParser.parseVehicleList(message);
+                                    if (tableController != null && !vehicles.isEmpty()) {
+                                        tableController.updateData(vehicles);
+                                        previousDataHash = calculateDataHash(vehicles);
+                                        isFirstLoad = false;
+                                    }
+                                }
+                            } else {
+                                Object data = response.getData();
+                                if (data instanceof List) {
+                                    List<Vehicle> vehicles = ((List<?>) data).stream()
+                                            .filter(obj -> obj instanceof Vehicle)
+                                            .map(obj -> (Vehicle) obj)
+                                            .collect(Collectors.toList());
+                                    if (tableController != null && !vehicles.isEmpty())
+                                        tableController.updateData(vehicles);
+                                }
+                                String message = response.getMessage();
+                                if (message != null && !message.trim().isEmpty() &&
+                                        !"show".equals(commandName) && !"add".equals(commandName) &&
+                                        !"update".equals(commandName) && !"remove_by_id".equals(commandName) &&
+                                        !"clear".equals(commandName)) {
+                                    VBox notificationContainer = findNotificationContainer();
+                                    if (notificationContainer != null)
+                                        ModernNotifications.showInfo(notificationContainer, message, isDarkMode);
+                                }
+                            }
+                            if ("update".equals(commandName) || "add".equals(commandName) ||
+                                    "remove_by_id".equals(commandName) || "clear".equals(commandName) ||
+                                    "buy".equals(commandName) || "set_price".equals(commandName)) {
+                                executeShowSilent();
+                            }
                         } else {
-                            handleErrorResponse(commandName, response);
+                            if ("buy".equals(commandName)) {
+                                String errorMsg = response.getMessage();
+                                if (errorMsg != null && !errorMsg.trim().isEmpty()) {
+                                    VBox notificationContainer = findNotificationContainer();
+                                    if (notificationContainer != null)
+                                        ModernNotifications.showError(notificationContainer, errorMsg, isDarkMode);
+                                }
+                            } else {
+                                VBox notificationContainer = findNotificationContainer();
+                                if (notificationContainer != null)
+                                    ModernNotifications.showError(notificationContainer,
+                                            response.getMessage() != null ? response.getMessage() : localization.get("error.server"), isDarkMode);
+                            }
                         }
                     }
                 });
@@ -223,81 +153,10 @@ public class CommandDialogHandler {
                 Platform.runLater(() -> {
                     VBox notificationContainer = findNotificationContainer();
                     if (notificationContainer != null)
-                        ModernNotifications.showError(notificationContainer, "Ошибка сети: " + e.getMessage(), isDarkMode);
+                        ModernNotifications.showError(notificationContainer, localization.get("error.network"), isDarkMode);
                 });
             }
         }).start();
-    }
-
-    private void handleSuccessResponse(String commandName, CommandResponse response) {
-        if ("update".equals(commandName) || "add".equals(commandName) ||
-                "remove_by_id".equals(commandName) || "clear".equals(commandName) ||
-                "buy".equals(commandName) || "set_price".equals(commandName)) {
-
-            String message = response.getMessage();
-            if (message != null && !message.trim().isEmpty()) {
-                VBox notificationContainer = findNotificationContainer();
-                if (notificationContainer != null)
-                    ModernNotifications.showSuccess(notificationContainer, message, isDarkMode);
-            }
-            executeShowSilent();
-
-        } else if ("show".equals(commandName)) {
-            String message = response.getMessage();
-            if (message != null && !message.trim().isEmpty()) {
-                List<Vehicle> vehicles = VehicleTextParser.parseVehicleList(message);
-                if (tableController != null && !vehicles.isEmpty()) {
-                    tableController.updateData(vehicles);
-                    previousDataHash = calculateDataHash(vehicles);
-                    isFirstLoad = false;
-                }
-            }
-        } else {
-            Object data = response.getData();
-            if (data instanceof List) {
-                List<Vehicle> vehicles = ((List<?>) data).stream()
-                        .filter(obj -> obj instanceof Vehicle)
-                        .map(obj -> (Vehicle) obj)
-                        .collect(Collectors.toList());
-                if (tableController != null && !vehicles.isEmpty())
-                    tableController.updateData(vehicles);
-            }
-
-            String message = response.getMessage();
-            if (message != null && !message.trim().isEmpty() &&
-                    !"show".equals(commandName) && !"add".equals(commandName) &&
-                    !"update".equals(commandName) && !"remove_by_id".equals(commandName) &&
-                    !"clear".equals(commandName)) {
-                VBox notificationContainer = findNotificationContainer();
-                if (notificationContainer != null)
-                    ModernNotifications.showInfo(notificationContainer, message, isDarkMode);
-            }
-        }
-    }
-
-    private void handleErrorResponse(String commandName, CommandResponse response) {
-        if ("update".equals(commandName)) {
-            VBox notificationContainer = findNotificationContainer();
-            String errorMsg = response.getMessage() != null ? response.getMessage() : "Ошибка сервера";
-
-            if (notificationContainer != null)
-                ModernNotifications.showError(notificationContainer, errorMsg, isDarkMode);
-
-            executeShowSilent();
-
-        } else if ("buy".equals(commandName)) {
-            String errorMsg = response.getMessage();
-            if (errorMsg != null && !errorMsg.trim().isEmpty()) {
-                VBox notificationContainer = findNotificationContainer();
-                if (notificationContainer != null)
-                    ModernNotifications.showError(notificationContainer, errorMsg, isDarkMode);
-            }
-        } else {
-            VBox notificationContainer = findNotificationContainer();
-            if (notificationContainer != null)
-                ModernNotifications.showError(notificationContainer,
-                        response.getMessage() != null ? response.getMessage() : "Ошибка сервера", isDarkMode);
-        }
     }
 
     private VBox findNotificationContainer() {
@@ -322,45 +181,71 @@ public class CommandDialogHandler {
     private Vehicle showModernVehicleDialog(Vehicle existing) {
         Dialog<Vehicle> dialog = new Dialog<>();
         dialog.setTitle(existing == null ? localization.get("dialog.add_vehicle") : localization.get("dialog.edit_vehicle"));
-        dialog.setHeaderText(existing == null ? "Заполните данные нового транспортного средства" : "Измените данные ТС");
-
-        // Выбор стилей в зависимости от темы
-        String dialogBg = isDarkMode ? DARK_DIALOG_BG : LIGHT_DIALOG_BG;
-        String inputStyle = isDarkMode ? DARK_INPUT : LIGHT_INPUT;
-        String labelStyle = isDarkMode ? DARK_LABEL : LIGHT_LABEL;
-        String btnSaveStyle = isDarkMode ? DARK_BTN_SAVE : LIGHT_BTN_SAVE;
-        String btnCancelStyle = isDarkMode ? DARK_BTN_CANCEL : LIGHT_BTN_CANCEL;
-
+        dialog.setHeaderText(existing == null ? localization.get("dialog.header.add") : localization.get("dialog.header.edit"));
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
+
+        // === ИСПРАВЛЕНО: Стили в зависимости от темы ===
+        String dialogBg = isDarkMode
+                ? "-fx-background-color: #1E293B; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 20, 0, 0, 5);"
+                : "-fx-background-color: #FFFFFF; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 20, 0, 0, 5);";
         dialog.getDialogPane().setStyle(dialogBg);
-        dialog.getDialogPane().setPrefWidth(520);
+        dialog.getDialogPane().setPrefWidth(500);
+
+        // === Стили для шапки диалога ===
+        String headerBgStyle = isDarkMode
+                ? "-fx-background-color: #0F172A; -fx-text-fill: #E2E8F0; -fx-font-weight: bold; -fx-border-color: #1E293B; -fx-border-width: 0 0 1 0;"
+                : "-fx-background-color: #F3F4F6; -fx-text-fill: #1F2937; -fx-font-weight: bold; -fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;";
+
+        Node headerPanel = dialog.getDialogPane().lookup(".header-panel");
+        if (headerPanel != null) {
+            headerPanel.setStyle(headerBgStyle);
+        }
+        for (Node node : dialog.getDialogPane().lookupAll(".header-panel .header-text")) {
+            node.setStyle("-fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#1F2937") + ";");
+        }
+
+        // === Стили для кнопок ===
+        String btnSaveStyle = isDarkMode
+                ? "-fx-background-color: linear-gradient(to right, #10B981, #059669); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;"
+                : "-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;";
+        String btnCancelStyle = isDarkMode
+                ? "-fx-background-color: #475569; -fx-text-fill: #E2E8F0; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;"
+                : "-fx-background-color: #EEEEEE; -fx-text-fill: #333333; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;";
 
         Button saveButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
         saveButton.setStyle(btnSaveStyle);
-        saveButton.setText("Сохранить");
+        saveButton.setText(localization.get("dialog.save"));
 
         Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
         cancelButton.setStyle(btnCancelStyle);
-        cancelButton.setText("Отмена");
+        cancelButton.setText(localization.get("dialog.cancel"));
+
+        // === Стили для полей ввода ===
+        String inputStyle = isDarkMode
+                ? "-fx-background-color: #334155; -fx-background-radius: 8; -fx-border-color: #475569; -fx-border-radius: 8; -fx-border-width: 1.5; -fx-padding: 10; -fx-font-size: 14px; -fx-text-fill: #E2E8F0; -fx-prompt-text-fill: #94A3B8;"
+                : "-fx-background-color: #F5F5F5; -fx-background-radius: 8; -fx-border-color: transparent; -fx-padding: 10; -fx-font-size: 14px;";
+
+        // === Стили для меток ===
+        String labelStyle = isDarkMode
+                ? "-fx-text-fill: #E2E8F0; -fx-font-weight: bold; -fx-font-size: 14px;"
+                : "-fx-text-fill: #555555; -fx-font-weight: bold; -fx-font-size: 14px;";
 
         GridPane grid = new GridPane();
-        grid.setHgap(18);
-        grid.setVgap(16);
-        grid.setPadding(new Insets(28, 38, 18, 38));
+        grid.setHgap(15);
+        grid.setVgap(15);
+        grid.setPadding(new Insets(20, 30, 10, 30));
         grid.setAlignment(Pos.CENTER);
 
-        TextField nameField = createStyledTextField(existing != null ? existing.getName() : "", "Название ТС", inputStyle);
-        TextField xField = createStyledTextField(existing != null ? String.valueOf(existing.getCoordinates().getX()) : "0", "X", inputStyle);
-        TextField yField = createStyledTextField(existing != null ? String.valueOf(existing.getCoordinates().getY()) : "0", "Y", inputStyle);
-        TextField powerField = createStyledTextField(existing != null ? String.valueOf(existing.getEnginePower()) : "0", "Мощность", inputStyle);
-        TextField distanceField = createStyledTextField(existing != null ? String.valueOf(existing.getDistanceTravelled()) : "0", "Дистанция", inputStyle);
-        TextField priceField = createStyledTextField(existing != null ? String.valueOf(existing.getPrice()) : "0", "Цена", inputStyle);
+        TextField nameField = createStyledTextField(existing != null ? existing.getName() : "", localization.get("dialog.prompt.name"), inputStyle);
+        TextField xField = createStyledTextField(existing != null ? String.valueOf(existing.getCoordinates().getX()) : "0", localization.get("dialog.prompt.x"), inputStyle);
+        TextField yField = createStyledTextField(existing != null ? String.valueOf(existing.getCoordinates().getY()) : "0", localization.get("dialog.prompt.y"), inputStyle);
+        TextField powerField = createStyledTextField(existing != null ? String.valueOf(existing.getEnginePower()) : "0", localization.get("dialog.prompt.power"), inputStyle);
+        TextField distanceField = createStyledTextField(existing != null ? String.valueOf(existing.getDistanceTravelled()) : "0", localization.get("dialog.prompt.distance"), inputStyle);
+        TextField priceField = createStyledTextField(existing != null ? String.valueOf(existing.getPrice()) : "0", localization.get("dialog.prompt.price"), inputStyle);
 
         DatePicker datePicker = new DatePicker();
-        if (existing != null && existing.getCreationDate() != null)
-            datePicker.setValue(existing.getCreationDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate());
-        else
-            datePicker.setValue(java.time.LocalDate.now());
+        if (existing != null && existing.getCreationDate() != null) datePicker.setValue(existing.getCreationDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate());
+        else datePicker.setValue(java.time.LocalDate.now());
         datePicker.setStyle(inputStyle);
 
         ComboBox<VehicleType> typeCombo = new ComboBox<>();
@@ -377,21 +262,24 @@ public class CommandDialogHandler {
         grid.add(createLabel(localization.get("dialog.label.name"), labelStyle), 0, row);
         grid.add(nameField, 1, row++);
 
-        HBox coordsBox = new HBox(12, xField, yField);
-        coordsBox.setAlignment(Pos.CENTER_LEFT);
-        grid.add(createLabel("Координаты:", labelStyle), 0, row);
-        grid.add(coordsBox, 1, row++);
+        grid.add(createLabel(localization.get("dialog.label.coords"), labelStyle), 0, row);
+        grid.add(new HBox(10, xField, yField), 1, row++);
 
         grid.add(createLabel(localization.get("dialog.label.creation_date"), labelStyle), 0, row);
         grid.add(datePicker, 1, row++);
+
         grid.add(createLabel(localization.get("dialog.label.power"), labelStyle), 0, row);
         grid.add(powerField, 1, row++);
+
         grid.add(createLabel(localization.get("dialog.label.distance"), labelStyle), 0, row);
         grid.add(distanceField, 1, row++);
+
         grid.add(createLabel(localization.get("dialog.label.type"), labelStyle), 0, row);
         grid.add(typeCombo, 1, row++);
+
         grid.add(createLabel(localization.get("dialog.label.fuel"), labelStyle), 0, row);
         grid.add(fuelCombo, 1, row++);
+
         grid.add(createLabel(localization.get("dialog.label.price"), labelStyle), 0, row);
         grid.add(priceField, 1, row++);
 
@@ -419,24 +307,18 @@ public class CommandDialogHandler {
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == ButtonType.OK) {
                 try {
-                    // Создаём НОВЫЙ объект, не модифицируем existing
-                    Vehicle v = new Vehicle();
-                    if (existing != null) {
-                        v.setId(existing.getId());
-                    }
+                    Vehicle v = existing != null ? existing : new Vehicle();
                     v.setName(nameField.getText());
                     v.setCoordinates(Integer.parseInt(xField.getText()), Float.parseFloat(yField.getText()));
                     v.setEnginePower(Float.parseFloat(powerField.getText()));
                     v.setDistanceTravelled(Float.parseFloat(distanceField.getText()));
-                    if (datePicker.getValue() != null)
-                        v.setCreationDate(Date.from(datePicker.getValue()
-                                .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()));
+                    if (datePicker.getValue() != null) v.setCreationDate(Date.from(datePicker.getValue().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()));
                     v.setType(typeCombo.getValue());
                     v.setFuelType(fuelCombo.getValue());
                     v.setPrice(Double.parseDouble(priceField.getText()));
                     return v;
                 } catch (NumberFormatException ex) {
-                    showError("Проверьте правильность ввода чисел");
+                    showError(localization.get("dialog.error.invalid_numbers"));
                 }
             }
             return null;
@@ -449,35 +331,6 @@ public class CommandDialogHandler {
         Platform.runLater(() -> applyComboBoxStyles(dialog, isDarkMode));
 
         return dialog.showAndWait().orElse(null);
-    }
-
-    // Применяет стили к выпадающим спискам внутри диалога
-    private void applyComboBoxStyles(Dialog<Vehicle> dialog, boolean dark) {
-        String cellBg = dark ? "#334155" : "#FFFFFF";
-        String cellText = dark ? "#E2E8F0" : "#1F2937";
-        String cellStyle = "-fx-background-color: " + cellBg + "; -fx-text-fill: " + cellText + "; -fx-font-size: 13px;";
-
-        for (Node node : dialog.getDialogPane().getChildren()) {
-            if (node instanceof ComboBox) {
-                ComboBox combo = (ComboBox) node; // raw type для избежания ошибок компиляции
-                combo.setCellFactory(lv -> new ListCell() {
-                    @Override
-                    protected void updateItem(Object item, boolean empty) {
-                        super.updateItem(item, empty);
-                        setStyle(cellStyle);
-                        setText(empty || item == null ? null : item.toString());
-                    }
-                });
-                combo.setButtonCell(new ListCell() {
-                    @Override
-                    protected void updateItem(Object item, boolean empty) {
-                        super.updateItem(item, empty);
-                        setStyle(cellStyle);
-                        setText(empty || item == null ? null : item.toString());
-                    }
-                });
-            }
-        }
     }
 
     private TextField createStyledTextField(String text, String prompt, String style) {
@@ -493,6 +346,45 @@ public class CommandDialogHandler {
         return l;
     }
 
+    // Применяет стили к выпадающим спискам внутри диалога
+    private void applyComboBoxStyles(Dialog<Vehicle> dialog, boolean dark) {
+        String cellBg = dark ? "#334155" : "#FFFFFF";
+        String cellText = dark ? "#E2E8F0" : "#1F2937";
+        String cellStyle = "-fx-background-color: " + cellBg + "; -fx-text-fill: " + cellText + "; -fx-font-size: 13px;";
+        for (Node node : dialog.getDialogPane().getChildren()) {
+            if (node instanceof ComboBox) {
+                ComboBox combo = (ComboBox) node;
+                combo.setCellFactory(lv -> new ListCell() {
+                    @Override protected void updateItem(Object item, boolean empty) {
+                        super.updateItem(item, empty);
+                        setStyle(cellStyle);
+                        setText(empty || item == null ? null : item.toString());
+                    }
+                });
+                combo.setButtonCell(new ListCell() {
+                    @Override protected void updateItem(Object item, boolean empty) {
+                        super.updateItem(item, empty);
+                        setStyle(cellStyle);
+                        setText(empty || item == null ? null : item.toString());
+                    }
+                });
+            }
+        }
+    }
+
+    private TextField createStyledTextField(String text, String prompt) {
+        TextField tf = new TextField(text);
+        tf.setPromptText(prompt);
+        tf.setStyle(INPUT_FIELD_STYLE);
+        return tf;
+    }
+
+    private Label createLabel(String text) {
+        Label l = new Label(text);
+        l.setStyle(LABEL_STYLE);
+        return l;
+    }
+
     public void executeShow() {
         sendCommand("show", List.of("show"), null);
     }
@@ -503,7 +395,6 @@ public class CommandDialogHandler {
                 CommandRequest request = new CommandRequest("show", List.of("show"), null, true, login, password);
                 networkService.send(request);
                 CommandResponse response = networkService.receive();
-
                 Platform.runLater(() -> {
                     if (response != null && response.isSuccess()) {
                         String message = response.getMessage();
@@ -535,88 +426,45 @@ public class CommandDialogHandler {
 
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.getDialogPane().setStyle(isDarkMode ? DARK_DIALOG_BG : LIGHT_DIALOG_BG);
-        alert.setTitle("Ошибка");
+        alert.getDialogPane().setStyle(DIALOG_BG);
+        // === ИСПРАВЛЕНО: Локализация заголовка ошибки ===
+        alert.setTitle(localization.get("app.status.error"));
+        // ================================================
         alert.setHeaderText(null);
-        alert.setContentText(message != null ? message : "Произошла ошибка");
+        alert.setContentText(message != null ? message : localization.get("dialog.error.unknown"));
         alert.showAndWait();
     }
 
     public void executeClear() {
-        boolean confirmed = ModernDialog.showConfirmation("Очистка коллекции",
-                "Вы уверены, что хотите удалить ВСЕ свои объекты? Это действие нельзя отменить.", isDarkMode);
+        // === ИСПРАВЛЕНО: Локализация диалога подтверждения ===
+        boolean confirmed = ModernDialog.showConfirmation(
+                localization.get("dialog.clear.title"),
+                localization.get("dialog.clear.confirm"),
+                isDarkMode,
+                localization
+        );
         if (confirmed)
             sendCommand("clear", List.of("clear"), null);
     }
 
     public void executeDeposit() {
-        Optional<String> result = ModernDialog.showInput("Пополнение баланса",
-                "Введите сумму пополнения:", "Например: 1000", isDarkMode);
+        // === ИСПРАВЛЕНО: Локализация диалога ввода ===
+        Optional<String> result = ModernDialog.showInput(
+                localization.get("dialog.deposit.title"),
+                localization.get("dialog.deposit.prompt"),
+                localization.get("dialog.deposit.example"),
+                isDarkMode,
+                localization
+        );
         result.ifPresent(amount -> {
             try {
                 double amountDouble = Double.parseDouble(amount);
                 if (amountDouble > 0)
                     sendCommand("deposit", List.of("deposit", amount), null);
                 else
-                    showError("Сумма должна быть больше 0");
+                    showError(localization.get("dialog.error.positive_amount"));
             } catch (NumberFormatException e) {
-                showError("Некорректная сумма");
-            }
-        });
-    }
-
-    public void executeUpdate() {
-        Vehicle vehicle = showModernVehicleDialog(null);
-        if (vehicle != null) {
-            Optional<String> result = ModernDialog.showInput("Обновление элемента",
-                    "Введите ID для обновления:", "Например: 11", isDarkMode);
-            result.ifPresent(id -> {
-                try {
-                    long idLong = Long.parseLong(id);
-                    vehicle.setId(idLong);
-                    sendCommand("update", List.of("update", id), vehicle);
-                } catch (NumberFormatException e) {
-                    showError("Некорректный ID");
-                }
-            });
-        }
-    }
-
-    public void executeSetPrice() {
-        Optional<String> idResult = ModernDialog.showInput("Установка цены",
-                "Введите ID транспортного средства:", "Например: 11", isDarkMode);
-        idResult.ifPresent(id -> {
-            try {
-                Long.parseLong(id);
-                Optional<String> priceResult = ModernDialog.showInput("Новая цена",
-                        "Введите новую цену для ID " + id + ":", "Например: 15000", isDarkMode);
-                priceResult.ifPresent(price -> {
-                    try {
-                        double priceDouble = Double.parseDouble(price);
-                        if (priceDouble >= 0)
-                            sendCommand("set_price", List.of("set_price", id, price), null);
-                        else
-                            showError("Цена не может быть отрицательной");
-                    } catch (NumberFormatException e) {
-                        showError("Некорректная цена");
-                    }
-                });
-            } catch (NumberFormatException e) {
-                showError("Некорректный ID");
-            }
-        });
-    }
-
-    public void executeFilterByEnginePower() {
-        Optional<String> result = ModernDialog.showInput("Фильтр по мощности",
-                "Введите минимальную мощность двигателя:", "Например: 100", isDarkMode);
-        result.ifPresent(power -> {
-            try {
-                Float.parseFloat(power);
-                sendCommand("filter_greater_than_engine_power",
-                        List.of("filter_greater_than_engine_power", power), null);
-            } catch (NumberFormatException e) {
-                showError("Некорректное число");
+                showError(localization.get("dialog.error.invalid_amount"));
             }
         });
     }

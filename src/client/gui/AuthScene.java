@@ -109,17 +109,14 @@ public class AuthScene {
         // Заголовок с иконкой
         VBox headerBox = new VBox(10);
         headerBox.setAlignment(Pos.CENTER);
-
         Circle iconCircle = new Circle(35, Color.web("#667eea"));
         Label iconLabel = new Label("🚀");
         iconLabel.setStyle("-fx-font-size: 32px;");
         StackPane iconContainer = new StackPane(iconCircle, iconLabel);
-
         Label titleLabel = new Label(localization.get("app.title"));
         titleLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; " +
                 "-fx-text-fill: #1F2937; " +
                 "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 5, 0, 0, 2);");
-
         headerBox.getChildren().addAll(iconContainer, titleLabel);
 
         // Переключатель режимов
@@ -131,7 +128,6 @@ public class AuthScene {
         rbLogin.setSelected(true);
         rbLogin.setStyle(TOGGLE_SELECTED);
         rbRegister.setStyle(TOGGLE_STYLE);
-
         HBox modeBox = new HBox(20, rbLogin, rbRegister);
         modeBox.setAlignment(Pos.CENTER);
         modeBox.setStyle("-fx-background-color: #F3F4F6; " +
@@ -153,15 +149,12 @@ public class AuthScene {
 
         // Поля ввода
         VBox inputBox = new VBox(15);
-
         Label loginLabel = createInputLabel(localization.get("auth.login"));
         loginField = createStyledInput();
         loginField.setPromptText("username");
-
         Label passLabel = createInputLabel(localization.get("auth.password"));
         passwordField = createStyledPasswordInput();
         passwordField.setPromptText("••••••••");
-
         inputBox.getChildren().addAll(loginLabel, loginField, passLabel, passwordField);
 
         // Кнопка действия
@@ -177,7 +170,6 @@ public class AuthScene {
         // Контейнер для уведомлений
         notificationContainer = new VBox(10);
         notificationContainer.setAlignment(Pos.TOP_CENTER);
-
         card.getChildren().addAll(headerBox, modeBox, inputBox, actionButton);
         root.getChildren().addAll(notificationContainer, card);
 
@@ -200,6 +192,54 @@ public class AuthScene {
         });
 
         return scene;
+    }
+
+    private void handleAction() {
+        String login = loginField.getText().trim();
+        String password = passwordField.getText().trim();
+
+        if (login.isEmpty() || password.isEmpty()) {
+            ModernNotifications.showWarning(notificationContainer, localization.get("auth.error.empty"), false);
+            return;
+        }
+
+        boolean isRegister = modeToggle.getSelectedToggle() instanceof RadioButton &&
+                ((RadioButton) modeToggle.getSelectedToggle()).getText().equals(localization.get("auth.register.button"));
+
+        setControlsDisabled(true);
+
+        Thread authThread = new Thread(() -> {
+            try {
+                CommandResponse response;
+                if (isRegister) {
+                    response = sendRegisterRequest(login, password);
+                } else {
+                    response = sendLoginRequest(login, password);
+                }
+
+                Platform.runLater(() -> {
+                    setControlsDisabled(false);
+                    if (response != null && response.isSuccess()) {
+                        ModernNotifications.showSuccess(notificationContainer, "✓ Авторизация успешна!", false);
+                        if (onLoginSuccess != null) {
+                            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(Duration.millis(500));
+                            pause.setOnFinished(e -> onLoginSuccess.run());
+                            pause.play();
+                        }
+                    } else {
+                        ModernNotifications.showError(notificationContainer, isRegister ?
+                                localization.get("auth.error.register") : localization.get("auth.error.auth"), false);
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    setControlsDisabled(false);
+                    ModernNotifications.showError(notificationContainer, localization.get("error.network"), false);
+                });
+            }
+        });
+        authThread.setDaemon(true);
+        authThread.start();
     }
 
     private Label createInputLabel(String text) {
@@ -226,66 +266,6 @@ public class AuthScene {
             field.setStyle(newVal ? INPUT_FOCUSED : INPUT_STYLE);
         });
         return field;
-    }
-
-    private void handleAction() {
-        // Получаем введенные данные
-        String login = loginField.getText().trim();
-        String password = passwordField.getText().trim();
-
-        // Проверка на пустые поля
-        if (login.isEmpty() || password.isEmpty()) {
-            ModernNotifications.showWarning(notificationContainer, localization.get("auth.error.empty"), false);
-            return;
-        }
-
-        // Определяем режим: Вход или Регистрация
-        boolean isRegister = modeToggle.getSelectedToggle() instanceof RadioButton &&
-                ((RadioButton) modeToggle.getSelectedToggle()).getText().equals(localization.get("auth.register.button"));
-
-        // Блокируем интерфейс на время запроса, чтобы избежать двойных нажатий
-        setControlsDisabled(true);
-
-        // Выполняем сетевой запрос в фоновом потоке, чтобы не замораживать UI
-        Thread authThread = new Thread(() -> {
-            try {
-                CommandResponse response;
-                if (isRegister) {
-                    response = sendRegisterRequest(login, password);
-                } else {
-                    response = sendLoginRequest(login, password);
-                }
-
-                // Обработка результата в JavaFX Application Thread (UI поток)
-                Platform.runLater(() -> {
-                    setControlsDisabled(false); // Разблокируем интерфейс
-
-                    if (response != null && response.isSuccess()) {
-                        // Успех: показываем уведомление и переходим дальше
-                        ModernNotifications.showSuccess(notificationContainer, "✓ Авторизация успешна!", false);
-                        if (onLoginSuccess != null) {
-                            // Небольшая задержка 500мс перед переходом на главную сцену
-                            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(Duration.millis(500));
-                            pause.setOnFinished(e -> onLoginSuccess.run());
-                            pause.play();
-                        }
-                    } else {
-                        // Ошибка: показываем соответствующее сообщение
-                        ModernNotifications.showError(notificationContainer, isRegister ?
-                                localization.get("auth.error.register") : localization.get("auth.error.auth"), false);
-                    }
-                });
-            } catch (Exception e) {
-                // Обработка ошибок сети/соединения
-                Platform.runLater(() -> {
-                    setControlsDisabled(false);
-                    ModernNotifications.showError(notificationContainer, localization.get("error.network"), false);
-                });
-            }
-        });
-
-        authThread.setDaemon(true);
-        authThread.start();
     }
 
     private CommandResponse sendRegisterRequest(String login, String password) throws Exception {

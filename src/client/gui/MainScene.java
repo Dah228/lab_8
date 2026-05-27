@@ -153,7 +153,6 @@ public class MainScene {
         return scene;
     }
 
-    // === Создание панели профиля ===
     private VBox createProfilePanel() {
         VBox panel = new VBox(20);
         panel.setPadding(new Insets(30));
@@ -205,7 +204,7 @@ public class MainScene {
         statusBox.setAlignment(Pos.CENTER);
         Label statusDot = new Label("●");
         statusDot.setStyle("-fx-text-fill: #10B981; -fx-font-size: 12px;");
-        Label statusText = new Label("Онлайн");
+        Label statusText = new Label(localization.get("profile.status.online"));
         statusText.setStyle("-fx-text-fill: #10B981; -fx-font-size: 13px; -fx-font-weight: 500;");
         statusBox.getChildren().addAll(statusDot, statusText);
 
@@ -214,7 +213,6 @@ public class MainScene {
         separator.setStyle(isDarkMode ? D_SEPARATOR : L_SEPARATOR);
         separator.setPadding(new Insets(10, 0, 10, 0));
 
-        // === КНОПКИ ПРОФИЛЯ ===
         logoutBtn = new Button(localization.get("btn.exit"));
         logoutBtn.setStyle(PROFILE_BTN_LOGOUT);
         logoutBtn.setMaxWidth(Double.MAX_VALUE);
@@ -308,17 +306,19 @@ public class MainScene {
                         stage.setResizable(false);
                         stage.centerOnScreen();
                         stage.setTitle(localization.get("app.title"));
-                    } else showError("Не удалось инициализировать соединение");
-                } catch (Exception ex) { showError("Ошибка инициализации: " + ex.getMessage()); }
-            } else showError("Не удалось подключиться к серверу");
+                    } else showError(localization.get("error.init_connection"));
+                } catch (Exception ex) { showError(localization.get("error.init_detail") + ex.getMessage()); }
+            } else showError(localization.get("error.connect"));
         });
-        connectTask.setOnFailed(event -> showError("Ошибка подключения: " + connectTask.getException().getMessage()));
+        connectTask.setOnFailed(event -> showError(localization.get("error.connect_detail") + connectTask.getException().getMessage()));
         new Thread(connectTask).start();
     }
 
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Ошибка"); alert.setHeaderText(null); alert.setContentText(message);
+        alert.setTitle(localization.get("app.status.error"));
+        alert.setHeaderText(null);
+        alert.setContentText(message);
         alert.showAndWait();
     }
 
@@ -345,7 +345,6 @@ public class MainScene {
         hbox.setPadding(new Insets(12, 20, 12, 20));
         hbox.setAlignment(Pos.CENTER_LEFT);
 
-        // === ИКОНКА ТЕМЫ ===
         Image sunImage = null, moonImage = null;
         try {
             sunImage = new Image(getClass().getResourceAsStream("/sun.png"));
@@ -362,7 +361,8 @@ public class MainScene {
             themeIconView.setImage(moonImage);
             themeToggleButton.setGraphic(themeIconView);
         } else {
-            themeToggleButton.setText("");
+            // === ИСПРАВЛЕНО: Показываем эмодзи если картинки не загрузились ===
+            themeToggleButton.setText("🌙");
             themeToggleButton.setStyle("-fx-font-size: 20px; -fx-background-color: transparent; -fx-cursor: hand;");
         }
         themeToggleButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
@@ -372,7 +372,6 @@ public class MainScene {
             applyThemeStyles();
         });
 
-        // === ССЫЛКА НА ПОЛЬЗОВАТЕЛЯ ===
         userLabel = new Label(localization.get("main.user.label") + " " + currentUserLogin);
         String baseColor = isDarkMode ? "#8B5CF6" : "#2563EB";
         userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: " + baseColor + "; -fx-cursor: hand; -fx-underline: true;");
@@ -400,7 +399,7 @@ public class MainScene {
                     common.CommandResponse resp = networkService.receive();
                     Platform.runLater(() -> {
                         if (resp != null && resp.isSuccess()) {
-                            balanceButton.setText(resp.getMessage().replace("Ваш баланс: ", "").trim() + " ₽");
+                            balanceButton.setText(resp.getMessage().replace(localization.get("error.balance_prefix", localization.getCurrentLocale()), "").trim() + localization.get("error.currency_suffix", localization.getCurrentLocale()));
                         } else { balanceButton.setText(localization.get("error.network")); }
                         PauseTransition pause = new PauseTransition(Duration.seconds(3));
                         pause.setOnFinished(ev -> { balanceButton.setText(originalText); balanceButton.setDisable(false); });
@@ -515,13 +514,13 @@ public class MainScene {
         btnRemove.setOnAction(e -> {
             Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
             if (selected != null) commandHandler.executeRemoveById(selected.getId());
-            else showWarning(localization.get("dialog.error.invalid_id"));
+            else showWarning(localization.get("table.warning.select_for_delete"));
         });
         btnShuffle.setOnAction(e -> commandHandler.executeShuffle());
         btnBuy.setOnAction(e -> {
             Vehicle selected = tableController.getTable().getSelectionModel().getSelectedItem();
             if (selected != null) commandHandler.executeBuy(selected.getId());
-            else showWarning(localization.get("dialog.error.invalid_id"));
+            else showWarning(localization.get("table.warning.select_for_buy"));
         });
         btnClear.setOnAction(e -> commandHandler.executeClear());
 
@@ -560,7 +559,8 @@ public class MainScene {
                 themeIconView.setImage(isDarkMode ? sunImage : moonImage);
             }
         } else if (themeToggleButton != null) {
-            themeToggleButton.setText(isDarkMode ? "️" : "🌙");
+            // === ИСПРАВЛЕНО: Правильный эмодзи для солнца ===
+            themeToggleButton.setText(isDarkMode ? "☀️" : "🌙");
         }
     }
 
@@ -576,29 +576,26 @@ public class MainScene {
         if (canvasContainer != null) canvasContainer.setStyle(isDarkMode ? D_CARD : L_CARD + " -fx-padding: 15;");
         if (bottomPanel != null) bottomPanel.setStyle("-fx-background-color: transparent;");
 
-        // === ССЫЛКА ПОЛЬЗОВАТЕЛЯ ===
         if (userLabel != null) {
             String baseColor = isDarkMode ? "#8B5CF6" : "#2563EB";
             userLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: " + baseColor + "; -fx-cursor: hand; -fx-underline: true;");
         }
         if (visualTitle != null) visualTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#8B5CF6" : "#2563EB") + ";");
 
+        // === ИСПРАВЛЕНО: Надёжное обновление стилей кнопок по ключам ===
         for (Button btn : themeAwareButtons) {
-            if (btn.getStyle().contains(D_BTN_P) || btn.getStyle().contains(L_BTN_P) ||
-                    btn.getStyle().contains(D_BTN_S) || btn.getStyle().contains(L_BTN_S) ||
-                    btn.getStyle().contains(D_BTN_D) || btn.getStyle().contains(L_BTN_D)) {
-                if (btn.getText().equals(localization.get("btn.clear"))) btn.setStyle(getBaseStyle("danger"));
-                else if (btn.getText().equals(localization.get("btn.add"))) btn.setStyle(getBaseStyle(true));
+            String key = getButtonKey(btn.getText());
+            if (key != null) {
+                if (key.equals("btn.clear")) btn.setStyle(getBaseStyle("danger"));
+                else if (key.equals("btn.add")) btn.setStyle(getBaseStyle(true));
                 else btn.setStyle(getBaseStyle(false));
             }
         }
         if (balanceButton != null) balanceButton.setStyle(getBaseStyle(false));
         if (depositButton != null) depositButton.setStyle(getBaseStyle(false));
 
-        // === КОМБОБОКС ЯЗЫКА (ИСПРАВЛЕНИЕ ЦВЕТОВ) ===
         updateLangComboBoxStyle();
 
-        // === ПРОФИЛЬ ===
         if (profilePanel != null) {
             profilePanel.setStyle(isDarkMode ? D_PROFILE_BG : L_PROFILE_BG);
             for (Node node : profilePanel.getChildren()) updateProfileNodeStyle(node);
@@ -610,23 +607,30 @@ public class MainScene {
         commandHandler.setDarkMode(isDarkMode);
     }
 
-    // === ИСПРАВЛЕННЫЙ МЕТОД СТИЛИЗАЦИИ КОМБОБОКСА ЯЗЫКА ===
+    // === Вспомогательный метод для определения ключа кнопки по тексту ===
+    private String getButtonKey(String buttonText) {
+        if (buttonText == null) return null;
+        if (buttonText.equals(localization.get("btn.clear")) || buttonText.equals("Очистить") || buttonText.equals("Clear") || buttonText.equals("Tøm") || buttonText.equals("Išvalyti")) return "btn.clear";
+        if (buttonText.equals(localization.get("btn.add")) || buttonText.equals("Добавить") || buttonText.equals("Add") || buttonText.equals("Legg til") || buttonText.equals("Pridėti")) return "btn.add";
+        if (buttonText.equals(localization.get("btn.remove")) || buttonText.equals("Удалить по ID") || buttonText.equals("Remove by ID") || buttonText.equals("Fjern etter ID") || buttonText.equals("Šalinti pagal ID")) return "btn.remove";
+        if (buttonText.equals(localization.get("btn.shuffle")) || buttonText.equals("Перемешать") || buttonText.equals("Shuffle") || buttonText.equals("Bland") || buttonText.equals("Sumaišyti")) return "btn.shuffle";
+        if (buttonText.equals(localization.get("btn.buy")) || buttonText.equals("Купить") || buttonText.equals("Buy") || buttonText.equals("Kjøp") || buttonText.equals("Pirkti")) return "btn.buy";
+        return null;
+    }
+
     private void updateLangComboBoxStyle() {
         if (langComboBox == null) return;
 
-        // Используем цвета как в фильтрах (Type/Fuel)
         String bgColor = isDarkMode ? "#1E293B" : "#FFFFFF";
         String textColor = isDarkMode ? "#E2E8F0" : "#1F2937";
         String hoverBg = isDarkMode ? "#334155" : "#F3F4F6";
         String borderColor = isDarkMode ? "#475569" : "#E2E8F0";
 
-        // Стиль для кнопки (закрытое состояние)
         langComboBox.setStyle("-fx-background-color: " + bgColor + "; " +
                 "-fx-border-color: " + borderColor + "; " +
                 "-fx-border-radius: 6; -fx-background-radius: 6; " +
                 "-fx-text-fill: " + textColor + ";");
 
-        // Стиль для выпадающего списка (ячейки)
         langComboBox.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(Locale item, boolean empty) {
@@ -638,7 +642,6 @@ public class MainScene {
                         "-fx-font-size: 13px; -fx-padding: 5 10;";
                 setStyle(style);
 
-                // Эффект наведения
                 if (!empty && item != null) {
                     setOnMouseEntered(e -> setStyle(
                             "-fx-background-color: " + hoverBg + "; " +
@@ -649,7 +652,6 @@ public class MainScene {
             }
         });
 
-        // Стиль для отображения выбранного элемента
         langComboBox.setButtonCell(new ListCell<>() {
             @Override
             protected void updateItem(Locale item, boolean empty) {
@@ -668,7 +670,7 @@ public class MainScene {
             String text = label.getText();
             if (text != null && text.equals(currentUserLogin)) {
                 label.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: " + (isDarkMode ? "#E2E8F0" : "#1F2937") + ";");
-            } else if (text != null && text.contains("Онлайн")) {
+            } else if (text != null && text.equals(localization.get("profile.status.online"))) {
                 label.setStyle("-fx-text-fill: #10B981; -fx-font-size: 13px; -fx-font-weight: 500;");
             } else if ("✕".equals(text)) {
                 label.setStyle("-fx-background-color: transparent; -fx-text-fill: " + (isDarkMode ? "#94A3B8" : "#9CA3AF") + "; -fx-font-size: 18px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 5 10;");
@@ -689,10 +691,18 @@ public class MainScene {
         stage.close();
     }
 
-    private void showWarning(String msg) { ModernNotifications.showWarning(notificationContainer, msg, isDarkMode); }
-    public void showSuccessNotification(String msg) { ModernNotifications.showSuccess(notificationContainer, msg, isDarkMode); }
-    public void showErrorNotification(String msg) { ModernNotifications.showError(notificationContainer, msg, isDarkMode); }
-    public void showInfoNotification(String msg) { ModernNotifications.showInfo(notificationContainer, msg, isDarkMode); }
+    private void showWarning(String msg) {
+        if (notificationContainer != null) ModernNotifications.showWarning(notificationContainer, msg, isDarkMode);
+    }
+    public void showSuccessNotification(String msg) {
+        if (notificationContainer != null) ModernNotifications.showSuccess(notificationContainer, msg, isDarkMode);
+    }
+    public void showErrorNotification(String msg) {
+        if (notificationContainer != null) ModernNotifications.showError(notificationContainer, msg, isDarkMode);
+    }
+    public void showInfoNotification(String msg) {
+        if (notificationContainer != null) ModernNotifications.showInfo(notificationContainer, msg, isDarkMode);
+    }
 
     private void updateUITexts() {
         stage.setTitle(localization.get("app.title") + " - " + currentUserLogin);
@@ -705,18 +715,12 @@ public class MainScene {
         if (logoutBtn != null) logoutBtn.setText(localization.get("btn.exit"));
         if (backBtn != null) backBtn.setText(localization.get("dialog.cancel"));
 
+        // === ИСПРАВЛЕНО: Надёжное обновление кнопок по ключам ===
         for (Button btn : themeAwareButtons) {
-            String txt = btn.getText();
-            if (txt.equals("Очистить") || txt.equals("Clear") || txt.equals("Tøm") || txt.equals("Išvalyti"))
-                btn.setText(localization.get("btn.clear"));
-            else if (txt.equals("Добавить") || txt.equals("Add") || txt.equals("Legg til") || txt.equals("Pridėti"))
-                btn.setText(localization.get("btn.add"));
-            else if (txt.equals("Удалить по ID") || txt.equals("Remove by ID") || txt.equals("Fjern etter ID") || txt.equals("Šalinti pagal ID"))
-                btn.setText(localization.get("btn.remove"));
-            else if (txt.equals("Перемешать") || txt.equals("Shuffle") || txt.equals("Bland") || txt.equals("Sumaišyti"))
-                btn.setText(localization.get("btn.shuffle"));
-            else if (txt.equals("Купить") || txt.equals("Buy") || txt.equals("Kjøp") || txt.equals("Pirkti"))
-                btn.setText(localization.get("btn.buy"));
+            String key = getButtonKey(btn.getText());
+            if (key != null) {
+                btn.setText(localization.get(key));
+            }
         }
 
         if (tableController != null) tableController.updateLocalization();
