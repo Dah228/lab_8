@@ -133,7 +133,7 @@ public class MainScene {
         profilePanel.setTranslateY(-20);
 
         StackPane mainContainer = new StackPane(root, notificationContainer, profilePanel);
-        Scene scene = new Scene(mainContainer, 1300, 850);
+        Scene scene = new Scene(mainContainer, 1500, 850);
 
         KeyCombination exitKey = new KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN);
         scene.getAccelerators().put(exitKey, () -> handleExit());
