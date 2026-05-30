@@ -13,6 +13,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -195,7 +196,6 @@ public class CommandDialogHandler {
         String headerBgStyle = isDarkMode
                 ? "-fx-background-color: #0F172A; -fx-text-fill: #E2E8F0; -fx-font-weight: bold; -fx-border-color: #1E293B; -fx-border-width: 0 0 1 0;"
                 : "-fx-background-color: #F3F4F6; -fx-text-fill: #1F2937; -fx-font-weight: bold; -fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;";
-
         Node headerPanel = dialog.getDialogPane().lookup(".header-panel");
         if (headerPanel != null) headerPanel.setStyle(headerBgStyle);
         for (Node node : dialog.getDialogPane().lookupAll(".header-panel .header-text")) {
@@ -209,7 +209,6 @@ public class CommandDialogHandler {
         String btnCancelStyle = isDarkMode
                 ? "-fx-background-color: #475569; -fx-text-fill: #E2E8F0; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;"
                 : "-fx-background-color: #EEEEEE; -fx-text-fill: #333333; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;";
-
         Button saveButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
         saveButton.setStyle(btnSaveStyle); saveButton.setText(localization.get("dialog.save"));
         Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
@@ -233,17 +232,14 @@ public class CommandDialogHandler {
         TextField distanceField = createStyledTextField(existing != null ? String.valueOf(existing.getDistanceTravelled()) : "0", localization.get("dialog.prompt.distance"), inputStyle);
         TextField priceField = createStyledTextField(existing != null ? String.valueOf(existing.getPrice()) : "0", localization.get("dialog.prompt.price"), inputStyle);
 
-        DatePicker datePicker = new DatePicker();
-        if (existing != null && existing.getCreationDate() != null) datePicker.setValue(existing.getCreationDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate());
-        else datePicker.setValue(java.time.LocalDate.now());
-        datePicker.setStyle(inputStyle);
+        // === СОВРЕМЕННЫЙ DATE PICKER ===
+        DatePicker datePicker = createModernDatePicker(existing, inputStyle);
 
         // === ТИП (Type) ===
         ComboBox<VehicleType> typeCombo = new ComboBox<>();
         typeCombo.getItems().addAll(VehicleType.values());
         typeCombo.setValue(existing != null ? existing.getType() : VehicleType.BOAT);
         typeCombo.setStyle(inputStyle);
-
         // Темный стиль для выпадающего списка
         typeCombo.setCellFactory(lv -> new ListCell<VehicleType>() {
             @Override
@@ -269,7 +265,6 @@ public class CommandDialogHandler {
         fuelCombo.getItems().addAll(FuelType.values());
         fuelCombo.setValue(existing != null ? existing.getFuelType() : FuelType.GASOLINE);
         fuelCombo.setStyle(inputStyle);
-
         // Темный стиль для выпадающего списка
         fuelCombo.setCellFactory(lv -> new ListCell<FuelType>() {
             @Override
@@ -333,8 +328,169 @@ public class CommandDialogHandler {
 
         dialog.getDialogPane().setContent(grid);
         validate.run();
-
         return dialog.showAndWait().orElse(null);
+    }
+
+    private DatePicker createModernDatePicker(Vehicle existing, String baseStyle) {
+        DatePicker datePicker = new DatePicker();
+
+        // 1. Устанавливаем значение
+        if (existing != null && existing.getCreationDate() != null) {
+            datePicker.setValue(existing.getCreationDate().toInstant()
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate());
+        } else {
+            datePicker.setValue(java.time.LocalDate.now());
+        }
+
+        // 2. Форматирование и парсинг даты
+        datePicker.setConverter(new javafx.util.StringConverter<java.time.LocalDate>() {
+            private final DateTimeFormatter displayFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+            @Override
+            public String toString(java.time.LocalDate date) {
+                return date != null ? date.format(displayFormatter) : "";
+            }
+
+            @Override
+            public java.time.LocalDate fromString(String string) {
+                if (string == null || string.trim().isEmpty()) {
+                    return java.time.LocalDate.now();
+                }
+
+                // Заменяем все возможные разделители на точку для единообразия
+                String normalized = string.trim().replaceAll("[/|\\\\-]", ".");
+
+                // Пробуем распарсить
+                try {
+                    DateTimeFormatter parser = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+                    return java.time.LocalDate.parse(normalized, parser);
+                } catch (Exception e) {
+                    // Если не получилось, пробуем другие форматы
+                    try {
+                        DateTimeFormatter parser = DateTimeFormatter.ofPattern("d.M.yyyy");
+                        return java.time.LocalDate.parse(normalized, parser);
+                    } catch (Exception e2) {
+                        System.err.println("Неверный формат даты: " + string);
+                        return java.time.LocalDate.now();
+                    }
+                }
+            }
+        });
+
+        // 3. Применяем стили
+        datePicker.setStyle(baseStyle);
+        datePicker.getEditor().setStyle(baseStyle);
+
+        // 4. ОТКЛЮЧАЕМ КАЛЕНДАРЬ - убираем кнопку
+        datePicker.setShowWeekNumbers(false);
+
+        // Находим и скрываем кнопку календаря
+        Node arrowButton = datePicker.lookup(".arrow-button");
+        if (arrowButton != null) {
+            arrowButton.setVisible(false);
+            arrowButton.setManaged(false);
+        }
+
+        // Блокируем показ календаря при клике
+        datePicker.showingProperty().addListener((obs, wasShowing, isNowShowing) -> {
+            if (isNowShowing) {
+                // Сразу закрываем, если кто-то попытался открыть
+                Platform.runLater(() -> datePicker.hide());
+            }
+        });
+
+        // 5. Hover эффекты для поля ввода
+        String hoverStyle = isDarkMode
+                ? "-fx-background-color: #475569; -fx-background-radius: 8; -fx-border-color: #64748B; -fx-border-radius: 8; -fx-border-width: 1.5; -fx-padding: 10; -fx-font-size: 14px; -fx-text-fill: #E2E8F0;"
+                : "-fx-background-color: #E5E7EB; -fx-background-radius: 8; -fx-border-color: transparent; -fx-padding: 10; -fx-font-size: 14px;";
+
+        datePicker.setOnMouseEntered(e -> datePicker.setStyle(hoverStyle));
+        datePicker.setOnMouseExited(e -> datePicker.setStyle(baseStyle));
+
+        return datePicker;
+    }
+    private void applyDatePickerStyles(DatePicker datePicker, String baseStyle) {
+        // Основной стиль
+        datePicker.setStyle(baseStyle + " -fx-cursor: hand;");
+
+        // Hover эффекты
+        String hoverStyle = isDarkMode
+                ? "-fx-background-color: #475569; -fx-background-radius: 8; -fx-border-color: #64748B; -fx-border-radius: 8; -fx-border-width: 1.5; -fx-padding: 10; -fx-font-size: 14px; -fx-text-fill: #E2E8F0; -fx-cursor: hand;"
+                : "-fx-background-color: #E5E7EB; -fx-background-radius: 8; -fx-border-color: transparent; -fx-padding: 10; -fx-font-size: 14px; -fx-cursor: hand;";
+
+        datePicker.setOnMouseEntered(e -> datePicker.setStyle(hoverStyle));
+        datePicker.setOnMouseExited(e -> datePicker.setStyle(baseStyle + " -fx-cursor: hand;"));
+
+        // Стили для редактора (текстовое поле)
+        datePicker.getEditor().setStyle(baseStyle + " -fx-cursor: text;");
+        datePicker.getEditor().setOnMouseEntered(e -> datePicker.getEditor().setStyle(hoverStyle));
+        datePicker.getEditor().setOnMouseExited(e -> datePicker.getEditor().setStyle(baseStyle + " -fx-cursor: text;"));
+    }
+
+    private void styleDatePickerPopup(DatePicker datePicker) {
+        // Стилизация popup календаря
+        datePicker.lookupAll(".date-picker-popup").forEach(node -> {
+            node.setStyle(isDarkMode
+                    ? "-fx-background-color: #1E293B; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 20, 0, 0, 10);"
+                    : "-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 10);");
+        });
+
+        // Заголовок календаря (месяц/год)
+        datePicker.lookupAll(".month-year-pane").forEach(node -> {
+            node.setStyle(isDarkMode
+                    ? "-fx-background-color: #0F172A; -fx-background-radius: 8 8 0 0;"
+                    : "-fx-background-color: #F3F4F6; -fx-background-radius: 8 8 0 0;");
+        });
+
+        // Кнопки навигации (стрелки)
+        datePicker.lookupAll(".spinner > .button").forEach(node -> {
+            node.setStyle(isDarkMode
+                    ? "-fx-background-color: transparent; -fx-background-radius: 6; -fx-cursor: hand;"
+                    : "-fx-background-color: transparent; -fx-background-radius: 6; -fx-cursor: hand;");
+            node.setOnMouseEntered(e -> node.setStyle(isDarkMode
+                    ? "-fx-background-color: #334155; -fx-background-radius: 6; -fx-cursor: hand;"
+                    : "-fx-background-color: #E5E7EB; -fx-background-radius: 6; -fx-cursor: hand;"));
+            node.setOnMouseExited(e -> node.setStyle(isDarkMode
+                    ? "-fx-background-color: transparent; -fx-background-radius: 6; -fx-cursor: hand;"
+                    : "-fx-background-color: transparent; -fx-background-radius: 6; -fx-cursor: hand;"));
+        });
+
+        // Ячейки дней
+        datePicker.lookupAll(".date-cell").forEach(node -> {
+            node.setStyle(isDarkMode
+                    ? "-fx-background-color: transparent; -fx-text-fill: #E2E8F0; -fx-background-radius: 6; -fx-cursor: hand;"
+                    : "-fx-background-color: transparent; -fx-text-fill: #1F2937; -fx-background-radius: 6; -fx-cursor: hand;");
+
+            node.setOnMouseEntered(e -> {
+                if (!node.getPseudoClassStates().contains(javafx.css.PseudoClass.getPseudoClass("selected"))) {
+                    node.setStyle(isDarkMode
+                            ? "-fx-background-color: #334155; -fx-text-fill: #E2E8F0; -fx-background-radius: 6; -fx-cursor: hand;"
+                            : "-fx-background-color: #DBEAFE; -fx-text-fill: #1E40AF; -fx-background-radius: 6; -fx-cursor: hand;");
+                }
+            });
+
+            node.setOnMouseExited(e -> {
+                if (!node.getPseudoClassStates().contains(javafx.css.PseudoClass.getPseudoClass("selected"))) {
+                    node.setStyle(isDarkMode
+                            ? "-fx-background-color: transparent; -fx-text-fill: #E2E8F0; -fx-background-radius: 6; -fx-cursor: hand;"
+                            : "-fx-background-color: transparent; -fx-text-fill: #1F2937; -fx-background-radius: 6; -fx-cursor: hand;");
+                }
+            });
+        });
+
+        // Выбранный день
+        datePicker.lookupAll(".date-cell:filled:selected").forEach(node -> {
+            node.setStyle(isDarkMode
+                    ? "-fx-background-color: linear-gradient(to right, #10B981, #059669); -fx-text-fill: white; -fx-background-radius: 6; -fx-font-weight: bold;"
+                    : "-fx-background-color: linear-gradient(to right, #3B82F6, #2563EB); -fx-text-fill: white; -fx-background-radius: 6; -fx-font-weight: bold;");
+        });
+
+        // Сегодняшний день
+        datePicker.lookupAll(".date-cell:filled:today").forEach(node -> {
+            node.setStyle(isDarkMode
+                    ? "-fx-background-color: #059669; -fx-text-fill: white; -fx-background-radius: 6; -fx-font-weight: bold;"
+                    : "-fx-background-color: #2563EB; -fx-text-fill: white; -fx-background-radius: 6; -fx-font-weight: bold;");
+        });
     }
 
     private TextField createStyledTextField(String text, String prompt, String style) {
@@ -421,7 +577,6 @@ public class CommandDialogHandler {
 
     public void executeEdit(Vehicle existingVehicle) {
         if (existingVehicle == null) return;
-
         // Диалог вернёт новый объект с введёнными данными
         Vehicle vehicleToSave = showModernVehicleDialog(existingVehicle);
         if (vehicleToSave != null) {

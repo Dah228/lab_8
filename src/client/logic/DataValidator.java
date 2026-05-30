@@ -114,29 +114,6 @@ public class DataValidator {
         );
     }
 
-    // === НОВЫЙ МЕТОД: ввод даты ===
-    public Date readValidDate(String prompt, Boolean isLaud) {
-        return readValidatedInput(
-                prompt, isLaud,
-                s -> {
-                    if (s == null || s.trim().isEmpty()) {
-                        // Если пользователь ввёл пустую строку — генерируем случайную дату
-                        return generateRandomDate();
-                    }
-                    // Пробуем распарсить в нескольких форматах
-                    String[] formats = {"yyyy-MM-dd", "dd.MM.yyyy", "dd/MM/yyyy"};
-                    for (String fmt : formats) {
-                        try {
-                            SimpleDateFormat sdf = new SimpleDateFormat(fmt);
-                            sdf.setLenient(false);
-                            return sdf.parse(s.trim());
-                        } catch (ParseException ignored) {}
-                    }
-                    throw new IllegalArgumentException("Неверный формат даты");
-                },
-                "Ошибка: введите дату в формате гггг-мм-дд, дд.мм.гггг или дд/мм/гггг (или пустую строку для авто-генерации)"
-        );
-    }
 
     // Вспомогательный метод для генерации случайной даты (как в Vehicle.setCreationDate)
     private Date generateRandomDate() {
@@ -167,5 +144,41 @@ public class DataValidator {
 
     public Double readValidDouble(String prompt, Boolean isLaud) {
         return readValidatedInput(prompt, isLaud, Double::valueOf, "Ошибка: ожидалось число");
+    }
+
+    // === НОВЫЙ МЕТОД: ввод даты с разными разделителями ===
+    public Date readValidDate(String prompt, Boolean isLaud) {
+        return readValidatedInput(
+                prompt, isLaud,
+                s -> {
+                    if (s == null || s.trim().isEmpty()) {
+                        // Если пользователь ввёл пустую строку — генерируем случайную дату
+                        return generateRandomDate();
+                    }
+
+                    String input = s.trim();
+                    // Нормализуем: заменяем все разделители на точку
+                    String normalized = input.replaceAll("[/|\\\\-]", ".");
+
+                    // Пробуем распарсить в нескольких форматах
+                    String[] formats = {
+                            "dd.MM.yyyy",
+                            "d.M.yyyy",
+                            "dd.MM.yy",
+                            "yyyy.MM.dd"
+                    };
+
+                    for (String fmt : formats) {
+                        try {
+                            SimpleDateFormat sdf = new SimpleDateFormat(fmt);
+                            sdf.setLenient(false);
+                            return sdf.parse(normalized);
+                        } catch (ParseException ignored) {}
+                    }
+
+                    throw new IllegalArgumentException("Неверный формат даты");
+                },
+                "Ошибка: введите дату (разделители: . / | \\ -). Примеры: 26.01.2026, 26/01/2026, 26-01-2026"
+        );
     }
 }

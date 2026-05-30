@@ -600,11 +600,11 @@ public class LocalizationManager {
     public String formatDateTime(Date date) {
         if (date == null) return "-";
         java.text.SimpleDateFormat sdf = switch (currentLocale.toString()) {
-            case "ru_RU" -> new java.text.SimpleDateFormat("dd.MM.yyyy HH:mm");
-            case "no_NO" -> new java.text.SimpleDateFormat("dd.MM.yyyy HH:mm");
-            case "lt_LT" -> new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm");
-            case "en_GB" -> new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm");
-            default -> new java.text.SimpleDateFormat("dd.MM.yyyy HH:mm");
+            case "ru_RU" -> new java.text.SimpleDateFormat("dd.MM.yyyy");
+            case "no_NO" -> new java.text.SimpleDateFormat("dd.MM.yyyy");
+            case "lt_LT" -> new java.text.SimpleDateFormat("yyyy-MM-dd ");
+            case "en_GB" -> new java.text.SimpleDateFormat("dd/MM/yyyy ");
+            default -> new java.text.SimpleDateFormat("dd.MM.yyyy");
         };
         return sdf.format(date);
     }

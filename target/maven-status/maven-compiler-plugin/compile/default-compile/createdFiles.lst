@@ -39,6 +39,7 @@ server/database/UserDao.class
 client/gui/VehicleTableController$2.class
 client/gui/MainScene$1.class
 server/commands/GroupByCommand.class
+client/gui/CommandDialogHandler$7.class
 common/CommandRequest.class
 client/gui/ModernDialog.class
 server/commands/BuyCommand.class

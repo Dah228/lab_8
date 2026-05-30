@@ -302,19 +302,12 @@ public class MainScene {
                         });
                         stage.setScene(authScene.createScene());
 
-                        // === ИЗМЕНЕНИЯ ЗДЕСЬ ===
-                        // Убираем жесткие маленькие размеры
-                        // stage.setWidth(520);
-                        // stage.setHeight(600);
-                        // stage.setResizable(false);
-
                         // Делаем окно снова большим/полноэкранным
                         stage.setMinWidth(800);
                         stage.setMinHeight(600);
                         stage.setMaximized(true);
                         stage.centerOnScreen();
                         stage.setTitle(localization.get("app.title"));
-                        // =======================
 
                     } else showError(localization.get("error.init_connection"));
                 } catch (Exception ex) { showError(localization.get("error.init_detail") + ex.getMessage()); }
