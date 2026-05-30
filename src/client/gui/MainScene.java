@@ -297,15 +297,25 @@ public class MainScene {
                                     authScene.getLoginText(), authScene.getPasswordText());
                             stage.setScene(newMainScene.createScene());
                             stage.setTitle(localization.get("app.title") + " - " + authScene.getLoginText());
+                            // При входе снова разворачиваем
                             stage.setMaximized(true);
-                            stage.setResizable(true);
                         });
                         stage.setScene(authScene.createScene());
-                        stage.setWidth(520);
-                        stage.setHeight(600);
-                        stage.setResizable(false);
+
+                        // === ИЗМЕНЕНИЯ ЗДЕСЬ ===
+                        // Убираем жесткие маленькие размеры
+                        // stage.setWidth(520);
+                        // stage.setHeight(600);
+                        // stage.setResizable(false);
+
+                        // Делаем окно снова большим/полноэкранным
+                        stage.setMinWidth(800);
+                        stage.setMinHeight(600);
+                        stage.setMaximized(true);
                         stage.centerOnScreen();
                         stage.setTitle(localization.get("app.title"));
+                        // =======================
+
                     } else showError(localization.get("error.init_connection"));
                 } catch (Exception ex) { showError(localization.get("error.init_detail") + ex.getMessage()); }
             } else showError(localization.get("error.connect"));
